@@ -1,0 +1,15 @@
+{
+  "data": {
+    "defaultCameraData": "YOUR_DEFAULT_CAMERA_DATA",
+    "abc": 190,
+    "grades": "C",
+    "textData": {
+      "die_no": 27
+    },
+    "codeData": {
+      "vendor_code": "R085",
+      "die_no": 27,
+      "part_no": "11210M02L20"
+    }
+  }
+}

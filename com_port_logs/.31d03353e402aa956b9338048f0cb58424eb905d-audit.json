@@ -1,0 +1,70 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "com_port_logs\\.31d03353e402aa956b9338048f0cb58424eb905d-audit.json",
+    "files": [
+        {
+            "date": 1728457293404,
+            "name": "com_port_logs\\application-2024-10-09.log",
+            "hash": "895a89d19a4c2c0d18ee014b9a57569cf31cc94877ac7c3aa0f7a7741e5e31e7"
+        },
+        {
+            "date": 1728502409045,
+            "name": "com_port_logs\\application-2024-10-10.log",
+            "hash": "d8397be889f5c77dee488d528e4ba135e4054e6772d9f244da954171ce8f2d73"
+        },
+        {
+            "date": 1728618180691,
+            "name": "com_port_logs\\application-2024-10-11.log",
+            "hash": "fd4a2a0267af44c9b2051f0c973b45315ac284b6151fd9706b29a9699985be67"
+        },
+        {
+            "date": 1728681059306,
+            "name": "com_port_logs\\application-2024-10-12.log",
+            "hash": "ce15e36ba4d81d4cdf5cdff333e5cbef4e9fd96a870787b5a4a9794a3cb27ee5"
+        },
+        {
+            "date": 1728761883047,
+            "name": "com_port_logs\\application-2024-10-13.log",
+            "hash": "86bb3ef6d85dfc03a28abcd4f37c6c90411f78d4dceebbe0dbd108f6c892acdb"
+        },
+        {
+            "date": 1728884081124,
+            "name": "com_port_logs\\application-2024-10-14.log",
+            "hash": "d5ba4c95a118a220cd042c6079c02f5c11918c3b15f690a9d3d0dfbfdeb9c4bb"
+        },
+        {
+            "date": 1728963476086,
+            "name": "com_port_logs\\application-2024-10-15.log",
+            "hash": "9dde381045e770dae2e32bc68030701ac236849622d1d8e6f7ea9e17c41d690d"
+        },
+        {
+            "date": 1729050242512,
+            "name": "com_port_logs\\application-2024-10-16.log",
+            "hash": "cb9253b290769db59288493fccf78da7842b86080f4e2503b948dbdbc27706b0"
+        },
+        {
+            "date": 1729131552062,
+            "name": "com_port_logs\\application-2024-10-17.log",
+            "hash": "2a75f2e9edd1dd973c0cad95af4c188913fb1c983c5b7e461a8ae24804113b67"
+        },
+        {
+            "date": 1729189805141,
+            "name": "com_port_logs\\application-2024-10-18.log",
+            "hash": "c25704d553e01bbef8b53f3dd9a36afb5cc1c0984e195e0cb84f223abb3ce0ad"
+        },
+        {
+            "date": 1729309365447,
+            "name": "com_port_logs\\application-2024-10-19.log",
+            "hash": "c24036fdce9f3171d16a1589c2d5d7388ad6ccc8d1449f919229c9f75b15df56"
+        },
+        {
+            "date": 1729513646851,
+            "name": "com_port_logs\\application-2024-10-21.log",
+            "hash": "33153c8973ac498a5e7849d74c25bc90b0e9a92a6cb27ece65f1ef268b7f2737"
+        }
+    ],
+    "hashType": "sha256"
+}
