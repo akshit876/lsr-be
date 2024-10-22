@@ -76,7 +76,14 @@ const server = createServer((req, res) => {
   });
 });
 
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000", // Your frontend URL
+    methods: ["GET", "POST"],
+    allowedHeaders: ["my-custom-header"],
+    credentials: true,
+  },
+});
 
 io.on("connection", (socket) => {
   let intervalId = null;
@@ -123,10 +130,7 @@ io.on("connection", (socket) => {
       );
       socket.emit("writeSuccess", { address, bit, value });
     } catch (error) {
-      logger.error(
-        `Error writing to register for client ${socket.id}:`,
-        error
-      );
+      logger.error(`Error writing to register for client ${socket.id}:`, error);
       socket.emit("error", {
         message: "Failed to write to register",
         details: error.message,
