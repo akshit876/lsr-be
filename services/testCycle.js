@@ -337,17 +337,19 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
 
         logger.info(`Scanner data received: ${scannerData}`);
       } catch (error) {
+        console.log({ error });
         logger.error("Error or timeout waiting for scanner data:", error);
         continue; // Retry or handle the error
       }
       // await sleep(5 * 1000);
 
-      // if (scannerData !== "NG") {
-      //   logger.info("First scan data is OK, stopping machine");
-      //   logger.info("Writing bit 1414.6 to signal OK scan");
-      //   await writeBitsWithRest(1414, 6, 1, 200, false);
-      //   continue;
-      // }
+      if (scannerData !== "NG") {
+        logger.info("First scan data is OK, stopping machine");
+        logger.info("Writing bit 1414.6 to signal OK scan");
+        await writeBitsWithRest(1414, 6, 1, 200, false);
+        await resetBits2();
+        continue;
+      }
 
       logger.info("First scan data is NG, proceeding with workflow");
       logger.info("Writing bit 1414.7 to signal NG scan");
@@ -606,6 +608,12 @@ async function checkReset() {
 export async function resetBits() {
   await resetSpecificBits(1414, [3, 4, 6, 7]);
   await resetSpecificBits(1415, [4]);
+}
+
+export async function resetBits2() {
+  await resetSpecificBits(1414, [3, 4, 6, 7]);
+  await resetSpecificBits(1410, [0]);
+  // await resetSpecificBits(1415, [4]);
 }
 
 // Handle graceful shutdown
