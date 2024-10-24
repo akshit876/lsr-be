@@ -105,7 +105,7 @@ class MongoDBService {
     }
   }
 
-  async sendMongoDbDataToClient(socket, dbName, collectionName) {
+  async sendMongoDbDataToClient(socket, dbName, collectionName, userName) {
     try {
       // Check if we're connected to the database, if not, try to connect
       if (!this.collection) {
@@ -133,7 +133,7 @@ class MongoDBService {
         return;
       }
 
-      // Transform the data
+      // Transform the data and append user name as the last column
       const transformedData = data.map((item) => ({
         Timestamp: item?.Timestamp,
         SerialNumber: item?.SerialNumber,
@@ -142,11 +142,10 @@ class MongoDBService {
         Shift: item?.Shift,
         Result: item?.Result,
         Date: item?.Date,
+        UserName: userName, // Append user name to each record
       }));
 
-      // console.log({ transformedData });
-
-      // Send the data to the client
+      // Send the transformed data to the client
       socket.emit("csv-data", { data: transformedData });
       logger.info(`Emitted MongoDB data to client: ${socket.id}`);
     } catch (error) {

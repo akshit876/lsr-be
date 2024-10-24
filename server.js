@@ -89,9 +89,10 @@ io.on("connection", (socket) => {
   let intervalId = null;
   logger.info(`New client connected: ${socket.id}`);
 
-  socket.on("request-csv-data", () => {
+  socket.on("request-csv-data", (d) => {
+    console.log({ d });
     mongoDbService
-      .sendMongoDbDataToClient(socket, "main-data", "records")
+      .sendMongoDbDataToClient(socket, "main-data", "records", userName)
       .catch((error) => {
         console.error("Error in sendMongoDbDataToClient:", error);
       });
