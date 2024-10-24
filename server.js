@@ -76,6 +76,29 @@ const server = createServer((req, res) => {
   });
 });
 
+async function fetchPartNumberAndData() {
+  try {
+    // Connect to the MongoDB if not already connected
+    if (!mongoDbService.collection) {
+      await mongoDbService.connect("main-data", "config");
+    }
+
+    // Fetch part number from the 'configs' collection
+    const configData = await mongoDbService.collection.findOne({});
+    const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
+
+    // Fetch records from 'main-data' collection (or any other collection as needed)
+    const mainDataRecords = await mongoDbService.collection.find({}).toArray();
+
+    logger.info(`Fetched part number: ${partNumber} and main data records`);
+
+    return { partNumber, mainDataRecords };
+  } catch (error) {
+    logger.error("Error fetching part number or data:", error);
+    throw error;
+  }
+}
+
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000", // Your frontend URL
@@ -268,8 +291,10 @@ server.listen(PORT, async (err) => {
     });
 
     await connect();
+    // Fetch part number and pass it to runContinuousScan
+    const { partNumber, mainDataRecords } = await fetchPartNumberAndData();
 
-    runContinuousScan(io, comService).catch((error) => {
+    runContinuousScan(io, comService, { partNumber }).catch((error) => {
       logger.error("Failed to start continuous scan:", error);
       process.exit(1);
     });

@@ -209,7 +209,7 @@ async function checkResetOrBit(register, bit, value) {
   });
 }
 
-export async function runContinuousScan(io = null, comService) {
+export async function runContinuousScan(io = null, comService, { partNumber }) {
   let c = 0;
   try {
     logger.debug("Attempting to connect to MongoDB...");
@@ -355,7 +355,10 @@ export async function runContinuousScan(io = null, comService) {
       // await sleep(5 * 1000);
 
       logger.info("Generating barcode data");
-      const { text, serialNo } = barcodeGenerator.generateBarcodeData();
+      const { text, serialNo } = barcodeGenerator.generateBarcodeData({
+        date: new Date(),
+        partNumber,
+      });
 
       logger.info("Writing OCR data to file");
       await writeOCRDataToFile(text);

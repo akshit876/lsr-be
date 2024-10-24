@@ -18,14 +18,26 @@ class BarcodeGenerator {
     }
   }
 
-  generateBarcodeData(date = new Date()) {
-    const dateString = format(date, "ddMMyy");
+  generateBarcodeData({ date = new Date(), partNumber }) {
+    // Get the Julian date: year + day of the year
+    const year = format(date, "yy"); // Last two digits of the year
+    const startOfYear = new Date(date.getFullYear(), 0, 0);
+    const diff = date - startOfYear;
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    const julianDate = `${String(dayOfYear).padStart(3, "0")}${year}`; // Format day as 3 digits
+
+    // Fetch the current shift
     const shift = this.shiftUtility.getCurrentShift(date);
-    // const shiftCode = this.getShiftCode(shift);
+
+    // Fetch the next serial number
     const serialString = this.serialNumberService.getNextSerialNumber();
 
+    // Generate the final barcode string including the part number
+    const barcodeText = `${partNumber || ""}04101${julianDate}${serialString}`;
+
     return {
-      text: `${dateString}${shift}${serialString}`,
+      text: barcodeText,
       serialNo: serialString,
     };
   }
