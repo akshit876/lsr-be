@@ -1,0 +1,213 @@
+
+> laser-be@1.0.0 start
+> node server.js
+
+{ filePath: 'C:\\Users\\LASER_CASE_2\\laser-be\\data\\db.json' }
+[32minfo[39m: Reset time set to 6:0
+[32minfo[39m: Connected to Modbus device at 192.168.3.146:502
+{ db: Low { adapter: JSONFile {}, data: { data: [Object] } } }
+{ MODBUS_IP: undefined, MODBUS_PORT: NaN }
+[32minfo[39m: > Server ready on http://localhost:3002
+[32minfo[39m: Modbus connection initialized
+[32minfo[39m: Scheduled job: monthlyExport
+[32minfo[39m: All cron jobs started
+[32minfo[39m: Reset time set to 6:0
+[32minfo[39m: Read registers starting at address 1450 (length: 20): 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+[32minfo[39m: Connected successfully to MongoDB database: main-data
+[32minfo[39m: Connected successfully to MongoDB database: main-data
+[32minfo[39m: Connected successfully to MongoDB database: main-data
+[32minfo[39m: Successfully wrote bit 9 with value 1 to register 1415
+[32minfo[39m: Connected successfully to MongoDB database: main-data
+{
+  config: {
+    _id: new ObjectId('6713997e2a0cf26c351eb06d'),
+    shiftConfig: { A: '06:00', B: '14:30', C: '23:00' }
+  }
+}
+{ shiftUtil: { A: '06:00', B: '14:30', C: '23:00' } }
+{
+  transformedConfig: {
+    A: { start: '06:00', end: '14:30' },
+    B: { start: '14:30', end: '23:00' },
+    C: { start: '23:00', end: '06:00' }
+  }
+}
+{
+  newConfig: {
+    A: { start: '06:00', end: '14:30' },
+    B: { start: '14:30', end: '23:00' },
+    C: { start: '23:00', end: '06:00' }
+  }
+}
+[32minfo[39m: Initialized serial number to 93 from last MongoDB document
+{
+  now: '2024-10-24 18:02:34',
+  resetTime: '2024-10-24 06:00:00',
+  lastResetDate: '2024-10-24 17:45:26',
+  isAfterResetTime: true,
+  isSameDayAsLastReset: true,
+  isLastResetBeforeResetTime: false
+}
+[32minfo[39m: BarcodeGenerator initialized successfully
+[32minfo[39m: Initialized serial number to 93 from last MongoDB document
+{
+  now: '2024-10-24 18:02:34',
+  resetTime: '2024-10-24 06:00:00',
+  lastResetDate: '2024-10-24 17:45:26',
+  isAfterResetTime: true,
+  isSameDayAsLastReset: true,
+  isLastResetBeforeResetTime: false
+}
+[32minfo[39m: BarcodeGenerator initialized successfully
+[32minfo[39m: Fetched part number: 873976008 and main data records
+[32minfo[39m: Connected successfully to MongoDB database: main-data
+[32minfo[39m: Connected to MongoDB successfully
+2024-10-24T12:32:34.368Z [info]: Port opened successfully
+[32minfo[39m: Initialized serial port successfully
+[32minfo[39m: Started reset signal monitor process
+[32minfo[39m: Test-1
+[32minfo[39m: Starting scan cycle 1
+[32minfo[39m: Attempting to reset bits 3, 4, 6, 7 in register 1414
+[32minfo[39m: Read registers starting at address 1414 (length: 1): 32260
+[32minfo[39m: Successfully wrote value 32260 to register at address 1414
+[32minfo[39m: Successfully reset bits 3, 4, 6, 7 in register 1414
+[32minfo[39m: Attempting to reset bits 4 in register 1415
+[32minfo[39m: Read registers starting at address 1415 (length: 1): 512
+[32minfo[39m: Successfully wrote value 512 to register at address 1415
+[32minfo[39m: Successfully reset bits 4 in register 1415
+[32minfo[39m: Clearing buffer before second scan...
+{ register: 1410, bit: 0, value: 1 }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+[32minfo[39m: Reset time set to 6:0
+[32minfo[39m: Reset signal monitor started and waiting for start signal
+[32minfo[39m: Received start signal, beginning monitoring
+[32minfo[39m: Connected successfully to MongoDB database: main-data
+[32minfo[39m: Connected successfully to MongoDB database: main-data
+{
+  config: {
+    _id: new ObjectId('6713997e2a0cf26c351eb06d'),
+    shiftConfig: { A: '06:00', B: '14:30', C: '23:00' }
+  }
+}
+{ shiftUtil: { A: '06:00', B: '14:30', C: '23:00' } }
+{
+  transformedConfig: {
+    A: { start: '06:00', end: '14:30' },
+    B: { start: '14:30', end: '23:00' },
+    C: { start: '23:00', end: '06:00' }
+  }
+}
+{
+  newConfig: {
+    A: { start: '06:00', end: '14:30' },
+    B: { start: '14:30', end: '23:00' },
+    C: { start: '23:00', end: '06:00' }
+  }
+}
+[32minfo[39m: Initialized serial number to 93 from last MongoDB document
+{
+  now: '2024-10-24 18:02:34',
+  resetTime: '2024-10-24 06:00:00',
+  lastResetDate: '2024-10-24 17:45:26',
+  isAfterResetTime: true,
+  isSameDayAsLastReset: true,
+  isLastResetBeforeResetTime: false
+}
+[32minfo[39m: BarcodeGenerator initialized successfully
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+{ bitValue: false }
+^C^C

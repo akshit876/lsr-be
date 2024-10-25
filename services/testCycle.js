@@ -372,7 +372,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       // logger.info("Writing bit 1415.4 to confirm file transfer to PLC");
       // await writeBitsWithRest(1415, 4, 1, 100, false);
       // logger.info("File transfer confirmation sent to PLC");
-      await sleep(1000);
+      // await sleep(1000);
 
       logger.info("Checking for reset or waiting for bit 1410.2");
       if (await checkResetOrBit(1410, 2, 1)) {
