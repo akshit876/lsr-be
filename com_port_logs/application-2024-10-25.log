@@ -1954,3 +1954,30 @@
 2024-10-25T11:31:59.085Z [info]: Processed line: 873976000704101299240388
 2024-10-25T11:31:59.344Z [info]: Processing data from queue: 873976000704101299240388
 2024-10-25T11:32:00.098Z [info]: Processing data from queue: 873976000704101299240388
+2024-10-25T11:44:25.510Z [info]: Processed line: NG
+2024-10-25T11:44:26.515Z [info]: Processing data from queue: NG
+2024-10-25T11:44:34.867Z [info]: Processed line: 873976000704101299240389
+2024-10-25T11:44:35.618Z [info]: Processed line: 873976000704101299240389
+2024-10-25T11:44:35.867Z [info]: Processing data from queue: 873976000704101299240389
+2024-10-25T11:44:36.627Z [info]: Processing data from queue: 873976000704101299240389
+2024-10-25T11:44:46.749Z [info]: Processed line: NG
+2024-10-25T11:44:47.763Z [info]: Processing data from queue: NG
+2024-10-25T11:44:56.106Z [info]: Processed line: 873976000704101299240390
+2024-10-25T11:44:56.884Z [info]: Processed line: 873976000704101299240390
+2024-10-25T11:44:57.108Z [info]: Processing data from queue: 873976000704101299240390
+2024-10-25T11:44:57.884Z [info]: Processing data from queue: 873976000704101299240390
+2024-10-25T11:45:07.206Z [info]: Processed line: NG
+2024-10-25T11:45:08.211Z [info]: Processing data from queue: NG
+2024-10-25T11:45:16.876Z [info]: Processed line: 873976000704101299240391
+2024-10-25T11:45:17.610Z [info]: Processed line: 873976000704101299240391
+2024-10-25T11:45:17.886Z [info]: Processing data from queue: 873976000704101299240391
+2024-10-25T11:45:18.614Z [info]: Processing data from queue: 873976000704101299240391
+2024-10-25T11:45:26.945Z [info]: Processed line: NG
+2024-10-25T11:45:27.953Z [info]: Processing data from queue: NG
+2024-10-25T11:45:37.465Z [info]: Processed line: 873976000704101299240392
+2024-10-25T11:45:38.199Z [info]: Processed line: 873976000704101299240392
+2024-10-25T11:45:38.481Z [info]: Processing data from queue: 873976000704101299240392
+2024-10-25T11:45:39.210Z [info]: Processing data from queue: 873976000704101299240392
+2024-10-25T11:45:46.550Z [info]: Processed line: NG
+2024-10-25T11:45:47.557Z [info]: Processing data from queue: NG
+2024-10-25T11:46:03.742Z [info]: Port opened successfully

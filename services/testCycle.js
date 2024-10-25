@@ -295,6 +295,18 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       logger.info(
         "-----------------------------------------------------------------------------------------------------------"
       );
+      logger.info("Generating barcode data");
+      const { text, serialNo } = barcodeGenerator.generateBarcodeData({
+        date: new Date(),
+        partNumber,
+      });
+
+      logger.info("Writing OCR data to file");
+      await writeOCRDataToFile(text);
+      logger.info("OCR data transferred to text file");
+
+      logger.info("Writing bit 1410.11 to signal file transfer");
+      await writeBitsWithRest(1410, 11, 1, 100, false);
       // logger.info("Trigger First Scanner on ........");
       // await writeBitsWithRest(1415, 0, 1, 800, false);
       // // await sleep(1000);
@@ -355,19 +367,6 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       logger.info("Writing bit 1414.7 to signal NG scan");
       await writeBitsWithRest(1414, 7, 1, 100, false);
       // await sleep(5 * 1000);
-
-      logger.info("Generating barcode data");
-      const { text, serialNo } = barcodeGenerator.generateBarcodeData({
-        date: new Date(),
-        partNumber,
-      });
-
-      logger.info("Writing OCR data to file");
-      await writeOCRDataToFile(text);
-      logger.info("OCR data transferred to text file");
-
-      logger.info("Writing bit 1410.11 to signal file transfer");
-      await writeBitsWithRest(1410, 11, 1, 100, false);
 
       // logger.info("Writing bit 1415.4 to confirm file transfer to PLC");
       // await writeBitsWithRest(1415, 4, 1, 100, false);
