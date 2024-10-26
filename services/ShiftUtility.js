@@ -161,7 +161,7 @@ async function run() {
   // console.log(`Shift A End Time: ${shiftAEndTime}`);
 }
 
-// Run the example
-run().catch((error) => {
-  console.error("Error running the shift utility:", error);
-});
+// // Run the example
+// run().catch((error) => {
+//   console.error("Error running the shift utility:", error);
+// });
