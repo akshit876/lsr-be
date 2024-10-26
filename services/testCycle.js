@@ -1,26 +1,27 @@
-import { fileURLToPath } from "url";
-import logger from "../logger.js";
+import { fileURLToPath } from 'url';
+import logger from '../logger.js';
 import {
   connect,
   readBit,
   readRegister,
+  writeBit,
   writeBitsWithRest,
   writeRegister,
   writeRegisterFull,
-} from "./modbus.js";
+} from './modbus.js';
 // import { waitForBitToBecomeOne } from "./serialPortService.js";
 
-import { format } from "date-fns";
-import fs from "fs";
-import path, { dirname } from "path";
-import ComPortService from "./ComPortService.js";
-import ShiftUtility from "./ShiftUtility.js";
-import BarcodeGenerator from "./barcodeGenrator.js";
-import mongoDbService from "./mongoDbService.js";
-import BufferedComPortService from "./ComPortService.js";
-import EventEmitter from "events";
-import { Worker, isMainThread, parentPort, workerData } from "worker_threads";
-import { promisify } from "util";
+import { format } from 'date-fns';
+import fs from 'fs';
+import path, { dirname } from 'path';
+import ComPortService from './ComPortService.js';
+import ShiftUtility from './ShiftUtility.js';
+import BarcodeGenerator from './barcodeGenrator.js';
+import mongoDbService from './mongoDbService.js';
+import BufferedComPortService from './ComPortService.js';
+import EventEmitter from 'events';
+import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+import { promisify } from 'util';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -35,38 +36,38 @@ async function saveToMongoDB({
   result,
 }) {
   const now = new Date();
-  const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
+  const timestamp = format(now, 'yyyy-MM-dd HH:mm:ss');
 
   const data = {
     Timestamp: new Date(timestamp),
     SerialNumber: serialNumber,
     MarkingData: markingData,
     ScannerData: scannerData,
-    Result: result ? "OK" : "NG",
+    Result: result ? 'OK' : 'NG',
   };
 
   try {
     // Save to MongoDB
     await mongoDbService.insertRecord(data);
-    logger.info(`Data saved to MongoDB`);
+    logger.info('Data saved to MongoDB');
 
     if (io) {
-      mongoDbService.sendMongoDbDataToClient(io, "main-data", "records");
+      mongoDbService.sendMongoDbDataToClient(io, 'main-data', 'records');
     }
   } catch (error) {
     console.error({ error });
-    logger.error("Error saving data:", error);
+    logger.error('Error saving data:', error);
     throw error;
   }
 }
 
-const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
+const CODE_FILE_PATH = path.join(__dirname, '../data/code.txt');
 
 async function writeOCRDataToFile(ocrDataString) {
   try {
     await clearCodeFile(CODE_FILE_PATH); // Clear the file before writing new data
-    fs.writeFileSync(CODE_FILE_PATH, ocrDataString, "utf8");
-    logger.info("OCR data written to code.txt");
+    fs.writeFileSync(CODE_FILE_PATH, ocrDataString, 'utf8');
+    logger.info('OCR data written to code.txt');
   } catch (error) {
     logger.error(`Error writing OCR data to file: ${error.message}`);
     throw error;
@@ -75,7 +76,7 @@ async function writeOCRDataToFile(ocrDataString) {
 
 async function verifyWriteOperation(expectedData) {
   try {
-    const actualData = await fs.readFile(CODE_FILE_PATH, "utf8");
+    const actualData = await fs.readFile(CODE_FILE_PATH, 'utf8');
     return actualData === expectedData;
   } catch (error) {
     logger.error(
@@ -87,7 +88,7 @@ async function verifyWriteOperation(expectedData) {
 
 async function verifyAndRetryWrite(expectedData, retriesLeft) {
   for (let attempt = 1; attempt <= retriesLeft + 1; attempt++) {
-    const actualData = await fs.readFileSync(CODE_FILE_PATH, "utf8");
+    const actualData = await fs.readFileSync(CODE_FILE_PATH, 'utf8');
     if (actualData === expectedData) {
       return true; // Data verified successfully
     }
@@ -96,7 +97,7 @@ async function verifyAndRetryWrite(expectedData, retriesLeft) {
       logger.warn(
         `Verification attempt ${attempt} failed. Retrying write operation...`
       );
-      await fs.writeFileSync(CODE_FILE_PATH, expectedData, "utf8");
+      await fs.writeFileSync(CODE_FILE_PATH, expectedData, 'utf8');
     }
   }
 
@@ -107,8 +108,8 @@ async function verifyAndRetryWrite(expectedData, retriesLeft) {
  */
 async function clearCodeFile(path) {
   try {
-    fs.writeFileSync(path, "", "utf8"); // Overwrite with an empty string
-    logger.info("Code file cleared.");
+    fs.writeFileSync(path, '', 'utf8'); // Overwrite with an empty string
+    logger.info('Code file cleared.');
   } catch (error) {
     logger.error(`Error clearing code file: ${error.message}`);
     throw error;
@@ -122,9 +123,9 @@ async function clearCodeFile(path) {
  */
 async function compareScannerDataWithCode(scannerData) {
   try {
-    const codeData = fs.readFileSync(CODE_FILE_PATH, "utf8").trim();
+    const codeData = fs.readFileSync(CODE_FILE_PATH, 'utf8').trim();
     const isMatch = scannerData === codeData;
-    logger.info(`Comparison result: ${isMatch ? "Match" : "No match"}`);
+    logger.info(`Comparison result: ${isMatch ? 'Match' : 'No match'}`);
     return isMatch;
   } catch (error) {
     logger.error(
@@ -137,13 +138,13 @@ async function compareScannerDataWithCode(scannerData) {
 const c = 0;
 const shiftUtility = new ShiftUtility();
 const barcodeGenerator = new BarcodeGenerator(shiftUtility);
-barcodeGenerator.initialize("main-data", "records");
+barcodeGenerator.initialize('main-data', 'records');
 barcodeGenerator.setResetTime(6, 0);
-const comService = new BufferedComPortService({
-  path: "COM3", // Make sure this matches your actual COM port
-  baudRate: 9600, // Adjust if needed
-  logDir: "com_port_logs", // Specify the directory for log files
-});
+// const comService = new BufferedComPortService({
+//   path: "COM3", // Make sure this matches your actual COM port
+//   baudRate: 9600, // Adjust if needed
+//   logDir: "com_port_logs", // Specify the directory for log files
+// });
 
 const resetEmitter = new EventEmitter();
 
@@ -161,7 +162,7 @@ async function waitForBitToBecomeOne(register, bit, value) {
         while (true) {
           const bitValue = await readBit(register, bit);
           if (bitValue === value) {
-            resolve("bitChanged");
+            resolve('bitChanged');
             return;
           }
           await sleep(50);
@@ -172,18 +173,25 @@ async function waitForBitToBecomeOne(register, bit, value) {
     };
 
     const resetHandler = () => {
-      resolve("reset");
+      resolve('reset');
     };
 
-    resetEmitter.on("reset", resetHandler);
+    resetEmitter.on('reset', resetHandler);
     checkBit().finally(() => {
-      resetEmitter.removeListener("reset", resetHandler);
+      resetEmitter.removeListener('reset', resetHandler);
     });
   });
 }
 const TIMEOUT = 30000;
 async function checkResetOrBit(register, bit, value) {
-  console.log({ register, bit, value });
+  // console.log({ register, bit, value });
+  logger.info(
+    '-----------------------------------------------------------------------------------------------------------'
+  );
+  logger.debug(`awaiting ${register} , bit ${bit}`);
+  logger.info(
+    '-----------------------------------------------------------------------------------------------------------'
+  );
   return new Promise(async (resolve) => {
     let timeoutId;
     let intervalId;
@@ -241,88 +249,73 @@ async function checkResetOrBit(register, bit, value) {
 export async function runContinuousScan(io = null, comService, { partNumber }) {
   let c = 0;
   try {
-    logger.debug("Attempting to connect to MongoDB...");
-    await mongoDbService.connect("main-data", "records");
-    logger.info("Connected to MongoDB successfully");
+    logger.debug('Attempting to connect to MongoDB...');
+    await mongoDbService.connect('main-data', 'records');
+    logger.info('Connected to MongoDB successfully');
   } catch (dbError) {
-    logger.error("Failed to connect to MongoDB:", dbError);
-    logger.debug("Waiting 5 seconds before retrying MongoDB connection");
+    logger.error('Failed to connect to MongoDB:', dbError);
+    logger.debug('Waiting 5 seconds before retrying MongoDB connection');
     await sleep(5000);
     // continue;
   }
 
   try {
-    logger.debug("Attempting to initialize serial port...");
-    await comService.initSerialPort();
-    logger.info("Initialized serial port successfully");
+    logger.debug('Attempting to initialize serial port...');
+    // await comService.initSerialPort();
+    logger.info('Initialized serial port successfully');
   } catch (comError) {
-    logger.error("Failed to initialize serial port:", comError);
+    logger.error('Failed to initialize serial port:', comError);
     logger.debug(
-      "Waiting 5 seconds before retrying serial port initialization"
+      'Waiting 5 seconds before retrying serial port initialization'
     );
     await sleep(5000);
     // continue;
   }
 
-  // Start the reset signal monitor as a separate process
-  const monitorProcess = new Worker("./services/monitorReset.js"); // services\monitorReset.js C:\Users\LASER_CASE_2\Project\ricov3\LaserScanner_V2\services\monitorReset.js
-  logger.info("Started reset signal monitor process");
-
-  // Send a message to the worker to start monitoring
-
-  // monitorProcess.on("message", (message) => {
-  //   if (message === "reset") {
-  //     logger.info("Received reset signal from monitor process");
-  //     resetEmitter.emit("reset");
-  //   }
-  // });
-
-  // monitorProcess.on("error", (error) => {
-  //   logger.error("Error in worker thread:", error);
-  // });
-
-  monitorProcess.on("message", async (message) => {
-    if (message.type === "readBit") {
-      try {
-        const bitValue = await readBit(message.register, message.bit);
-        monitorProcess.postMessage({ type: "bitValue", value: bitValue });
-      } catch (error) {
-        logger.error("Error reading bit:", error);
-        monitorProcess.postMessage({ type: "error", error: error.message });
+  let isRunning = true;
+    
+  // Create the reset monitor worker
+  const resetMonitor = new Worker('./services/resetMonitor.js');
+  
+  resetMonitor.on('message', async (message) => {
+      if (message === 'reset') {
+          logger.info('Reset signal received from monitor - restarting cycle');
+          isRunning = false; // Signal the main loop to stop
+          
+          // Clean up current cycle
+          await resetBits();
+          await clearCodeFile(CODE_FILE_PATH);
+          
+          // Restart the cycle
+          runContinuousScan(io, comService, { partNumber });
       }
-    } else if (message.type === "reset") {
-      logger.info("Reset signal detected by monitorProcess thread");
-      // Handle reset logic here
-      await resetBits();
-    }
   });
 
-  monitorProcess.on("error", (error) => {
-    logger.error("Worker error:", error);
+  resetMonitor.on('error', (error) => {
+      logger.error('Reset monitor error:', error);
   });
 
-  monitorProcess.on("exit", (code) => {
-    if (code !== 0) {
-      logger.error(`Worker stopped with exit code ${code}`);
-    }
-  });
+  // Start the monitor
+  resetMonitor.postMessage('start');
 
-  monitorProcess.postMessage("start");
-
-  while (true) {
-    logger.info(`Test-1`);
+  while (isRunning) {
+    logger.info('Test-1');
     try {
       logger.info(`Starting scan cycle ${c + 1}`);
       await resetBits();
-      logger.info("Clearing buffer before second scan...");
-      comService.clearBuffer();
+      await writeBit(1410, 0, 1);
+      // await sleep(5 * 1000);
+      logger.info('Clearing buffer before second scan...');
+      // comService.clearBuffer();
       if (await checkResetOrBit(1410, 0, 1)) {
-        logger.info("Reset detected at final step, restarting cycle");
+        logger.info('Reset detected at final step, restarting cycle');
         continue;
       }
-      logger.info("Starting scanner workflow");
+      await writeBit(1410, 0, 0);
+
+      logger.info('Starting scanner workflow');
       logger.info(
-        "-----------------------------------------------------------------------------------------------------------"
+        '-----------------------------------------------------------------------------------------------------------'
       );
       // logger.info("Trigger First Scanner on ........");
       // await writeBitsWithRest(1415, 0, 1, 800, false);
@@ -333,59 +326,60 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       // );
       // await writeBitsWithRest(1415, 0, 1, 800, false);
 
-      let scannerData;
-      try {
-        // Step 1: Set up the event listener for incoming scanner data
-        logger.info("Setting up data listener for first scan...");
+      const scannerData = 'NG';
+      // try {
+      //   // Step 1: Set up the event listener for incoming scanner data
+      //   logger.info("Setting up data listener for first scan...");
 
-        // Create a promise that resolves when data is received
-        scannerData = await new Promise((resolve, reject) => {
-          const dataHandler = (data) => {
-            logger.info(`Data received: ${data}`);
-            resolve(data); // Resolve the promise when data is received
-            comService.off("dataGot", dataHandler); // Remove listener once data is processed
-          };
+      //   // Create a promise that resolves when data is received
+      //   scannerData = await new Promise((resolve, reject) => {
+      //     const dataHandler = (data) => {
+      //       logger.info(`Data received: ${data}`);
+      //       // resolve(data); // Resolve the promise when data is received
+      //       resolve("NG"); // Resolve the promise when data is received
+      //       comService.off("dataGot", dataHandler); // Remove listener once data is processed
+      //     };
 
-          // Add event listener for incoming data
-          comService.on("dataGot", dataHandler);
+      //     // Add event listener for incoming data
+      //     comService.on("dataGot", dataHandler);
 
-          // Set a timeout to avoid hanging indefinitely
-          const timeout = setTimeout(() => {
-            comService.off("dataGot", dataHandler);
-            reject(new Error("Timeout waiting for scanner data"));
-          }, 2000); // Adjust timeout as needed
+      //     // Set a timeout to avoid hanging indefinitely
+      //     const timeout = setTimeout(() => {
+      //       comService.off("dataGot", dataHandler);
+      //       reject(new Error("Timeout waiting for scanner data"));
+      //     }, 2000); // Adjust timeout as needed
 
-          // Trigger the scanner after the event listener is set
-          logger.info("Triggering the scanner...");
-          writeBitsWithRest(1415, 0, 1, 100, false)
-            .then(() => logger.info("Scanner triggered"))
-            .catch((err) =>
-              logger.error(`Error triggering scanner: ${err.message}`)
-            );
-        });
+      //     // Trigger the scanner after the event listener is set
+      //     logger.info("Triggering the scanner...");
+      //     writeBitsWithRest(1415, 0, 1, 100, false)
+      //       .then(() => logger.info("Scanner triggered"))
+      //       .catch((err) =>
+      //         logger.error(`Error triggering scanner: ${err.message}`)
+      //       );
+      //   });
 
-        logger.info(`Scanner data received: ${scannerData}`);
-      } catch (error) {
-        console.log({ error });
-        logger.error("Error or timeout waiting for scanner data:", error);
-        continue; // Retry or handle the error
-      }
+      //   logger.info(`Scanner data received: ${scannerData}`);
+      // } catch (error) {
+      //   console.log({ error });
+      //   logger.error("Error or timeout waiting for scanner data:", error);
+      //   continue; // Retry or handle the error
+      // }
       // await sleep(5 * 1000);
 
-      if (scannerData !== "NG") {
-        logger.info("First scan data is OK, stopping machine");
-        logger.info("Writing bit 1414.6 to signal OK scan");
+      if (scannerData !== 'NG') {
+        logger.info('First scan data is OK, stopping machine');
+        logger.info('Writing bit 1414.6 to signal OK scan');
         await writeBitsWithRest(1414, 6, 1, 200, false);
         await resetBits2();
         continue;
       }
 
-      logger.info("First scan data is NG, proceeding with workflow");
-      logger.info("Writing bit 1414.7 to signal NG scan");
+      logger.info('First scan data is NG, proceeding with workflow');
+      logger.info('Writing bit 1414.7 to signal NG scan');
       await writeBitsWithRest(1414, 7, 1, 100, false);
       // await sleep(5 * 1000);
 
-      logger.info("Generating barcode data");
+      logger.info('Generating barcode data');
       console.log({ partNumber });
       const { text, serialNo } = await barcodeGenerator.generateBarcodeData({
         date: new Date(),
@@ -394,21 +388,21 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       });
       console.log({ text });
       logger.info(
-        "-----------------------------------------------------------------------------------------------------------"
+        '-----------------------------------------------------------------------------------------------------------'
       );
-      logger.info("Writing OCR data to file");
+      logger.info('Writing OCR data to file');
       await writeOCRDataToFile(text);
       // await verifyWriteOperation(text);
       await verifyAndRetryWrite(text, 2);
 
-      logger.info("OCR data transferred to text file");
+      logger.info('OCR data transferred to text file');
 
       await sleep(2 * 1000);
 
-      logger.info("Writing bit 1410.11 to signal file transfer");
+      logger.info('Writing bit 1410.11 to signal file transfer');
       await writeBitsWithRest(1410, 11, 1, 100, false);
       logger.info(
-        "-----------------------------------------------------------------------------------------------------------"
+        '-----------------------------------------------------------------------------------------------------------'
       );
 
       // logger.info("Writing bit 1415.4 to confirm file transfer to PLC");
@@ -416,68 +410,68 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       // logger.info("File transfer confirmation sent to PLC");
       // await sleep(1000);
 
-      logger.info("Checking for reset or waiting for bit 1410.2");
+      logger.info('Checking for reset or waiting for bit 1410.2');
       if (await checkResetOrBit(1410, 2, 1)) {
         logger.info(
-          "Reset detected while waiting for 1410.2, restarting cycle"
+          'Reset detected while waiting for 1410.2, restarting cycle'
         );
         barcodeGenerator.decSerialNo();
         continue;
       }
-      logger.info("Clearing buffer before second scan...");
-      comService.clearBuffer();
+      logger.info('Clearing buffer before second scan...');
+      // comService.clearBuffer();
 
       logger.info(
-        "-----------------------------------------------------------------------------------------------------------"
+        '-----------------------------------------------------------------------------------------------------------'
       );
 
-      logger.info("=== STARTING SECOND SCAN ===");
+      logger.info('=== STARTING SECOND SCAN ===');
       logger.info(
-        "-----------------------------------------------------------------------------------------------------------"
+        '-----------------------------------------------------------------------------------------------------------'
       );
-      logger.info("Writing bit 1414.F(15) to trigger second scanner");
+      logger.info('Writing bit 1414.F(15) to trigger second scanner');
       // await writeBitsWithRest(1414, 15, 1, 800, false);
-      logger.info("Triggered second scanner");
+      logger.info('Triggered second scanner');
       // await sleep(1000);
       // await writeBitsWithRest(1414, 15, 1, 800, false);
 
       // await sleep(1000);
-      let secondScannerData;
-      try {
-        // Step 1: Set up the event listener for incoming scanner data
-        logger.info("Setting up data listener for second scan...");
+      const secondScannerData = 'NG';
+      // try {
+      //   // Step 1: Set up the event listener for incoming scanner data
+      //   logger.info("Setting up data listener for second scan...");
 
-        // Create a promise that resolves when data is received
-        secondScannerData = await new Promise((resolve, reject) => {
-          const dataHandler = (data) => {
-            logger.info(`Data received: ${data}`);
-            resolve(data); // Resolve the promise when data is received
-            comService.off("dataGot", dataHandler); // Remove listener once data is processed
-          };
+      //   // Create a promise that resolves when data is received
+      //   secondScannerData = await new Promise((resolve, reject) => {
+      //     const dataHandler = (data) => {
+      //       logger.info(`Data received: ${data}`);
+      //       resolve("NG"); // Resolve the promise when data is received
+      //       comService.off("dataGot", dataHandler); // Remove listener once data is processed
+      //     };
 
-          // Add event listener for incoming data
-          comService.on("dataGot", dataHandler);
+      //     // Add event listener for incoming data
+      //     comService.on("dataGot", dataHandler);
 
-          // Set a timeout to avoid hanging indefinitely
-          const timeout = setTimeout(() => {
-            comService.off("dataGot", dataHandler);
-            reject(new Error("Timeout waiting for scanner data"));
-          }, 10000); // Adjust timeout as needed
+      //     // Set a timeout to avoid hanging indefinitely
+      //     const timeout = setTimeout(() => {
+      //       comService.off("dataGot", dataHandler);
+      //       reject(new Error("Timeout waiting for scanner data"));
+      //     }, 10000); // Adjust timeout as needed
 
-          // Trigger the scanner after the event listener is set
-          logger.info("Triggering the scanner...");
-          writeBitsWithRest(1416, 15, 1, 100, false)
-            .then(() => logger.info("Second Scanner triggered"))
-            .catch((err) =>
-              logger.error(`Error triggering scanner: ${err.message}`)
-            );
-        });
+      //     // Trigger the scanner after the event listener is set
+      //     logger.info("Triggering the scanner...");
+      //     writeBitsWithRest(1416, 15, 1, 100, false)
+      //       .then(() => logger.info("Second Scanner triggered"))
+      //       .catch((err) =>
+      //         logger.error(`Error triggering scanner: ${err.message}`)
+      //       );
+      //   });
 
-        logger.info(`Scanner data received: ${secondScannerData}`);
-      } catch (error) {
-        logger.error("Error or timeout waiting for scanner data:", error);
-        continue; // Retry or handle the error
-      }
+      //   logger.info(`Scanner data received: ${secondScannerData}`);
+      // } catch (error) {
+      //   logger.error("Error or timeout waiting for scanner data:", error);
+      //   continue; // Retry or handle the error
+      // }
       // let secondScannerData;
       // try {
       //   logger.info("Checking if queue already has data...");
@@ -500,34 +494,34 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       //   continue;
       // }
 
-      logger.info("Checking for reset after second scan");
+      logger.info('Checking for reset after second scan');
       if (await checkReset()) {
-        logger.info("Reset detected after second scan, restarting cycle");
+        logger.info('Reset detected after second scan, restarting cycle');
         barcodeGenerator.decSerialNo();
         continue;
       }
 
       logger.info(
-        `Writing bit 1414.${secondScannerData !== "NG" ? 6 : 7} to signal scan result`
+        `Writing bit 1414.${secondScannerData !== 'NG' ? 6 : 7} to signal scan result`
       );
       await writeBitsWithRest(
         1414,
-        secondScannerData !== "NG" ? 6 : 7,
+        secondScannerData !== 'NG' ? 6 : 7,
         1,
         200,
         false
       );
       logger.info(
-        secondScannerData !== "NG" ? "Second scan OK" : "Second scan NG"
+        secondScannerData !== 'NG' ? 'Second scan OK' : 'Second scan NG'
       );
 
-      logger.info("Comparing scanner data with code");
+      logger.info('Comparing scanner data with code');
       const isDataMatching =
         await compareScannerDataWithCode(secondScannerData);
 
-      logger.info("Checking for reset after data comparison");
+      logger.info('Checking for reset after data comparison');
       if (await checkReset()) {
-        logger.info("Reset detected after data comparison, restarting cycle");
+        logger.info('Reset detected after data comparison, restarting cycle');
         barcodeGenerator.decSerialNo();
         continue;
       }
@@ -536,9 +530,9 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
         `Writing bit 1414.${isDataMatching ? 3 : 4} to signal data match result`
       );
       await writeBitsWithRest(1414, isDataMatching ? 3 : 4, 1, 200, false);
-      logger.info(isDataMatching ? "Data matches" : "Data does not match");
+      logger.info(isDataMatching ? 'Data matches' : 'Data does not match');
 
-      logger.info("Saving data to MongoDB");
+      logger.info('Saving data to MongoDB');
       await saveToMongoDB({
         io,
         serialNumber: serialNo,
@@ -546,44 +540,46 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
         scannerData: secondScannerData,
         result: isDataMatching,
       });
-      logger.info("Data saved to MongoDB");
+      logger.info('Data saved to MongoDB');
 
-      logger.info("Checking for reset or waiting for bit 1410.12");
+      logger.info('Checking for reset or waiting for bit 1410.12');
       if (await checkResetOrBit(1410, 12, 1)) {
-        logger.info("Reset detected at final step, restarting cycle");
+        logger.info('Reset detected at final step, restarting cycle');
         barcodeGenerator.decSerialNo();
         continue;
       }
-      logger.info(`Clear Code file before next cyce`);
+      logger.info('Clear Code file before next cyce');
       await clearCodeFile(CODE_FILE_PATH);
-      logger.info(`Clear Code file before next cyce- Success DONE`);
+      logger.info('Clear Code file before next cyce- Success DONE');
       c++;
       // logger.info("Resetting bits");
       // await resetBits();
       logger.info(
-        "-----------------------------------------------------------------------------------------------------------"
+        '-----------------------------------------------------------------------------------------------------------'
       );
       logger.info(`Completed scan cycle ${c}`);
       logger.info(
-        "-----------------------------------------------------------------------------------------------------------"
+        '-----------------------------------------------------------------------------------------------------------'
       );
+        await sleep(3*1000);
     } catch (error) {
-      logger.error("Unexpected error in scanner workflow:", error);
-      logger.info("Calling handleError for unexpected error");
+      logger.error('Unexpected error in scanner workflow:', error);
+      logger.info('Calling handleError for unexpected error');
       await handleError(error);
-      logger.info("Waiting 5 seconds before retrying");
+      logger.info('Waiting 5 seconds before retrying');
       await sleep(5000);
     }
 
     // logger.debug("Waiting 100ms before next cycle");
     // await sleep(100);
   }
+  resetMonitor.terminate();
 }
 
 async function resetSpecificBits(register, bitsToReset) {
   try {
     logger.info(
-      `Attempting to reset bits ${bitsToReset.join(", ")} in register ${register}`
+      `Attempting to reset bits ${bitsToReset.join(', ')} in register ${register}`
     );
 
     // Validate input
@@ -591,7 +587,7 @@ async function resetSpecificBits(register, bitsToReset) {
       !Array.isArray(bitsToReset) ||
       bitsToReset.some((bit) => bit < 0 || bit > 15)
     ) {
-      throw new Error("Invalid bits array. Must be an array of numbers 0-15");
+      throw new Error('Invalid bits array. Must be an array of numbers 0-15');
     }
 
     // First, read the current value of the register
@@ -617,10 +613,10 @@ async function resetSpecificBits(register, bitsToReset) {
     await Promise.race([resetPromise, timeoutPromise]);
 
     logger.info(
-      `Successfully reset bits ${bitsToReset.join(", ")} in register ${register}`
+      `Successfully reset bits ${bitsToReset.join(', ')} in register ${register}`
     );
   } catch (error) {
-    if (error.message.startsWith("Timeout resetting bits")) {
+    if (error.message.startsWith('Timeout resetting bits')) {
       logger.error(
         `Operation timed out while resetting bits in register ${register}`
       );
@@ -635,19 +631,19 @@ async function handleError(error) {
   try {
     // await writeBitsWithRest(1414, 12, 1, false);
   } catch (secondaryError) {
-    logger.error("Error during error handling:", secondaryError);
+    logger.error('Error during error handling:', secondaryError);
   }
 }
 
 async function checkReset() {
   return new Promise((resolve) => {
     const resetHandler = () => {
-      resetEmitter.removeListener("reset", resetHandler);
+      resetEmitter.removeListener('reset', resetHandler);
       resolve(true);
     };
-    resetEmitter.once("reset", resetHandler);
+    resetEmitter.once('reset', resetHandler);
     setTimeout(() => {
-      resetEmitter.removeListener("reset", resetHandler);
+      resetEmitter.removeListener('reset', resetHandler);
       resolve(false);
     }, 50);
   });
@@ -665,16 +661,19 @@ export async function resetBits2() {
 }
 
 // Handle graceful shutdown
-process.on("SIGINT", async () => {
-  logger.info("Received SIGINT. Closing MongoDB connection and exiting...");
+process.on('SIGINT', async () => {
+  logger.info('Received SIGINT. Closing MongoDB connection and exiting...');
+  if (resetMonitor) {
+    resetMonitor.terminate();
+}
   await mongoDbService.disconnect();
   await resetBits();
   await comPort.closePort();
   process.exit(0);
 });
 
-process.on("SIGTERM", async () => {
-  logger.info("Received SIGTERM. Closing MongoDB connection and exiting...");
+process.on('SIGTERM', async () => {
+  logger.info('Received SIGTERM. Closing MongoDB connection and exiting...');
   await mongoDbService.disconnect();
   await resetBits();
   await comPort.closePort();
@@ -682,22 +681,22 @@ process.on("SIGTERM", async () => {
 });
 
 async function testCheckResetOrBit() {
-  logger.info("Starting test for checkResetOrBit function");
+  logger.info('Starting test for checkResetOrBit function');
 
   try {
-    logger.info("Checking register 1410, bit 2");
+    logger.info('Checking register 1410, bit 2');
     const result = await checkResetOrBit(1410, 2, 1);
 
     if (result === true) {
-      logger.info("Function returned true: Reset detected or timeout occurred");
+      logger.info('Function returned true: Reset detected or timeout occurred');
     } else {
-      logger.info("Function returned false: Bit became 1 as expected");
+      logger.info('Function returned false: Bit became 1 as expected');
     }
   } catch (error) {
-    logger.error("An error occurred during the test:", error);
+    logger.error('An error occurred during the test:', error);
   }
 
-  logger.info("Test completed");
+  logger.info('Test completed');
 }
 
 // Run the test
@@ -712,38 +711,38 @@ async function testCheckResetOrBit() {
 //   });
 
 function runWorker() {
-  const worker = new Worker("./services/monitorReset.js");
+  const worker = new Worker('./services/monitorReset.js');
 
-  worker.on("message", (message) => {
-    console.log("Received message from worker:", message);
-    if (message === "reset") {
-      console.log("Reset signal detected by worker");
+  worker.on('message', (message) => {
+    console.log('Received message from worker:', message);
+    if (message === 'reset') {
+      console.log('Reset signal detected by worker');
     }
   });
 
-  worker.on("error", (error) => {
-    console.error("Worker error:", error);
+  worker.on('error', (error) => {
+    console.error('Worker error:', error);
   });
 
-  worker.on("exit", (code) => {
+  worker.on('exit', (code) => {
     if (code !== 0) {
       console.error(`Worker stopped with exit code ${code}`);
     } else {
-      console.log("Worker completed successfully");
+      console.log('Worker completed successfully');
     }
   });
 
-  worker.postMessage("start");
+  worker.postMessage('start');
 }
 
 // runWorker();
 
 async function testBitManipulation() {
   try {
-    logger.info("Starting comprehensive bit manipulation test");
+    logger.info('Starting comprehensive bit manipulation test');
 
     await connect();
-    logger.info("Modbus connection established");
+    logger.info('Modbus connection established');
 
     const testRegister = 1417;
 
@@ -756,13 +755,13 @@ async function testBitManipulation() {
     const [initialValue] = await readRegister(testRegister, 1);
     logger.info(`Initial register value: 0x${initialValue.toString(16)}`);
     if (initialValue !== allBitsSet) {
-      throw new Error("Failed to set all bits to 1");
+      throw new Error('Failed to set all bits to 1');
     }
 
     // Step 2: Reset every alternate bit
     const bitsToReset = [0, 2, 4, 6, 8, 10, 12, 14]; // Every even-numbered bit
     await resetSpecificBits(testRegister, bitsToReset);
-    logger.info(`Reset alternate bits: ${bitsToReset.join(", ")}`);
+    logger.info(`Reset alternate bits: ${bitsToReset.join(', ')}`);
 
     // Verify the result
     const [afterResetValue] = await readRegister(testRegister, 1);
@@ -775,7 +774,7 @@ async function testBitManipulation() {
 
     if (afterResetValue === expectedValue) {
       logger.info(
-        "Reset operation successful: alternate bits were correctly reset"
+        'Reset operation successful: alternate bits were correctly reset'
       );
     } else {
       logger.error(
@@ -785,15 +784,15 @@ async function testBitManipulation() {
 
     // Binary representation for clearer visualization
     logger.info(
-      `Binary representation of result:   ${afterResetValue.toString(2).padStart(16, "0")}`
+      `Binary representation of result:   ${afterResetValue.toString(2).padStart(16, '0')}`
     );
     logger.info(
-      `Expected binary representation:    ${expectedValue.toString(2).padStart(16, "0")}`
+      `Expected binary representation:    ${expectedValue.toString(2).padStart(16, '0')}`
     );
   } catch (error) {
-    logger.error("Test failed:", error);
+    logger.error('Test failed:', error);
   } finally {
-    logger.info("Test completed");
+    logger.info('Test completed');
   }
 }
 

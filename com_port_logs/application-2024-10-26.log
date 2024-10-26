@@ -1326,6 +1326,7 @@
 2024-10-26T10:35:31.664Z [info]: Processed line: 873976000704101300240271
 2024-10-26T10:35:32.666Z [info]: Processing data from queue: 873976000704101300240271
 2024-10-26T10:51:00.257Z [info]: Port opened successfully
+<<<<<<< Updated upstream
 2024-10-26T10:51:16.155Z [info]: Processed line: NG
 2024-10-26T10:51:17.168Z [info]: Processing data from queue: NG
 2024-10-26T10:51:26.040Z [info]: Processed line: NG
@@ -1403,3 +1404,8 @@
 2024-10-26T11:18:24.783Z [info]: Processed line: NG
 2024-10-26T11:18:25.797Z [info]: Processing data from queue: NG
 2024-10-26T11:38:07.614Z [info]: Port opened successfully
+=======
+2024-10-26T11:37:00.343Z [error]: Error opening port: Opening COM3: File not found
+2024-10-26T11:51:24.032Z [error]: Error opening port: Opening COM3: File not found
+2024-10-26T11:52:34.660Z [error]: Error opening port: Opening COM3: File not found
+>>>>>>> Stashed changes
