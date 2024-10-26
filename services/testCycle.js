@@ -210,7 +210,7 @@ async function checkResetOrBit(register, bit, value) {
     const checkBit = async () => {
       try {
         const bitValue = await readBit(register, bit);
-        console.log({ bitValue });
+        // console.log({ bitValue });
         if (bitValue == value) {
           cleanup();
           logger.info(`Received signal from PLC at ${register}.${bit}`);
@@ -386,10 +386,13 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       // await sleep(5 * 1000);
 
       logger.info("Generating barcode data");
-      const { text, serialNo } = barcodeGenerator.generateBarcodeData({
+      console.log({ partNumber });
+      const { text, serialNo } = await barcodeGenerator.generateBarcodeData({
         date: new Date(),
+        mongoDbService,
         partNumber,
       });
+      console.log({ text });
       logger.info(
         "-----------------------------------------------------------------------------------------------------------"
       );
@@ -399,6 +402,8 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       await verifyAndRetryWrite(text, 2);
 
       logger.info("OCR data transferred to text file");
+
+      await sleep(2 * 1000);
 
       logger.info("Writing bit 1410.11 to signal file transfer");
       await writeBitsWithRest(1410, 11, 1, 100, false);
@@ -416,6 +421,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
         logger.info(
           "Reset detected while waiting for 1410.2, restarting cycle"
         );
+        barcodeGenerator.decSerialNo();
         continue;
       }
       logger.info("Clearing buffer before second scan...");
@@ -460,7 +466,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
 
           // Trigger the scanner after the event listener is set
           logger.info("Triggering the scanner...");
-          writeBitsWithRest(1414, 15, 1, 100, false)
+          writeBitsWithRest(1416, 15, 1, 100, false)
             .then(() => logger.info("Second Scanner triggered"))
             .catch((err) =>
               logger.error(`Error triggering scanner: ${err.message}`)
@@ -497,6 +503,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       logger.info("Checking for reset after second scan");
       if (await checkReset()) {
         logger.info("Reset detected after second scan, restarting cycle");
+        barcodeGenerator.decSerialNo();
         continue;
       }
 
@@ -521,6 +528,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       logger.info("Checking for reset after data comparison");
       if (await checkReset()) {
         logger.info("Reset detected after data comparison, restarting cycle");
+        barcodeGenerator.decSerialNo();
         continue;
       }
 
@@ -543,11 +551,14 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       logger.info("Checking for reset or waiting for bit 1410.12");
       if (await checkResetOrBit(1410, 12, 1)) {
         logger.info("Reset detected at final step, restarting cycle");
+        barcodeGenerator.decSerialNo();
         continue;
       }
-
+      logger.info(`Clear Code file before next cyce`);
+      await clearCodeFile(CODE_FILE_PATH);
+      logger.info(`Clear Code file before next cyce- Success DONE`);
       c++;
-      logger.info("Resetting bits");
+      // logger.info("Resetting bits");
       // await resetBits();
       logger.info(
         "-----------------------------------------------------------------------------------------------------------"

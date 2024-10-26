@@ -1,7 +1,30 @@
 import { format } from "date-fns";
 import SerialNumberGeneratorService from "./serialNumber.js";
 import logger from "../logger.js";
+import mongoDbService from "./mongoDbService.js";
 
+async function fetchPartNumberAndData(mongoDbService) {
+  try {
+    // Connect to the MongoDB if not already connected
+    if (!mongoDbService.collection) {
+      await mongoDbService.connect("main-data", "config");
+    }
+
+    // Fetch part number from the 'configs' collection
+    const configData = await mongoDbService.collection.findOne({});
+    const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
+
+    // Fetch records from 'main-data' collection (or any other collection as needed)
+    const mainDataRecords = await mongoDbService.collection.find({}).toArray();
+
+    logger.info(`Fetched part number: ${partNumber} and main data records`);
+
+    return { partNumber, mainDataRecords };
+  } catch (error) {
+    logger.error("Error fetching part number or data:", error);
+    throw error;
+  }
+}
 class BarcodeGenerator {
   constructor(shiftUtility) {
     this.shiftUtility = shiftUtility;
@@ -18,7 +41,7 @@ class BarcodeGenerator {
     }
   }
 
-  generateBarcodeData({ date = new Date(), partNumber }) {
+  async generateBarcodeData({ date = new Date(), mongoDbService, partNumber }) {
     // Get the Julian date: year + day of the year
     const year = format(date, "yy"); // Last two digits of the year
     const startOfYear = new Date(date.getFullYear(), 0, 0);
@@ -29,17 +52,36 @@ class BarcodeGenerator {
 
     // Fetch the current shift
     const shift = this.shiftUtility.getCurrentShift(date);
+    if (!partNumber) {
+      const { partNumber, mainDataRecords } =
+        await fetchPartNumberAndData(mongoDbService);
+      console.log({ partNumber });
+      // Fetch the next serial number
+      const serialString = this.serialNumberService.getNextSerialNumber();
 
-    // Fetch the next serial number
-    const serialString = this.serialNumberService.getNextSerialNumber();
+      // Generate the final barcode string including the part number
+      const barcodeText = `${partNumber || ""}04101${julianDate}${serialString}`;
 
-    // Generate the final barcode string including the part number
-    const barcodeText = `${partNumber || ""}04101${julianDate}${serialString}`;
+      return {
+        text: barcodeText,
+        serialNo: serialString,
+      };
+    } else {
+      const serialString = this.serialNumberService.getNextSerialNumber();
 
-    return {
-      text: barcodeText,
-      serialNo: serialString,
-    };
+      // Generate the final barcode string including the part number
+      const barcodeText = `${partNumber || ""}04101${julianDate}${serialString}`;
+      console.log({ serialString, partNumber, barcodeText });
+
+      return {
+        text: barcodeText,
+        serialNo: serialString,
+      };
+    }
+  }
+
+  decSerialNo() {
+    this.serialNumberService.decSerialNumber();
   }
 
   setResetTime(hour, minute) {

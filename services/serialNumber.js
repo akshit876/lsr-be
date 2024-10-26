@@ -157,6 +157,13 @@ class SerialNumberGeneratorService {
     return serialNumber;
   }
 
+  decSerialNumber() {
+    // this.checkAndResetSerialNumber();
+    // const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");r
+    this.currentSerialNumber--;
+    return serialNumber;
+  }
+
   checkAndResetSerialNumber() {
     const now = new Date();
 
