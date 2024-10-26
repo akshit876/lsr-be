@@ -1,0 +1,510 @@
+2024-10-26T04:48:32.114Z [info]: Port opened successfully
+2024-10-26T04:49:02.493Z [info]: Processed line: NG
+2024-10-26T04:49:03.496Z [info]: Processing data from queue: NG
+2024-10-26T04:49:11.447Z [info]: Processed line: 873976000704101300240001
+2024-10-26T04:49:12.452Z [info]: Processing data from queue: 873976000704101300240001
+2024-10-26T04:49:13.207Z [info]: Processed line: 873976000704101300240001
+2024-10-26T04:49:14.209Z [info]: Processing data from queue: 873976000704101300240001
+2024-10-26T04:50:18.534Z [info]: Processed line: NG
+2024-10-26T04:50:19.540Z [info]: Processing data from queue: NG
+2024-10-26T04:50:27.457Z [info]: Processed line: 873976000704101300240002
+2024-10-26T04:50:28.187Z [info]: Processed line: 873976000704101300240002
+2024-10-26T04:50:28.473Z [info]: Processing data from queue: 873976000704101300240002
+2024-10-26T04:50:29.189Z [info]: Processing data from queue: 873976000704101300240002
+2024-10-26T04:50:36.440Z [info]: Processed line: NG
+2024-10-26T04:50:37.448Z [info]: Processing data from queue: NG
+2024-10-26T04:50:45.481Z [info]: Processed line: 873976000704101300240003
+2024-10-26T04:50:46.496Z [info]: Processing data from queue: 873976000704101300240003
+2024-10-26T04:51:12.033Z [info]: Processed line: NG
+2024-10-26T04:51:13.039Z [info]: Processing data from queue: NG
+2024-10-26T04:51:21.335Z [info]: Processed line: 873976000704101300240004
+2024-10-26T04:51:22.108Z [info]: Processed line: 873976000704101300240004
+2024-10-26T04:51:22.337Z [info]: Processing data from queue: 873976000704101300240004
+2024-10-26T04:51:23.108Z [info]: Processing data from queue: 873976000704101300240004
+2024-10-26T04:51:30.456Z [info]: Processed line: NG
+2024-10-26T04:51:31.465Z [info]: Processing data from queue: NG
+2024-10-26T04:51:39.644Z [info]: Processed line: 873976000704101300240005
+2024-10-26T04:51:40.459Z [info]: Processed line: 873976000704101300240005
+2024-10-26T04:51:40.649Z [info]: Processing data from queue: 873976000704101300240005
+2024-10-26T04:51:41.468Z [info]: Processing data from queue: 873976000704101300240005
+2024-10-26T04:51:51.046Z [info]: Processed line: NG
+2024-10-26T04:51:52.048Z [info]: Processing data from queue: NG
+2024-10-26T04:51:59.666Z [info]: Processed line: 873976000704101300240006
+2024-10-26T04:52:00.421Z [info]: Processed line: 873976000704101300240006
+2024-10-26T04:52:00.668Z [info]: Processing data from queue: 873976000704101300240006
+2024-10-26T04:52:01.422Z [info]: Processing data from queue: 873976000704101300240006
+2024-10-26T04:52:10.801Z [info]: Processed line: NG
+2024-10-26T04:52:11.801Z [info]: Processing data from queue: NG
+2024-10-26T04:52:19.639Z [info]: Processed line: 873976000704101300240007
+2024-10-26T04:52:20.388Z [info]: Processed line: 873976000704101300240007
+2024-10-26T04:52:20.649Z [info]: Processing data from queue: 873976000704101300240007
+2024-10-26T04:52:21.398Z [info]: Processing data from queue: 873976000704101300240007
+2024-10-26T04:52:30.923Z [info]: Processed line: NG
+2024-10-26T04:52:31.929Z [info]: Processing data from queue: NG
+2024-10-26T04:52:40.067Z [info]: Processed line: 873976000704101300240008
+2024-10-26T04:52:40.817Z [info]: Processed line: 873976000704101300240008
+2024-10-26T04:52:41.075Z [info]: Processing data from queue: 873976000704101300240008
+2024-10-26T04:52:41.820Z [info]: Processing data from queue: 873976000704101300240008
+2024-10-26T04:52:52.247Z [info]: Processed line: NG
+2024-10-26T04:52:53.258Z [info]: Processing data from queue: NG
+2024-10-26T04:53:02.170Z [info]: Processed line: 873976000704101300240009
+2024-10-26T04:53:02.913Z [info]: Processed line: 873976000704101300240009
+2024-10-26T04:53:03.182Z [info]: Processing data from queue: 873976000704101300240009
+2024-10-26T04:53:03.916Z [info]: Processing data from queue: 873976000704101300240009
+2024-10-26T04:53:12.820Z [info]: Processed line: NG
+2024-10-26T04:53:13.829Z [info]: Processing data from queue: NG
+2024-10-26T04:53:22.101Z [info]: Processed line: 873976000704101300240010
+2024-10-26T04:53:22.838Z [info]: Processed line: 873976000704101300240010
+2024-10-26T04:53:23.116Z [info]: Processing data from queue: 873976000704101300240010
+2024-10-26T04:53:23.842Z [info]: Processing data from queue: 873976000704101300240010
+2024-10-26T04:53:32.459Z [info]: Processed line: NG
+2024-10-26T04:53:33.470Z [info]: Processing data from queue: NG
+2024-10-26T04:53:41.742Z [info]: Processed line: 873976000704101300240011
+2024-10-26T04:53:42.521Z [info]: Processed line: 873976000704101300240011
+2024-10-26T04:53:42.742Z [info]: Processing data from queue: 873976000704101300240011
+2024-10-26T04:53:43.523Z [info]: Processing data from queue: 873976000704101300240011
+2024-10-26T04:59:32.535Z [info]: Processed line: NG
+2024-10-26T04:59:33.549Z [info]: Processing data from queue: NG
+2024-10-26T04:59:41.717Z [info]: Processed line: 873976000704101300240012
+2024-10-26T04:59:42.720Z [info]: Processing data from queue: 873976000704101300240012
+2024-10-26T04:59:43.235Z [info]: Processed line: 873976000704101300240012
+2024-10-26T04:59:44.240Z [info]: Processing data from queue: 873976000704101300240012
+2024-10-26T05:00:12.348Z [info]: Processed line: NG
+2024-10-26T05:00:13.351Z [info]: Processing data from queue: NG
+2024-10-26T05:00:31.748Z [info]: Processed line: 873976000704101300240013
+2024-10-26T05:00:32.751Z [info]: Processing data from queue: 873976000704101300240013
+2024-10-26T05:01:39.775Z [info]: Port opened successfully
+2024-10-26T05:01:49.561Z [info]: Processed line: NG
+2024-10-26T05:01:50.563Z [info]: Processing data from queue: NG
+2024-10-26T05:01:58.937Z [info]: Processed line: 873976000704101300240013
+2024-10-26T05:01:59.701Z [info]: Processed line: 873976000704101300240013
+2024-10-26T05:01:59.938Z [info]: Processing data from queue: 873976000704101300240013
+2024-10-26T05:02:00.712Z [info]: Processing data from queue: 873976000704101300240013
+2024-10-26T05:03:01.216Z [info]: Processed line: NG
+2024-10-26T05:03:02.218Z [info]: Processing data from queue: NG
+2024-10-26T05:03:10.361Z [info]: Processed line: 873976000704101300240014
+2024-10-26T05:03:11.132Z [info]: Processed line: 873976000704101300240014
+2024-10-26T05:03:11.365Z [info]: Processing data from queue: 873976000704101300240014
+2024-10-26T05:03:12.138Z [info]: Processing data from queue: 873976000704101300240014
+2024-10-26T05:03:27.024Z [info]: Processed line: NG
+2024-10-26T05:03:28.026Z [info]: Processing data from queue: NG
+2024-10-26T05:03:36.187Z [info]: Processed line: 873976000704101300240015
+2024-10-26T05:03:36.926Z [info]: Processed line: 873976000704101300240015
+2024-10-26T05:03:37.200Z [info]: Processing data from queue: 873976000704101300240015
+2024-10-26T05:03:37.929Z [info]: Processing data from queue: 873976000704101300240015
+2024-10-26T05:06:24.811Z [info]: Processed line: NG
+2024-10-26T05:06:25.828Z [info]: Processing data from queue: NG
+2024-10-26T05:06:34.272Z [info]: Processed line: 873976000704101300240016
+2024-10-26T05:06:35.018Z [info]: Processed line: 873976000704101300240016
+2024-10-26T05:06:35.285Z [info]: Processing data from queue: 873976000704101300240016
+2024-10-26T05:06:36.026Z [info]: Processing data from queue: 873976000704101300240016
+2024-10-26T05:06:46.585Z [info]: Processed line: NG
+2024-10-26T05:06:47.590Z [info]: Processing data from queue: NG
+2024-10-26T05:06:55.326Z [info]: Processed line: 873976000704101300240017
+2024-10-26T05:06:56.102Z [info]: Processed line: 873976000704101300240017
+2024-10-26T05:06:56.328Z [info]: Processing data from queue: 873976000704101300240017
+2024-10-26T05:06:57.112Z [info]: Processing data from queue: 873976000704101300240017
+2024-10-26T05:07:16.444Z [info]: Processed line: NG
+2024-10-26T05:07:17.446Z [info]: Processing data from queue: NG
+2024-10-26T05:07:25.688Z [info]: Processed line: 873976000704101300240018
+2024-10-26T05:07:26.432Z [info]: Processed line: 873976000704101300240018
+2024-10-26T05:07:26.697Z [info]: Processing data from queue: 873976000704101300240018
+2024-10-26T05:07:27.440Z [info]: Processing data from queue: 873976000704101300240018
+2024-10-26T05:07:47.454Z [info]: Processed line: NG
+2024-10-26T05:07:48.459Z [info]: Processing data from queue: NG
+2024-10-26T05:07:56.607Z [info]: Processed line: 873976000704101300240019
+2024-10-26T05:07:57.349Z [info]: Processed line: 873976000704101300240019
+2024-10-26T05:07:57.624Z [info]: Processing data from queue: 873976000704101300240019
+2024-10-26T05:07:58.363Z [info]: Processing data from queue: 873976000704101300240019
+2024-10-26T05:14:39.478Z [info]: Processed line: NG
+2024-10-26T05:14:40.492Z [info]: Processing data from queue: NG
+2024-10-26T05:14:49.519Z [info]: Processed line: 873976000704101300240020
+2024-10-26T05:14:50.289Z [info]: Processed line: 873976000704101300240020
+2024-10-26T05:14:50.521Z [info]: Processing data from queue: 873976000704101300240020
+2024-10-26T05:14:51.303Z [info]: Processing data from queue: 873976000704101300240020
+2024-10-26T05:14:59.669Z [info]: Processed line: NG
+2024-10-26T05:15:00.670Z [info]: Processing data from queue: NG
+2024-10-26T05:15:09.230Z [info]: Processed line: 873976000704101300240021
+2024-10-26T05:15:09.986Z [info]: Processed line: 873976000704101300240021
+2024-10-26T05:15:10.233Z [info]: Processing data from queue: 873976000704101300240021
+2024-10-26T05:15:10.993Z [info]: Processing data from queue: 873976000704101300240021
+2024-10-26T05:15:19.991Z [info]: Processed line: NG
+2024-10-26T05:15:21.000Z [info]: Processing data from queue: NG
+2024-10-26T05:15:28.719Z [info]: Processed line: 873976000704101300240022
+2024-10-26T05:15:29.479Z [info]: Processed line: 873976000704101300240022
+2024-10-26T05:15:29.734Z [info]: Processing data from queue: 873976000704101300240022
+2024-10-26T05:15:30.494Z [info]: Processing data from queue: 873976000704101300240022
+2024-10-26T05:15:38.230Z [info]: Processed line: NG
+2024-10-26T05:15:39.231Z [info]: Processing data from queue: NG
+2024-10-26T05:15:47.602Z [info]: Processed line: 873976000704101300240023
+2024-10-26T05:15:48.336Z [info]: Processed line: 873976000704101300240023
+2024-10-26T05:15:48.615Z [info]: Processing data from queue: 873976000704101300240023
+2024-10-26T05:15:49.340Z [info]: Processing data from queue: 873976000704101300240023
+2024-10-26T05:16:00.121Z [info]: Processed line: NG
+2024-10-26T05:16:01.123Z [info]: Processing data from queue: NG
+2024-10-26T05:16:09.276Z [info]: Processed line: 873976000704101300240024
+2024-10-26T05:16:10.027Z [info]: Processed line: 873976000704101300240024
+2024-10-26T05:16:10.279Z [info]: Processing data from queue: 873976000704101300240024
+2024-10-26T05:16:11.028Z [info]: Processing data from queue: 873976000704101300240024
+2024-10-26T05:16:33.713Z [info]: Processed line: NG
+2024-10-26T05:16:34.718Z [info]: Processing data from queue: NG
+2024-10-26T05:16:42.961Z [info]: Processed line: 873976000704101300240025
+2024-10-26T05:16:43.712Z [info]: Processed line: 873976000704101300240025
+2024-10-26T05:16:43.966Z [info]: Processing data from queue: 873976000704101300240025
+2024-10-26T05:16:44.713Z [info]: Processing data from queue: 873976000704101300240025
+2024-10-26T05:16:52.403Z [info]: Processed line: NG
+2024-10-26T05:16:53.415Z [info]: Processing data from queue: NG
+2024-10-26T05:17:02.474Z [info]: Processed line: 873976000704101300240026
+2024-10-26T05:17:03.486Z [info]: Processing data from queue: 873976000704101300240026
+2024-10-26T05:17:03.667Z [info]: Processed line: 873976000704101300240026
+2024-10-26T05:17:04.671Z [info]: Processing data from queue: 873976000704101300240026
+2024-10-26T05:17:11.991Z [info]: Processed line: NG
+2024-10-26T05:17:13.000Z [info]: Processing data from queue: NG
+2024-10-26T05:17:21.030Z [info]: Processed line: 873976000704101300240027
+2024-10-26T05:17:21.781Z [info]: Processed line: 873976000704101300240027
+2024-10-26T05:17:22.042Z [info]: Processing data from queue: 873976000704101300240027
+2024-10-26T05:17:22.788Z [info]: Processing data from queue: 873976000704101300240027
+2024-10-26T05:17:30.280Z [info]: Processed line: NG
+2024-10-26T05:17:31.281Z [info]: Processing data from queue: NG
+2024-10-26T05:17:39.456Z [info]: Processed line: 873976000704101300240028
+2024-10-26T05:17:40.214Z [info]: Processed line: 873976000704101300240028
+2024-10-26T05:17:40.469Z [info]: Processing data from queue: 873976000704101300240028
+2024-10-26T05:17:41.216Z [info]: Processing data from queue: 873976000704101300240028
+2024-10-26T05:17:50.005Z [info]: Processed line: NG
+2024-10-26T05:17:51.007Z [info]: Processing data from queue: NG
+2024-10-26T05:18:00.124Z [info]: Processed line: NG
+2024-10-26T05:18:01.137Z [info]: Processing data from queue: NG
+2024-10-26T05:18:01.691Z [info]: Processed line: NG
+2024-10-26T05:18:02.692Z [info]: Processing data from queue: NG
+2024-10-26T05:18:21.213Z [info]: Processed line: NG
+2024-10-26T05:18:22.215Z [info]: Processing data from queue: NG
+2024-10-26T05:18:29.822Z [info]: Processed line: 873976000704101300240031
+2024-10-26T05:18:30.554Z [info]: Processed line: 873976000704101300240031
+2024-10-26T05:18:30.823Z [info]: Processing data from queue: 873976000704101300240031
+2024-10-26T05:18:31.555Z [info]: Processing data from queue: 873976000704101300240031
+2024-10-26T05:18:42.136Z [info]: Processed line: NG
+2024-10-26T05:18:43.137Z [info]: Processing data from queue: NG
+2024-10-26T05:18:51.845Z [info]: Processed line: 873976000704101300240032
+2024-10-26T05:18:52.799Z [info]: Processed line: 873976000704101300240032
+2024-10-26T05:18:52.856Z [info]: Processing data from queue: 873976000704101300240032
+2024-10-26T05:18:53.805Z [info]: Processing data from queue: 873976000704101300240032
+2024-10-26T05:19:02.626Z [info]: Processed line: NG
+2024-10-26T05:19:03.634Z [info]: Processing data from queue: NG
+2024-10-26T05:19:11.481Z [info]: Processed line: 873976000704101300240033
+2024-10-26T05:19:12.222Z [info]: Processed line: 873976000704101300240033
+2024-10-26T05:19:12.493Z [info]: Processing data from queue: 873976000704101300240033
+2024-10-26T05:19:13.224Z [info]: Processing data from queue: 873976000704101300240033
+2024-10-26T05:19:22.548Z [info]: Processed line: NG
+2024-10-26T05:19:23.550Z [info]: Processing data from queue: NG
+2024-10-26T05:19:31.710Z [info]: Processed line: 873976000704101300240034
+2024-10-26T05:19:32.474Z [info]: Processed line: 873976000704101300240034
+2024-10-26T05:19:32.711Z [info]: Processing data from queue: 873976000704101300240034
+2024-10-26T05:19:33.477Z [info]: Processing data from queue: 873976000704101300240034
+2024-10-26T05:19:42.871Z [info]: Processed line: NG
+2024-10-26T05:19:43.879Z [info]: Processing data from queue: NG
+2024-10-26T05:19:51.694Z [info]: Processed line: 873976000704101300240035
+2024-10-26T05:19:52.453Z [info]: Processed line: 873976000704101300240035
+2024-10-26T05:19:52.696Z [info]: Processing data from queue: 873976000704101300240035
+2024-10-26T05:19:53.454Z [info]: Processing data from queue: 873976000704101300240035
+2024-10-26T05:20:02.511Z [info]: Processed line: NG
+2024-10-26T05:20:03.519Z [info]: Processing data from queue: NG
+2024-10-26T05:20:11.431Z [info]: Processed line: 873976000704101300240036
+2024-10-26T05:20:12.181Z [info]: Processed line: 873976000704101300240036
+2024-10-26T05:20:12.437Z [info]: Processing data from queue: 873976000704101300240036
+2024-10-26T05:20:13.181Z [info]: Processing data from queue: 873976000704101300240036
+2024-10-26T05:20:20.916Z [info]: Processed line: NG
+2024-10-26T05:20:21.920Z [info]: Processing data from queue: NG
+2024-10-26T05:20:30.071Z [info]: Processed line: 873976000704101300240037
+2024-10-26T05:20:30.810Z [info]: Processed line: 873976000704101300240037
+2024-10-26T05:20:31.085Z [info]: Processing data from queue: 873976000704101300240037
+2024-10-26T05:20:31.811Z [info]: Processing data from queue: 873976000704101300240037
+2024-10-26T05:20:39.821Z [info]: Processed line: NG
+2024-10-26T05:20:40.832Z [info]: Processing data from queue: NG
+2024-10-26T05:20:48.977Z [info]: Processed line: 873976000704101300240038
+2024-10-26T05:20:49.728Z [info]: Processed line: 873976000704101300240038
+2024-10-26T05:20:49.977Z [info]: Processing data from queue: 873976000704101300240038
+2024-10-26T05:20:50.736Z [info]: Processing data from queue: 873976000704101300240038
+2024-10-26T05:20:59.128Z [info]: Processed line: NG
+2024-10-26T05:21:00.140Z [info]: Processing data from queue: NG
+2024-10-26T05:21:08.979Z [info]: Processed line: 873976000704101300240039
+2024-10-26T05:21:09.991Z [info]: Processing data from queue: 873976000704101300240039
+2024-10-26T05:21:10.581Z [info]: Processed line: NG
+2024-10-26T05:21:11.589Z [info]: Processing data from queue: NG
+2024-10-26T05:21:42.174Z [info]: Processed line: NG
+2024-10-26T05:21:43.176Z [info]: Processing data from queue: NG
+2024-10-26T05:21:51.656Z [info]: Processed line: 873976000704101300240041
+2024-10-26T05:21:52.413Z [info]: Processed line: 873976000704101300240041
+2024-10-26T05:21:52.656Z [info]: Processing data from queue: 873976000704101300240041
+2024-10-26T05:21:53.414Z [info]: Processing data from queue: 873976000704101300240041
+2024-10-26T05:22:18.169Z [info]: Processed line: NG
+2024-10-26T05:22:19.179Z [info]: Processing data from queue: NG
+2024-10-26T05:22:28.305Z [info]: Processed line: NG
+2024-10-26T05:22:29.317Z [info]: Processing data from queue: NG
+2024-10-26T05:22:29.462Z [info]: Processed line: 873976000704101300240042
+2024-10-26T05:22:30.469Z [info]: Processing data from queue: 873976000704101300240042
+2024-10-26T05:22:49.445Z [info]: Processed line: NG
+2024-10-26T05:22:50.447Z [info]: Processing data from queue: NG
+2024-10-26T05:22:58.389Z [info]: Processed line: 873976000704101300240043
+2024-10-26T05:22:59.150Z [info]: Processed line: 873976000704101300240043
+2024-10-26T05:22:59.392Z [info]: Processing data from queue: 873976000704101300240043
+2024-10-26T05:23:00.153Z [info]: Processing data from queue: 873976000704101300240043
+2024-10-26T05:23:12.585Z [info]: Processed line: NG
+2024-10-26T05:23:13.592Z [info]: Processing data from queue: NG
+2024-10-26T05:23:21.975Z [info]: Processed line: 873976000704101300240044
+2024-10-26T05:23:22.713Z [info]: Processed line: 873976000704101300240044
+2024-10-26T05:23:22.989Z [info]: Processing data from queue: 873976000704101300240044
+2024-10-26T05:23:23.715Z [info]: Processing data from queue: 873976000704101300240044
+2024-10-26T05:23:33.357Z [info]: Processed line: NG
+2024-10-26T05:23:34.360Z [info]: Processing data from queue: NG
+2024-10-26T05:23:42.757Z [info]: Processed line: 873976000704101300240045
+2024-10-26T05:23:43.515Z [info]: Processed line: 873976000704101300240045
+2024-10-26T05:23:43.758Z [info]: Processing data from queue: 873976000704101300240045
+2024-10-26T05:23:44.524Z [info]: Processing data from queue: 873976000704101300240045
+2024-10-26T05:23:53.032Z [info]: Processed line: NG
+2024-10-26T05:23:54.035Z [info]: Processing data from queue: NG
+2024-10-26T05:24:01.886Z [info]: Processed line: 873976000704101300240046
+2024-10-26T05:24:02.654Z [info]: Processed line: 873976000704101300240046
+2024-10-26T05:24:02.887Z [info]: Processing data from queue: 873976000704101300240046
+2024-10-26T05:24:03.656Z [info]: Processing data from queue: 873976000704101300240046
+2024-10-26T05:24:13.020Z [info]: Processed line: NG
+2024-10-26T05:24:14.023Z [info]: Processing data from queue: NG
+2024-10-26T05:24:23.325Z [info]: Processed line: 873976000704101300240047
+2024-10-26T05:24:24.059Z [info]: Processed line: 873976000704101300240047
+2024-10-26T05:24:24.334Z [info]: Processing data from queue: 873976000704101300240047
+2024-10-26T05:24:25.059Z [info]: Processing data from queue: 873976000704101300240047
+2024-10-26T05:24:34.860Z [info]: Processed line: NG
+2024-10-26T05:24:35.865Z [info]: Processing data from queue: NG
+2024-10-26T05:24:43.680Z [info]: Processed line: 873976000704101300240048
+2024-10-26T05:24:44.417Z [info]: Processed line: 873976000704101300240048
+2024-10-26T05:24:44.683Z [info]: Processing data from queue: 873976000704101300240048
+2024-10-26T05:24:45.429Z [info]: Processing data from queue: 873976000704101300240048
+2024-10-26T05:25:03.202Z [info]: Processed line: NG
+2024-10-26T05:25:04.206Z [info]: Processing data from queue: NG
+2024-10-26T05:25:12.850Z [info]: Processed line: 873976000704101300240049
+2024-10-26T05:25:13.590Z [info]: Processed line: 873976000704101300240049
+2024-10-26T05:25:13.854Z [info]: Processing data from queue: 873976000704101300240049
+2024-10-26T05:25:14.595Z [info]: Processing data from queue: 873976000704101300240049
+2024-10-26T05:25:23.992Z [info]: Processed line: NG
+2024-10-26T05:25:24.994Z [info]: Processing data from queue: NG
+2024-10-26T05:25:32.868Z [info]: Processed line: 873976000704101300240050
+2024-10-26T05:25:33.606Z [info]: Processed line: 873976000704101300240050
+2024-10-26T05:25:33.871Z [info]: Processing data from queue: 873976000704101300240050
+2024-10-26T05:25:34.616Z [info]: Processing data from queue: 873976000704101300240050
+2024-10-26T05:25:44.714Z [info]: Processed line: NG
+2024-10-26T05:25:45.715Z [info]: Processing data from queue: NG
+2024-10-26T05:25:54.415Z [info]: Processed line: 873976000704101300240051
+2024-10-26T05:25:55.167Z [info]: Processed line: 873976000704101300240051
+2024-10-26T05:25:55.424Z [info]: Processing data from queue: 873976000704101300240051
+2024-10-26T05:25:56.168Z [info]: Processing data from queue: 873976000704101300240051
+2024-10-26T05:26:06.038Z [info]: Processed line: NG
+2024-10-26T05:26:07.049Z [info]: Processing data from queue: NG
+2024-10-26T05:26:15.506Z [info]: Processed line: 873976000704101300240052
+2024-10-26T05:26:16.252Z [info]: Processed line: 873976000704101300240052
+2024-10-26T05:26:16.506Z [info]: Processing data from queue: 873976000704101300240052
+2024-10-26T05:26:17.254Z [info]: Processing data from queue: 873976000704101300240052
+2024-10-26T05:26:32.212Z [info]: Processed line: NG
+2024-10-26T05:26:33.222Z [info]: Processing data from queue: NG
+2024-10-26T05:26:42.234Z [info]: Processed line: 873976000704101300240053
+2024-10-26T05:26:42.968Z [info]: Processed line: 873976000704101300240053
+2024-10-26T05:26:43.240Z [info]: Processing data from queue: 873976000704101300240053
+2024-10-26T05:26:43.977Z [info]: Processing data from queue: 873976000704101300240053
+2024-10-26T05:26:52.019Z [info]: Processed line: NG
+2024-10-26T05:26:53.022Z [info]: Processing data from queue: NG
+2024-10-26T05:27:01.402Z [info]: Processed line: 873976000704101300240054
+2024-10-26T05:27:02.156Z [info]: Processed line: 873976000704101300240054
+2024-10-26T05:27:02.415Z [info]: Processing data from queue: 873976000704101300240054
+2024-10-26T05:27:03.158Z [info]: Processing data from queue: 873976000704101300240054
+2024-10-26T05:27:11.391Z [info]: Processed line: NG
+2024-10-26T05:27:12.393Z [info]: Processing data from queue: NG
+2024-10-26T05:27:20.554Z [info]: Processed line: 873976000704101300240055
+2024-10-26T05:27:21.307Z [info]: Processed line: 873976000704101300240055
+2024-10-26T05:27:21.557Z [info]: Processing data from queue: 873976000704101300240055
+2024-10-26T05:27:22.314Z [info]: Processing data from queue: 873976000704101300240055
+2024-10-26T05:27:30.096Z [info]: Processed line: NG
+2024-10-26T05:27:31.106Z [info]: Processing data from queue: NG
+2024-10-26T05:27:39.667Z [info]: Processed line: 873976000704101300240056
+2024-10-26T05:27:40.401Z [info]: Processed line: 873976000704101300240056
+2024-10-26T05:27:40.681Z [info]: Processing data from queue: 873976000704101300240056
+2024-10-26T05:27:41.408Z [info]: Processing data from queue: 873976000704101300240056
+2024-10-26T05:27:49.719Z [info]: Processed line: NG
+2024-10-26T05:27:50.724Z [info]: Processing data from queue: NG
+2024-10-26T05:27:59.322Z [info]: Processed line: 873976000704101300240057
+2024-10-26T05:28:00.043Z [info]: Processed line: 873976000704101300240057
+2024-10-26T05:28:00.330Z [info]: Processing data from queue: 873976000704101300240057
+2024-10-26T05:28:01.044Z [info]: Processing data from queue: 873976000704101300240057
+2024-10-26T05:28:08.891Z [info]: Processed line: NG
+2024-10-26T05:28:09.901Z [info]: Processing data from queue: NG
+2024-10-26T05:28:17.618Z [info]: Processed line: 873976000704101300240058
+2024-10-26T05:28:18.368Z [info]: Processed line: 873976000704101300240058
+2024-10-26T05:28:18.626Z [info]: Processing data from queue: 873976000704101300240058
+2024-10-26T05:28:19.385Z [info]: Processing data from queue: 873976000704101300240058
+2024-10-26T05:28:27.480Z [info]: Processed line: NG
+2024-10-26T05:28:28.488Z [info]: Processing data from queue: NG
+2024-10-26T05:28:36.651Z [info]: Processed line: 873976000704101300240059
+2024-10-26T05:28:37.402Z [info]: Processed line: 873976000704101300240059
+2024-10-26T05:28:37.662Z [info]: Processing data from queue: 873976000704101300240059
+2024-10-26T05:28:38.405Z [info]: Processing data from queue: 873976000704101300240059
+2024-10-26T05:28:47.002Z [info]: Processed line: NG
+2024-10-26T05:28:48.013Z [info]: Processing data from queue: NG
+2024-10-26T05:28:56.160Z [info]: Processed line: 873976000704101300240060
+2024-10-26T05:28:56.910Z [info]: Processed line: 873976000704101300240060
+2024-10-26T05:28:57.162Z [info]: Processing data from queue: 873976000704101300240060
+2024-10-26T05:28:57.914Z [info]: Processing data from queue: 873976000704101300240060
+2024-10-26T05:29:07.660Z [info]: Processed line: NG
+2024-10-26T05:29:08.667Z [info]: Processing data from queue: NG
+2024-10-26T05:29:17.041Z [info]: Processed line: 873976000704101300240061
+2024-10-26T05:29:17.785Z [info]: Processed line: 873976000704101300240061
+2024-10-26T05:29:18.049Z [info]: Processing data from queue: 873976000704101300240061
+2024-10-26T05:29:18.790Z [info]: Processing data from queue: 873976000704101300240061
+2024-10-26T05:29:28.699Z [info]: Processed line: NG
+2024-10-26T05:29:29.701Z [info]: Processing data from queue: NG
+2024-10-26T05:29:37.349Z [info]: Processed line: 873976000704101300240062
+2024-10-26T05:29:38.361Z [info]: Processing data from queue: 873976000704101300240062
+2024-10-26T05:29:38.878Z [info]: Processed line: 873976000704101300240062
+2024-10-26T05:29:39.885Z [info]: Processing data from queue: 873976000704101300240062
+2024-10-26T05:29:50.874Z [info]: Processed line: NG
+2024-10-26T05:29:51.876Z [info]: Processing data from queue: NG
+2024-10-26T05:30:10.057Z [info]: Processed line: 873976000704101300240063
+2024-10-26T05:30:11.064Z [info]: Processing data from queue: 873976000704101300240063
+2024-10-26T05:30:29.101Z [info]: Processed line: NG
+2024-10-26T05:30:30.111Z [info]: Processing data from queue: NG
+2024-10-26T05:30:38.557Z [info]: Processed line: 873976000704101300240064
+2024-10-26T05:30:39.299Z [info]: Processed line: 873976000704101300240064
+2024-10-26T05:30:39.563Z [info]: Processing data from queue: 873976000704101300240064
+2024-10-26T05:30:40.302Z [info]: Processing data from queue: 873976000704101300240064
+2024-10-26T05:30:58.945Z [info]: Processed line: NG
+2024-10-26T05:30:59.950Z [info]: Processing data from queue: NG
+2024-10-26T05:31:08.299Z [info]: Processed line: 873976000704101300240065
+2024-10-26T05:31:09.032Z [info]: Processed line: 873976000704101300240065
+2024-10-26T05:31:09.308Z [info]: Processing data from queue: 873976000704101300240065
+2024-10-26T05:31:10.047Z [info]: Processing data from queue: 873976000704101300240065
+2024-10-26T05:31:19.266Z [info]: Processed line: NG
+2024-10-26T05:31:20.276Z [info]: Processing data from queue: NG
+2024-10-26T05:31:28.321Z [info]: Processed line: 873976000704101300240066
+2024-10-26T05:31:29.069Z [info]: Processed line: 873976000704101300240066
+2024-10-26T05:31:29.335Z [info]: Processing data from queue: 873976000704101300240066
+2024-10-26T05:31:30.076Z [info]: Processing data from queue: 873976000704101300240066
+2024-10-26T05:31:43.440Z [info]: Processed line: NG
+2024-10-26T05:31:44.440Z [info]: Processing data from queue: NG
+2024-10-26T05:31:53.023Z [info]: Processed line: 873976000704101300240067
+2024-10-26T05:31:53.765Z [info]: Processed line: 873976000704101300240067
+2024-10-26T05:31:54.023Z [info]: Processing data from queue: 873976000704101300240067
+2024-10-26T05:31:54.766Z [info]: Processing data from queue: 873976000704101300240067
+2024-10-26T05:32:02.914Z [info]: Processed line: NG
+2024-10-26T05:32:03.917Z [info]: Processing data from queue: NG
+2024-10-26T05:32:12.402Z [info]: Processed line: 873976000704101300240068
+2024-10-26T05:32:13.152Z [info]: Processed line: 873976000704101300240068
+2024-10-26T05:32:13.406Z [info]: Processing data from queue: 873976000704101300240068
+2024-10-26T05:32:14.156Z [info]: Processing data from queue: 873976000704101300240068
+2024-10-26T05:32:26.370Z [info]: Processed line: NG
+2024-10-26T05:32:27.379Z [info]: Processing data from queue: NG
+2024-10-26T05:32:35.621Z [info]: Processed line: 873976000704101300240069
+2024-10-26T05:32:36.373Z [info]: Processed line: 873976000704101300240069
+2024-10-26T05:32:36.622Z [info]: Processing data from queue: 873976000704101300240069
+2024-10-26T05:32:37.380Z [info]: Processing data from queue: 873976000704101300240069
+2024-10-26T05:32:46.576Z [info]: Processed line: NG
+2024-10-26T05:32:47.576Z [info]: Processing data from queue: NG
+2024-10-26T05:32:56.837Z [info]: Processed line: 873976000704101300240070
+2024-10-26T05:32:57.842Z [info]: Processing data from queue: 873976000704101300240070
+2024-10-26T05:32:58.381Z [info]: Processed line: NG
+2024-10-26T05:32:59.388Z [info]: Processing data from queue: NG
+2024-10-26T05:33:15.769Z [info]: Processed line: NG
+2024-10-26T05:33:16.773Z [info]: Processing data from queue: NG
+2024-10-26T05:33:25.284Z [info]: Processed line: 873976000704101300240072
+2024-10-26T05:33:26.035Z [info]: Processed line: 873976000704101300240072
+2024-10-26T05:33:26.295Z [info]: Processing data from queue: 873976000704101300240072
+2024-10-26T05:33:27.036Z [info]: Processing data from queue: 873976000704101300240072
+2024-10-26T05:33:39.675Z [info]: Processed line: NG
+2024-10-26T05:33:40.680Z [info]: Processing data from queue: NG
+2024-10-26T05:33:48.838Z [info]: Processed line: 873976000704101300240073
+2024-10-26T05:33:49.848Z [info]: Processing data from queue: 873976000704101300240073
+2024-10-26T05:35:03.736Z [info]: Processed line: NG
+2024-10-26T05:35:04.742Z [info]: Processing data from queue: NG
+2024-10-26T05:35:13.121Z [info]: Processed line: 873976000704101300240074
+2024-10-26T05:35:13.933Z [info]: Processed line: 873976000704101300240074
+2024-10-26T05:35:14.123Z [info]: Processing data from queue: 873976000704101300240074
+2024-10-26T05:35:14.945Z [info]: Processing data from queue: 873976000704101300240074
+2024-10-26T05:35:22.457Z [info]: Processed line: NG
+2024-10-26T05:35:23.464Z [info]: Processing data from queue: NG
+2024-10-26T05:35:31.752Z [info]: Processed line: 873976000704101300240075
+2024-10-26T05:35:32.532Z [info]: Processed line: 873976000704101300240075
+2024-10-26T05:35:32.755Z [info]: Processing data from queue: 873976000704101300240075
+2024-10-26T05:35:33.537Z [info]: Processing data from queue: 873976000704101300240075
+2024-10-26T05:35:59.869Z [info]: Processed line: NG
+2024-10-26T05:36:00.872Z [info]: Processing data from queue: NG
+2024-10-26T05:36:09.153Z [info]: Processed line: 873976000704101300240076
+2024-10-26T05:36:09.937Z [info]: Processed line: 873976000704101300240076
+2024-10-26T05:36:10.154Z [info]: Processing data from queue: 873976000704101300240076
+2024-10-26T05:36:10.942Z [info]: Processing data from queue: 873976000704101300240076
+2024-10-26T05:36:19.691Z [info]: Processed line: NG
+2024-10-26T05:36:20.695Z [info]: Processing data from queue: NG
+2024-10-26T05:36:28.733Z [info]: Processed line: 873976000704101300240077
+2024-10-26T05:36:29.488Z [info]: Processed line: 873976000704101300240077
+2024-10-26T05:36:29.741Z [info]: Processing data from queue: 873976000704101300240077
+2024-10-26T05:36:30.489Z [info]: Processing data from queue: 873976000704101300240077
+2024-10-26T05:36:39.997Z [info]: Processed line: NG
+2024-10-26T05:36:40.999Z [info]: Processing data from queue: NG
+2024-10-26T05:36:48.705Z [info]: Processed line: 873976000704101300240078
+2024-10-26T05:36:49.468Z [info]: Processed line: 873976000704101300240078
+2024-10-26T05:36:49.707Z [info]: Processing data from queue: 873976000704101300240078
+2024-10-26T05:36:50.469Z [info]: Processing data from queue: 873976000704101300240078
+2024-10-26T05:37:00.187Z [info]: Processed line: NG
+2024-10-26T05:37:01.191Z [info]: Processing data from queue: NG
+2024-10-26T05:37:09.442Z [info]: Processed line: 873976000704101300240079
+2024-10-26T05:37:10.188Z [info]: Processed line: 873976000704101300240079
+2024-10-26T05:37:10.448Z [info]: Processing data from queue: 873976000704101300240079
+2024-10-26T05:37:11.199Z [info]: Processing data from queue: 873976000704101300240079
+2024-10-26T05:37:22.944Z [info]: Processed line: NG
+2024-10-26T05:37:23.950Z [info]: Processing data from queue: NG
+2024-10-26T05:37:32.319Z [info]: Processed line: 873976000704101300240080
+2024-10-26T05:37:33.329Z [info]: Processing data from queue: 873976000704101300240080
+2024-10-26T05:37:33.449Z [info]: Processed line: 873976000704101300240080
+2024-10-26T05:37:34.459Z [info]: Processing data from queue: 873976000704101300240080
+2024-10-26T05:37:43.266Z [info]: Processed line: NG
+2024-10-26T05:37:44.272Z [info]: Processing data from queue: NG
+2024-10-26T05:37:52.538Z [info]: Processed line: 873976000704101300240081
+2024-10-26T05:37:53.275Z [info]: Processed line: 873976000704101300240081
+2024-10-26T05:37:53.548Z [info]: Processing data from queue: 873976000704101300240081
+2024-10-26T05:37:54.288Z [info]: Processing data from queue: 873976000704101300240081
+2024-10-26T05:38:03.273Z [info]: Processed line: NG
+2024-10-26T05:38:04.276Z [info]: Processing data from queue: NG
+2024-10-26T05:38:12.100Z [info]: Processed line: 873976000704101300240082
+2024-10-26T05:38:12.834Z [info]: Processed line: 873976000704101300240082
+2024-10-26T05:38:13.111Z [info]: Processing data from queue: 873976000704101300240082
+2024-10-26T05:38:13.838Z [info]: Processing data from queue: 873976000704101300240082
+2024-10-26T05:38:22.228Z [info]: Processed line: NG
+2024-10-26T05:38:23.230Z [info]: Processing data from queue: NG
+2024-10-26T05:38:31.728Z [info]: Processed line: 873976000704101300240083
+2024-10-26T05:38:32.739Z [info]: Processing data from queue: 873976000704101300240083
+2024-10-26T05:38:33.282Z [info]: Processed line: NG
+2024-10-26T05:38:34.292Z [info]: Processing data from queue: NG
+2024-10-26T05:38:47.969Z [info]: Processed line: NG
+2024-10-26T05:38:48.980Z [info]: Processing data from queue: NG
+2024-10-26T05:38:57.243Z [info]: Processed line: 873976000704101300240085
+2024-10-26T05:38:57.986Z [info]: Processed line: 873976000704101300240085
+2024-10-26T05:38:58.253Z [info]: Processing data from queue: 873976000704101300240085
+2024-10-26T05:38:59.000Z [info]: Processing data from queue: 873976000704101300240085
+2024-10-26T05:40:17.130Z [info]: Processed line: NG
+2024-10-26T05:40:18.135Z [info]: Processing data from queue: NG
+2024-10-26T05:40:25.970Z [info]: Processed line: 873976000704101300240086
+2024-10-26T05:40:26.703Z [info]: Processed line: 873976000704101300240086
+2024-10-26T05:40:26.979Z [info]: Processing data from queue: 873976000704101300240086
+2024-10-26T05:40:27.706Z [info]: Processing data from queue: 873976000704101300240086
+2024-10-26T05:40:36.419Z [info]: Processed line: NG
+2024-10-26T05:40:37.420Z [info]: Processing data from queue: NG
+2024-10-26T05:40:46.955Z [info]: Processed line: NG
+2024-10-26T05:40:47.968Z [info]: Processing data from queue: NG
+2024-10-26T05:40:48.489Z [info]: Processed line: NG
+2024-10-26T05:40:49.499Z [info]: Processing data from queue: NG
+2024-10-26T05:41:19.716Z [info]: Processed line: NG
+2024-10-26T05:41:20.718Z [info]: Processing data from queue: NG
+2024-10-26T05:41:50.908Z [info]: Processed line: NG
+2024-10-26T05:41:51.912Z [info]: Processing data from queue: NG
+2024-10-26T05:42:22.135Z [info]: Processed line: NG
+2024-10-26T05:42:23.151Z [info]: Processing data from queue: NG
+2024-10-26T05:42:53.360Z [info]: Processed line: NG
+2024-10-26T05:42:54.374Z [info]: Processing data from queue: NG
+2024-10-26T05:43:24.604Z [info]: Processed line: NG
+2024-10-26T05:43:25.609Z [info]: Processing data from queue: NG
+2024-10-26T05:43:55.881Z [info]: Processed line: NG
+2024-10-26T05:43:56.886Z [info]: Processing data from queue: NG

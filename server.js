@@ -306,6 +306,7 @@ server.listen(PORT, async (err) => {
 });
 
 server.on("error", (err) => {
+  console.log({ err });
   logger.error("Server error: %s", err.message);
 });
 
