@@ -6,9 +6,9 @@ import {
   setMinutes,
   isSameDay,
   isBefore,
-} from "date-fns";
-import MongoDBService from "./mongoDbService.js";
-import logger from "../logger.js";
+} from 'date-fns';
+import MongoDBService from './mongoDbService.js';
+import logger from '../logger.js';
 
 class SerialNumberGeneratorService {
   constructor() {
@@ -104,7 +104,7 @@ class SerialNumberGeneratorService {
 
   async initialize(dbName, collectionName) {
     if (this.isInitialized) {
-      logger.info("SerialNumberGeneratorService already initialized");
+      logger.info('SerialNumberGeneratorService already initialized');
       return;
     }
 
@@ -122,7 +122,7 @@ class SerialNumberGeneratorService {
       } else {
         this.currentSerialNumber = 1;
         logger.info(
-          "No previous documents found, starting with serial number 0001"
+          'No previous documents found, starting with serial number 0001'
         );
       }
 
@@ -131,7 +131,7 @@ class SerialNumberGeneratorService {
 
       this.isInitialized = true;
     } catch (error) {
-      logger.error("Error initializing SerialNumberGeneratorService:", error);
+      logger.error('Error initializing SerialNumberGeneratorService:', error);
       throw error;
     }
   }
@@ -145,23 +145,45 @@ class SerialNumberGeneratorService {
         .toArray();
       return latestRecord[0] || null;
     } catch (error) {
-      logger.error("Error fetching last document from MongoDB:", error);
+      logger.error('Error fetching last document from MongoDB:', error);
       throw error;
     }
   }
 
   getNextSerialNumber() {
     this.checkAndResetSerialNumber();
-    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
+    const serialNumber = this.currentSerialNumber.toString().padStart(4, '0');
     this.currentSerialNumber++;
     return serialNumber;
+  }
+
+ async getNextDecSerialNumber2() {
+    // this.checkAndResetSerialNumber();
+    // const serialNumber = this.currentSerialNumber.toString().padStart(4, '0');
+    // this.currentSerialNumber++;
+    // return serialNumber;
+    const lastDocument = await this.getLastDocumentFromMongoDB();
+
+    if (lastDocument) {
+      this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
+      this.lastResetDate = new Date(lastDocument.Timestamp);
+      logger.info(
+        `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
+      );
+      return this.currentSerialNumber.toString().padStart(4, '0');
+    } else {
+      this.checkAndResetSerialNumber();
+      const serialNumber = this.currentSerialNumber.toString().padStart(4, '0');
+      this.currentSerialNumber++;
+      return serialNumber;
+    }
   }
 
   decSerialNumber() {
     // this.checkAndResetSerialNumber();
     // const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");r
     this.currentSerialNumber--;
-    return serialNumber;
+    return  this.currentSerialNumber;
   }
 
   checkAndResetSerialNumber() {
@@ -177,9 +199,9 @@ class SerialNumberGeneratorService {
     );
 
     console.log({
-      now: format(now, "yyyy-MM-dd HH:mm:ss"),
-      resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
-      lastResetDate: format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss"),
+      now: format(now, 'yyyy-MM-dd HH:mm:ss'),
+      resetTime: format(resetTime, 'yyyy-MM-dd HH:mm:ss'),
+      lastResetDate: format(this.lastResetDate, 'yyyy-MM-dd HH:mm:ss'),
       isAfterResetTime: isAfter(now, resetTime), // True if now is past 6:00 AM today
       isSameDayAsLastReset: isSameDay(now, this.lastResetDate), // True if last reset was today
       isLastResetBeforeResetTime: isBefore(this.lastResetDate, resetTime), // Check if last reset was before reset time today
@@ -196,7 +218,7 @@ class SerialNumberGeneratorService {
       this.currentSerialNumber = 1;
       this.lastResetDate = now;
       logger.info(
-        `Serial number reset to 0001 at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+        `Serial number reset to 0001 at ${format(now, 'yyyy-MM-dd HH:mm:ss')}`
       );
     }
   }
