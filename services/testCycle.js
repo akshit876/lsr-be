@@ -73,6 +73,35 @@ async function writeOCRDataToFile(ocrDataString) {
   }
 }
 
+async function verifyWriteOperation(expectedData) {
+  try {
+    const actualData = await fs.readFile(CODE_FILE_PATH, "utf8");
+    return actualData === expectedData;
+  } catch (error) {
+    logger.error(
+      `Error reading OCR data from file for verification: ${error.message}`
+    );
+    return false;
+  }
+}
+
+async function verifyAndRetryWrite(expectedData, retriesLeft) {
+  for (let attempt = 1; attempt <= retriesLeft + 1; attempt++) {
+    const actualData = await fs.readFileSync(CODE_FILE_PATH, "utf8");
+    if (actualData === expectedData) {
+      return true; // Data verified successfully
+    }
+
+    if (attempt <= retriesLeft) {
+      logger.warn(
+        `Verification attempt ${attempt} failed. Retrying write operation...`
+      );
+      await fs.writeFileSync(CODE_FILE_PATH, expectedData, "utf8");
+    }
+  }
+
+  return false; // Verification failed after all retries
+}
 /**
  * Clears the contents of 'code.txt'.
  */
@@ -324,7 +353,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
           const timeout = setTimeout(() => {
             comService.off("dataGot", dataHandler);
             reject(new Error("Timeout waiting for scanner data"));
-          }, 10000); // Adjust timeout as needed
+          }, 2000); // Adjust timeout as needed
 
           // Trigger the scanner after the event listener is set
           logger.info("Triggering the scanner...");
@@ -361,13 +390,21 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
         date: new Date(),
         partNumber,
       });
-
+      logger.info(
+        "-----------------------------------------------------------------------------------------------------------"
+      );
       logger.info("Writing OCR data to file");
       await writeOCRDataToFile(text);
+      // await verifyWriteOperation(text);
+      await verifyAndRetryWrite(text, 2);
+
       logger.info("OCR data transferred to text file");
 
       logger.info("Writing bit 1410.11 to signal file transfer");
       await writeBitsWithRest(1410, 11, 1, 100, false);
+      logger.info(
+        "-----------------------------------------------------------------------------------------------------------"
+      );
 
       // logger.info("Writing bit 1415.4 to confirm file transfer to PLC");
       // await writeBitsWithRest(1415, 4, 1, 100, false);
