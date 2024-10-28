@@ -158,13 +158,12 @@ class SerialNumberGeneratorService {
   }
 
  async getNextDecSerialNumber2() {
-    // this.checkAndResetSerialNumber();
+    const reset = this.checkAndResetSerialNumber();
     // const serialNumber = this.currentSerialNumber.toString().padStart(4, '0');
     // this.currentSerialNumber++;
     // return serialNumber;
     const lastDocument = await this.getLastDocumentFromMongoDB();
-
-    if (lastDocument) {
+    if (!reset && lastDocument) {
       this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
       this.lastResetDate = new Date(lastDocument.Timestamp);
       logger.info(
@@ -172,7 +171,6 @@ class SerialNumberGeneratorService {
       );
       return this.currentSerialNumber.toString().padStart(4, '0');
     } else {
-      this.checkAndResetSerialNumber();
       const serialNumber = this.currentSerialNumber.toString().padStart(4, '0');
       this.currentSerialNumber++;
       return serialNumber;
@@ -220,7 +218,9 @@ class SerialNumberGeneratorService {
       logger.info(
         `Serial number reset to 0001 at ${format(now, 'yyyy-MM-dd HH:mm:ss')}`
       );
+      return true;
     }
+    return false;
   }
 }
 
