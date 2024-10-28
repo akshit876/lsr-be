@@ -22,7 +22,7 @@ const __dirname = dirname(__filename);
 const CODE_FILE_PATH = path.join(__dirname, '../data/code.txt');
 export const sleep = promisify(setTimeout);
 
-const TIMEOUT = 30000;
+const TIMEOUT = 100*1000;
 
 class ScannerController {
   static instance = null;
@@ -373,7 +373,7 @@ class ScannerController {
             // Reset and initial setup
             logger.info('🔄 Resetting bits...');
             await this.resetBits();
-            await writeBit(1410, 0, 1);
+            // await writeBit(1410, 0, 1);
             
             logger.info('🧹 Clearing buffer before second scan...');
             if (await this.checkResetOrBit(1410, 0, 1)) {
@@ -528,27 +528,27 @@ class ScannerController {
     
     try {
         // TEMPORARY: Return hardcoded "NG" for testing
-        logger.warn(`⚠️ Using hardcoded "NG" value for ${scannerLabel.toLowerCase()} scanner (testing mode)`);
-        return 'NG';
+        // logger.warn(`⚠️ Using hardcoded "NG" value for ${scannerLabel.toLowerCase()} scanner (testing mode)`);
+        // return 'NG';
 
-        /* PRODUCTION CODE (Currently Disabled)
+        //  PRODUCTION CODE (Currently Disabled)
         logger.info(`🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`);
         
         const scannerData = await new Promise((resolve, reject) => {
             const dataHandler = (data) => {
                 logger.success(`📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`);
                 resolve(data);
-                comService.off("dataGot", dataHandler);
+                comService.off('dataGot', dataHandler);
             };
 
             // Set up event listener
             logger.info('👂 Adding event listener for scanner data');
-            comService.on("dataGot", dataHandler);
+            comService.on('dataGot', dataHandler);
 
             // Configure timeout
             const timeoutId = setTimeout(() => {
                 logger.error(`⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`);
-                comService.off("dataGot", dataHandler);
+                comService.off('dataGot', dataHandler);
                 reject(new Error(`${scannerLabel} scanner data timeout`));
             }, timeout);
 
@@ -565,7 +565,6 @@ class ScannerController {
 
         logger.success(`📊 ${scannerLabel} scanner data received: ${scannerData}`);
         return scannerData;
-        */
         
     } catch (error) {
         logger.separator.hash();
