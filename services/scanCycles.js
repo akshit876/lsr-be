@@ -383,14 +383,14 @@ class ScannerController {
         // Reset and initial setup
         logger.info('🔄 Resetting bits...');
         await this.resetBits();
-        await writeBit(1410, 0, 1);
+        // await writeBit(1410, 0, 1);
 
         logger.info('🧹Waiting for reset or bit 1410.0 to be 0');
         if (await this.checkResetOrBit(1410, 0, 1)) {
           logger.warn('⚠️ Reset detected at final step, restarting cycle');
           continue;
         }
-        await writeBit(1410, 0, 0);
+        // await writeBit(1410, 0, 0);
 
         logger.separator.arrow();
         logger.info('🚀 Starting scanner workflow');
