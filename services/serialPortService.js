@@ -2,7 +2,7 @@ import { SerialPort } from "serialport";
 import { ReadlineParser } from "@serialport/parser-readline";
 import fs from "fs";
 import path, { dirname } from "path";
-import robot from "robotjs";
+// import robot from "robotjs";
 import logger from "../logger.js";
 import {
   updateBuffer,
@@ -121,7 +121,7 @@ export async function handleFirstScan(io, part) {
 
         logger.info(`Final code generated and written: ${finalCode}`);
 
-        robot.keyTap("f2");
+        // robot.keyTap("f2");
         logger.info("F2 key press simulated");
       }
     } catch (error) {
