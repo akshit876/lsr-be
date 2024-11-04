@@ -296,9 +296,9 @@ server.listen(PORT, async (err) => {
     // barcodeGenerator.initialize('main-data', 'records');
     // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
     comService = new BufferedComPortService({
-      path: 'COM3',
+      path: "COM4",
       baudRate: 9600,
-      logDir: 'com_port_logs',
+      logDir: "com_port_logs",
     });
     await comService.initSerialPort();
     await connect();
