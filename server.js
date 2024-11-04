@@ -300,7 +300,7 @@ server.listen(PORT, async (err) => {
       baudRate: 9600,
       logDir: 'com_port_logs',
     });
-
+    await comService.initSerialPort();
     await connect();
     // Fetch part number and pass it to runContinuousScan
     const { partNumber, mainDataRecords } = await fetchPartNumberAndData();
