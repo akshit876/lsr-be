@@ -1,7 +1,7 @@
-const { MongoClient } = require("mongodb");
-require("dotenv").config();
+import { MongoClient } from "mongodb";
+import bcrypt from "bcryptjs";
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = "mongodb://localhost:27017";
 
 async function initializeDatabase() {
   try {
@@ -23,60 +23,41 @@ async function initializeDatabase() {
       records: "records",
     };
 
-    // Create Collections with Indexes for LaserU
+    // Create Collections for LaserU
     await Promise.all([
-      // Partnumber Configs Collection
       laserUDb.createCollection(laserUCollections.partnumberconfigs),
-      laserUDb
-        .collection(laserUCollections.partnumberconfigs)
-        .createIndex({ partnumber: 1 }, { unique: true }),
-
-      // Shift Configs Collection
       laserUDb.createCollection(laserUCollections.shiftconfigs),
-      laserUDb
-        .collection(laserUCollections.shiftconfigs)
-        .createIndex({ shiftName: 1 }),
-
-      // Users Collection
       laserUDb.createCollection(laserUCollections.users),
-      laserUDb
-        .collection(laserUCollections.users)
-        .createIndex({ username: 1 }, { unique: true }),
-      laserUDb
-        .collection(laserUCollections.users)
-        .createIndex({ email: 1 }, { unique: true }),
     ]);
 
-    // Create Collections with Indexes for Main-Data
+    // Create Collections for Main-Data
     await Promise.all([
-      // Config Collection
       mainDataDb.createCollection(mainDataCollections.config),
-      mainDataDb
-        .collection(mainDataCollections.config)
-        .createIndex({ key: 1 }, { unique: true }),
-
-      // Records Collection
       mainDataDb.createCollection(mainDataCollections.records),
-      mainDataDb
-        .collection(mainDataCollections.records)
-        .createIndex({ timestamp: 1 }),
-      mainDataDb
-        .collection(mainDataCollections.records)
-        .createIndex({ partnumber: 1 }),
     ]);
 
-    // Insert Default Settings if needed
-    await laserUDb.collection(laserUCollections.shiftconfigs).updateOne(
-      { shiftName: "default" },
-      {
-        $setOnInsert: {
-          startTime: "06:00",
-          endTime: "14:00",
-          // Add other default shift settings
-        },
-      },
-      { upsert: true }
-    );
+    // Initialize Admin User
+    const adminExists = await laserUDb
+      .collection(laserUCollections.users)
+      .findOne({ email: "super" });
+
+    if (!adminExists) {
+      const hashedPassword = await bcrypt.hash("admin", 10);
+
+      await laserUDb.collection(laserUCollections.users).insertOne({
+        name: "Super Admin",
+        email: "super",
+        password: hashedPassword,
+        role: "admin",
+        isVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      console.log("Admin user created successfully");
+    } else {
+      console.log("Admin user already exists");
+    }
 
     console.log("Database initialization completed successfully");
     await client.close();
@@ -86,5 +67,4 @@ async function initializeDatabase() {
   }
 }
 
-// Run the initialization
 initializeDatabase();
