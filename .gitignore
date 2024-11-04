@@ -37,7 +37,16 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Data folders
+/data
+/data/**
+/services/data
+/services/data/**
 
-#logs
+# Log folders
 /logs
+/logs/**
 /services/logs
+/services/logs/**
+/com_port_logs
+/com_port_logs/**
