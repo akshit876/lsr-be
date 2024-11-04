@@ -5,7 +5,9 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
-
+/logs
+/data
+/com_port_logs
 # testing
 /coverage
 
@@ -38,3 +40,4 @@ next-env.d.ts
 
 #logs
 /logs
+/services/logs

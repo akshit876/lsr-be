@@ -383,9 +383,9 @@ class ScannerController {
         // Reset and initial setup
         logger.info('🔄 Resetting bits...');
         await this.resetBits();
-        // await writeBit(1410, 0, 1);
+        await writeBit(1410, 0, 1);
 
-        logger.info('🧹 Clearing buffer before second scan...');
+        logger.info('🧹Waiting for reset or bit 1410.0 to be 0');
         if (await this.checkResetOrBit(1410, 0, 1)) {
           logger.warn('⚠️ Reset detected at final step, restarting cycle');
           continue;
@@ -400,7 +400,7 @@ class ScannerController {
         });
 
         if (scannerData !== 'NG') {
-          logger.success('First scan data is OK, stopping machine');
+          logger.error('First scan data is OK, stopping machine');
           logger.info('✍️ Writing bit 1414.6 to signal OK scan');
           await writeBitsWithRest(1414, 6, 1, 200, false);
           await this.resetBits2();
@@ -557,19 +557,19 @@ class ScannerController {
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
           resolve(data);
-          comService.off('dataGot', dataHandler);
+          this.comService.off('dataGot', dataHandler);
         };
 
         // Set up event listener
         logger.info('👂 Adding event listener for scanner data');
-        comService.on('dataGot', dataHandler);
+        this.comService.on('dataGot', dataHandler);
 
         // Configure timeout
         const timeoutId = setTimeout(() => {
           logger.error(
             `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
           );
-          comService.off('dataGot', dataHandler);
+          this.comService.off('dataGot', dataHandler);
           reject(new Error(`${scannerLabel} scanner data timeout`));
         }, timeout);
 

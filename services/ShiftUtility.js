@@ -22,7 +22,7 @@ export function transformMongoObject(shiftConfig) {
 }
 
 export async function getShiftConfigFromDB() {
-  await mongoDbService.connect("main-data", "configs");
+  await mongoDbService.connect("main-data", "config");
   const collection = mongoDbService.collection;
   const config = await collection.findOne({});
   console.log({ config });
@@ -30,7 +30,7 @@ export async function getShiftConfigFromDB() {
 }
 
 export async function updateShiftConfigInDB(newConfig) {
-  await mongoDbService.connect("main-data", "configs");
+  await mongoDbService.connect("main-data", "config");
   const collection = mongoDbService.collection;
   await collection.updateOne(
     {}, // Update the first document found
