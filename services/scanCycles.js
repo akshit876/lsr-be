@@ -556,6 +556,7 @@ class ScannerController {
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
+          clearTimeout(timeoutId);
           resolve(data);
           this.comService.off('dataGot', dataHandler);
         };
