@@ -303,7 +303,7 @@ server.listen(PORT, async (err) => {
     await comService.initSerialPort();
     await connect();
     // Fetch part number and pass it to runContinuousScan
-    const { partNumber, mainDataRecords } = await fetchPartNumberAndData();
+    const { partNumber } = await fetchPartNumberAndData();
 
     // runContinuousScan(io, null, { partNumber }).catch((error) => {
     //   logger.error('Failed to start continuous scan:', error);

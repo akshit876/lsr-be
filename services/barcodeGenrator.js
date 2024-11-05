@@ -7,21 +7,21 @@ async function fetchPartNumberAndData(mongoDbService) {
   try {
     // Connect to the MongoDB if not already connected
     if (!mongoDbService.collection) {
-      await mongoDbService.connect('main-data', 'config');
+      await mongoDbService.connect("main-data", "config");
     }
 
     // Fetch part number from the 'configs' collection
     const configData = await mongoDbService.collection.findOne({});
-    const partNumber = configData?.partNo || 'Unknown Part No'; // Default value if part no is not found
+    const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
 
     // Fetch records from 'main-data' collection (or any other collection as needed)
     const mainDataRecords = await mongoDbService.collection.find({}).toArray();
 
     logger.info(`Fetched part number: ${partNumber} and main data records`);
 
-    return { partNumber, mainDataRecords };
+    return { partNumber, configData };
   } catch (error) {
-    logger.error('Error fetching part number or data:', error);
+    logger.error("Error fetching part number or data:", error);
     throw error;
   }
 }
@@ -34,49 +34,82 @@ class BarcodeGenerator {
   async initialize(dbName, collectionName) {
     try {
       await this.serialNumberService.initialize(dbName, collectionName);
-      logger.info('BarcodeGenerator initialized successfully');
+      logger.info("BarcodeGenerator initialized successfully");
     } catch (error) {
-      logger.error('Failed to initialize BarcodeGenerator:', error);
+      logger.error("Failed to initialize BarcodeGenerator:", error);
       throw error;
     }
   }
 
   async generateBarcodeData({ date = new Date(), mongoDbService, partNumber }) {
-    // Get the Julian date: year + day of the year
-    const year = format(date, 'yy'); // Last two digits of the year
-    const startOfYear = new Date(date.getFullYear(), 0, 0);
-    const diff = date - startOfYear;
-    const oneDay = 1000 * 60 * 60 * 24;
-    const dayOfYear = Math.floor(diff / oneDay);
-    const julianDate = `${String(dayOfYear).padStart(3, '0')}${year}`; // Format day as 3 digits
+    try {
+      // Calculate date components
+      const year = format(date, "yy");
+      const month = format(date, "MM");
+      const day = format(date, "dd");
 
-    // Fetch the current shift
-    const shift = this.shiftUtility.getCurrentShift(date);
-    if (!partNumber) {
-      const { partNumber, mainDataRecords } =
+      // Calculate Julian date
+      const startOfYear = new Date(date.getFullYear(), 0, 0);
+      const diff = date - startOfYear;
+      const julianDay = Math.floor(diff / (1000 * 60 * 60 * 24))
+        .toString()
+        .padStart(3, "0");
+
+      // Get current shift
+      const shift = this.shiftUtility.getCurrentShift(date);
+
+      // Fetch config and part number if not provided
+      const { partNumber: fetchedPartNumber, configData } =
         await fetchPartNumberAndData(mongoDbService);
-      console.log({ partNumber });
-      // Fetch the next serial number
-      const serialString = await this.serialNumberService.getNextDecSerialNumber2();
 
-      // Generate the final barcode string including the part number
-      const barcodeText = `${partNumber || ''}04101${julianDate}${serialString}`;
+      // Use provided part number or fetched one
+      const finalPartNumber = partNumber || fetchedPartNumber;
+
+      // Get next serial number
+      const serialString =
+        await this.serialNumberService.getNextDecSerialNumber2();
+
+      // Map values to fields from config
+      const fields = configData.currentModelConfig.fields.map((field) => {
+        switch (field.fieldName) {
+          case "PART NO":
+            return { ...field, value: finalPartNumber };
+          case "Year":
+            return { ...field, value: year };
+          case "Month":
+            return { ...field, value: month };
+          case "Date":
+            return { ...field, value: day };
+          case "JULIAN DATE":
+            return { ...field, value: julianDay };
+          case "SERIAL NO":
+            return { ...field, value: serialString };
+          case "SHIFT":
+            return { ...field, value: shift };
+          // case "SUPPLIER CODE":
+          //   return { ...field, value: "04101" }; // Hardcoded as per original
+          default:
+            return field;
+        }
+      });
+
+      // Generate barcode by combining fields in order
+      const barcodeText = fields
+        .filter(
+          (field) => field.isChecked && field.fieldName !== "Model Number"
+        )
+        .sort((a, b) => a.order - b.order)
+        .map((field) => field.value || "")
+        .join("");
 
       return {
         text: barcodeText,
         serialNo: serialString,
+        fields: fields,
       };
-    } else {
-      const serialString = await this.serialNumberService.getNextDecSerialNumber2();
-
-      // Generate the final barcode string including the part number
-      const barcodeText = `${partNumber || ''}04101${julianDate}${serialString}`;
-      console.log({ serialString, partNumber, barcodeText });
-
-      return {
-        text: barcodeText,
-        serialNo: serialString,
-      };
+    } catch (error) {
+      console.error("Error generating barcode:", error);
+      throw error;
     }
   }
 
