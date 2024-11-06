@@ -1,33 +1,33 @@
-import { createServer } from 'http';
-import fs from 'fs';
-import morgan from 'morgan';
-import { Server } from 'socket.io';
-import logger from './logger.js';
+import { createServer } from "http";
+import fs from "fs";
+import morgan from "morgan";
+import { Server } from "socket.io";
+import logger from "./logger.js";
 import {
   handleFirstScan,
   handleSecondScan,
   watchCodeFile,
-} from './services/serialPortService.js';
-import { MockSerialPort } from './services/mockSerialPort.js';
-import { fileURLToPath } from 'url';
-import path, { dirname } from 'path';
-import { getCurrentDate } from './services/scanUtils.js';
+} from "./services/serialPortService.js";
+import { MockSerialPort } from "./services/mockSerialPort.js";
+import { fileURLToPath } from "url";
+import path, { dirname } from "path";
+import { getCurrentDate } from "./services/scanUtils.js";
 import {
   connect,
   readBit,
   readRegister,
   writeBit,
   writeRegister,
-} from './services/modbus.js';
-import { manualRun } from './services/manualRunService.js';
-import mongoDbService from './services/mongoDbService.js';
-import { runContinuousScan } from './services/testCycle.js';
-import cronService from './services/cronService.js';
-import ShiftUtility from './services/ShiftUtility.js';
-import BufferedComPortService from './services/ComPortService.js';
-import BarcodeGenerator from './services/barcodeGenrator.js';
-import { MongoClient } from 'mongodb';
-import { scannerController } from './services/scanCycles.js';
+} from "./services/modbus.js";
+import { manualRun } from "./services/manualRunService.js";
+import mongoDbService from "./services/mongoDbService.js";
+import { runContinuousScan } from "./services/testCycle.js";
+import cronService from "./services/cronService.js";
+import ShiftUtility from "./services/ShiftUtility.js";
+import BufferedComPortService from "./services/ComPortService.js";
+import BarcodeGenerator from "./services/barcodeGenrator.js";
+import { MongoClient } from "mongodb";
+import { scannerController } from "./services/scanCycles.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,7 +42,7 @@ console.log({ MODBUS_IP, MODBUS_PORT });
 
 function emitErrorEvent(socket, errorType, errorMessage) {
   if (socket) {
-    socket.emit('error', {
+    socket.emit("error", {
       type: errorType,
       message: errorMessage,
     });
@@ -59,44 +59,44 @@ function floatToInt(value, isSpeed = false) {
 }
 
 const server = createServer((req, res) => {
-  morgan('combined', {
+  morgan("combined", {
     stream: {
       write: (message) => logger.info(message.trim()),
     },
   })(req, res, (err) => {
     if (err) {
       res.statusCode = 500;
-      res.end('Internal Server Error');
+      res.end("Internal Server Error");
       return;
     }
 
     // Handle static files and simple routing here
-    if (req.url === '/') {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end('<h1>Welcome to the Node.js Server</h1>');
+    if (req.url === "/") {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end("<h1>Welcome to the Node.js Server</h1>");
     } else {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('404 Not Found');
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("404 Not Found");
     }
   });
 });
 
-async function fetchPartNumberAndData() {
+export async function fetchPartNumberAndData() {
   try {
     // Connect to the MongoDB if not already connected
 
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
     const client = new MongoClient(uri);
     await client.connect();
-    const db = client.db('main-data');
+    const db = client.db("main-data");
     // console.log({ db });
-    const collection = db.collection('config');
-    logger.info('Connected successfully to MongoDB database: main-data');
+    const collection = db.collection("config");
+    logger.info("Connected successfully to MongoDB database: main-data");
 
     // Fetch part number from the 'configs' collection
     const configData = await collection.findOne({});
     // console.log({ configData });
-    const partNumber = configData?.partNo || 'Unknown Part No'; // Default value if part no is not found
+    const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
 
     // Fetch records from 'main-data' collection (or any other collection as needed)
     // const mainDataRecords = await mongoDbService.collection.find({}).toArray();
@@ -105,34 +105,34 @@ async function fetchPartNumberAndData() {
 
     return { partNumber, mainDataRecords: [] };
   } catch (error) {
-    logger.error('Error fetching part number or data:', error);
+    logger.error("Error fetching part number or data:", error);
     throw error;
   }
 }
 
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:3000', // Your frontend URL
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['my-custom-header'],
+    origin: "http://localhost:3000", // Your frontend URL
+    methods: ["GET", "POST"],
+    allowedHeaders: ["my-custom-header"],
     credentials: true,
   },
 });
 
-io.on('connection', (socket) => {
+io.on("connection", (socket) => {
   let intervalId = null;
   logger.info(`New client connected: ${socket.id}`);
 
-  socket.on('request-csv-data', () => {
+  socket.on("request-csv-data", () => {
     mongoDbService
-      .sendMongoDbDataToClient(socket, 'main-data', 'records')
+      .sendMongoDbDataToClient(socket, "main-data", "records")
       .catch((error) => {
-        console.error('Error in sendMongoDbDataToClient:', error);
+        console.error("Error in sendMongoDbDataToClient:", error);
       });
   });
 
   socket.on(
-    'request-modbus-data',
+    "request-modbus-data",
     async ({ register, bits, interval = 1000 }) => {
       if (intervalId) {
         clearInterval(intervalId);
@@ -142,61 +142,61 @@ io.on('connection', (socket) => {
     }
   );
 
-  socket.on('stop-modbus-data', () => {
+  socket.on("stop-modbus-data", () => {
     if (intervalId) {
       clearInterval(intervalId);
       intervalId = null;
     }
   });
 
-  socket.on('disconnect', () => {
+  socket.on("disconnect", () => {
     if (intervalId) {
       clearInterval(intervalId);
     }
     logger.info(`Client disconnected: ${socket.id}`);
   });
 
-  socket.on('write-modbus-register', async ({ address, bit, value }) => {
+  socket.on("write-modbus-register", async ({ address, bit, value }) => {
     try {
       await writeModbusBit(address, bit, value);
       logger.info(
         `Client ${socket.id} wrote value ${value} to register ${address}, bit ${bit}`
       );
-      socket.emit('writeSuccess', { address, bit, value });
+      socket.emit("writeSuccess", { address, bit, value });
     } catch (error) {
       logger.error(`Error writing to register for client ${socket.id}:`, error);
-      socket.emit('error', {
-        message: 'Failed to write to register',
+      socket.emit("error", {
+        message: "Failed to write to register",
         details: error.message,
       });
     }
   });
 
-  socket.on('manual-run', async (operation) => {
+  socket.on("manual-run", async (operation) => {
     try {
       const result = await manualRun(operation);
       logger.info(`Client ${socket.id} triggered manual run: ${operation}`);
-      socket.emit('manualRunSuccess', { operation, result });
+      socket.emit("manualRunSuccess", { operation, result });
     } catch (error) {
       logger.error(
         `Error executing manual run for client ${socket.id}:`,
         error
       );
-      socket.emit('error', {
-        message: 'Failed to execute manual run',
+      socket.emit("error", {
+        message: "Failed to execute manual run",
         details: error.message,
       });
     }
   });
 
-  socket.on('servo-setting-change', async (data) => {
+  socket.on("servo-setting-change", async (data) => {
     try {
       const { setting, value } = data;
       let register;
       let intValue;
 
       switch (setting) {
-        case 'homePosition':
+        case "homePosition":
           if (value.position !== undefined) {
             register = 550;
             intValue = floatToInt(value.position);
@@ -205,7 +205,7 @@ io.on('connection', (socket) => {
             intValue = floatToInt(value.speed, true);
           }
           break;
-        case 'scannerPosition':
+        case "scannerPosition":
           if (value.position !== undefined) {
             register = 552;
             intValue = floatToInt(value.position);
@@ -214,7 +214,7 @@ io.on('connection', (socket) => {
             intValue = floatToInt(value.speed, true);
           }
           break;
-        case 'ocrPosition':
+        case "ocrPosition":
           if (value.position !== undefined) {
             register = 554;
             intValue = floatToInt(value.position);
@@ -223,7 +223,7 @@ io.on('connection', (socket) => {
             intValue = floatToInt(value.speed, true);
           }
           break;
-        case 'markPosition':
+        case "markPosition":
           if (value.position !== undefined) {
             register = 556;
             intValue = floatToInt(value.position);
@@ -232,16 +232,16 @@ io.on('connection', (socket) => {
             intValue = floatToInt(value.speed, true);
           }
           break;
-        case 'fwdEndLimit':
+        case "fwdEndLimit":
           register = 574;
           intValue = floatToInt(value.position);
           break;
-        case 'revEndLimit':
+        case "revEndLimit":
           register = 578;
           intValue = floatToInt(value.position);
           break;
         default:
-          throw new Error('Invalid setting');
+          throw new Error("Invalid setting");
       }
 
       await writeRegister(register, intValue);
@@ -251,7 +251,7 @@ io.on('connection', (socket) => {
         )} (written as ${intValue})`
       );
 
-      socket.emit('servo-setting-change-response', {
+      socket.emit("servo-setting-change-response", {
         success: true,
         setting,
       });
@@ -260,7 +260,7 @@ io.on('connection', (socket) => {
         `Error updating servo setting for client ${socket.id}:`,
         error
       );
-      socket.emit('servo-setting-change-response', {
+      socket.emit("servo-setting-change-response", {
         success: false,
         setting: data.setting,
         message: error.message,
@@ -272,8 +272,8 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3002;
 server.listen(PORT, async (err) => {
   if (err) {
-    emitErrorEvent(io, 'server-start-failure', JSON.stringify(err));
-    logger.error('Server failed to start: %s', err.message);
+    emitErrorEvent(io, "server-start-failure", JSON.stringify(err));
+    logger.error("Server failed to start: %s", err.message);
     throw err;
   }
   logger.info(`> Server ready on http://localhost:${PORT}`);
@@ -281,11 +281,11 @@ server.listen(PORT, async (err) => {
   let comService = null;
   try {
     await connect();
-    logger.info('Modbus connection initialized');
+    logger.info("Modbus connection initialized");
 
     cronService.scheduleJob(
-      'monthlyExport',
-      '1 0 1 * *',
+      "monthlyExport",
+      "1 0 1 * *",
       cronService.generateMonthlyCsv.bind(cronService)
     );
 
@@ -296,9 +296,9 @@ server.listen(PORT, async (err) => {
     // barcodeGenerator.initialize('main-data', 'records');
     // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
     comService = new BufferedComPortService({
-      path: 'COM3',
+      path: "COM3",
       baudRate: 9600,
-      logDir: 'com_port_logs',
+      logDir: "com_port_logs",
     });
     await comService.initSerialPort();
     await connect();
@@ -312,19 +312,19 @@ server.listen(PORT, async (err) => {
     await scannerController.runContinuousScan(io, comService, { partNumber });
   } catch (error) {
     console.log({ error });
-    emitErrorEvent(io, 'modbus-connection-error', JSON.stringify(error));
-    logger.error('Failed to initialize Modbus connection:', error);
+    emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
+    logger.error("Failed to initialize Modbus connection:", error);
     // await comService.closePort();
   }
 });
 
-server.on('error', (err) => {
+server.on("error", (err) => {
   console.log({ err });
-  logger.error('Server error: %s', err.message);
+  logger.error("Server error: %s", err.message);
 });
 
-server.on('close', () => {
-  logger.info('Server closed');
+server.on("close", () => {
+  logger.info("Server closed");
 });
 
 async function sendModbusDataToClient(socket, readRange) {
@@ -339,11 +339,11 @@ async function sendModbusDataToClient(socket, readRange) {
     logger.info(
       `Read successful for client ${socket.id}: ${JSON.stringify(registers)}`
     );
-    socket.emit('modbus-data', { registers });
+    socket.emit("modbus-data", { registers });
   } catch (error) {
     logger.error(`Error reading registers for client ${socket.id}:`, error);
-    socket.emit('error', {
-      message: 'Failed to read registers',
+    socket.emit("error", {
+      message: "Failed to read registers",
       details: error.message,
     });
   }
@@ -362,25 +362,25 @@ async function sendModbusDataToClientBits(socket, register, bits) {
       bitValues[bit] = await readBit(register, bit);
     }
 
-    socket.emit('modbus-data', {
+    socket.emit("modbus-data", {
       register,
       value: registerValue,
       bits: bitValues,
     });
   } catch (error) {
     logger.error(`Error reading register for client ${socket.id}:`, error);
-    emitErrorEvent(io, 'register-read-failure', 'Failed to read register');
+    emitErrorEvent(io, "register-read-failure", "Failed to read register");
   }
 }
 
-process.on('SIGINT', async () => {
-  logger.info('Received SIGINT. Closing MongoDB connection and exiting...');
+process.on("SIGINT", async () => {
+  logger.info("Received SIGINT. Closing MongoDB connection and exiting...");
   await mongoDbService.disconnect();
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-  logger.info('Received SIGTERM. Closing MongoDB connection and exiting...');
+process.on("SIGTERM", async () => {
+  logger.info("Received SIGTERM. Closing MongoDB connection and exiting...");
   await mongoDbService.disconnect();
   process.exit(0);
 });

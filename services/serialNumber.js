@@ -103,10 +103,18 @@ class SerialNumberGeneratorService {
 
   async getNextDecSerialNumber2() {
     const reset = this.checkAndResetSerialNumber();
+    const now = new Date();
+    const resetTime = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      this.resetHour,
+      this.resetMinute
+    );
 
     // Check if this is the first call after manual reset
     if (this.isManualReset) {
-      this.isManualReset = false; // Reset the flag
+      this.isManualReset = false;
       const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
       this.currentSerialNumber++;
       return serialNumber;
@@ -114,7 +122,13 @@ class SerialNumberGeneratorService {
 
     // Regular flow
     const lastDocument = await this.getLastDocumentFromMongoDB();
-    if (!reset && lastDocument) {
+
+    if (
+      !reset &&
+      lastDocument &&
+      isAfter(new Date(lastDocument.Timestamp), resetTime)
+    ) {
+      // Only use last document's serial if its timestamp is after today's reset time
       this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
       this.lastResetDate = new Date(lastDocument.Timestamp);
       logger.info(

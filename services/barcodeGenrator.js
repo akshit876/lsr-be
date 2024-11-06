@@ -2,29 +2,30 @@ import { format } from "date-fns";
 import SerialNumberGeneratorService from "./serialNumber.js";
 import logger from "../logger.js";
 import mongoDbService from "./mongoDbService.js";
+import { fetchPartNumberAndData } from "../server.js";
 
-async function fetchPartNumberAndData(mongoDbService) {
-  try {
-    // Connect to the MongoDB if not already connected
-    if (!mongoDbService.collection) {
-      await mongoDbService.connect("main-data", "config");
-    }
+// async function fetchPartNumberAndData(mongoDbService) {
+//   try {
+//     // Connect to the MongoDB if not already connected
+//     if (!mongoDbService.collection) {
+//       await mongoDbService.connect("main-data", "config");
+//     }
 
-    // Fetch part number from the 'configs' collection
-    const configData = await mongoDbService.collection.findOne({});
-    const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
+//     // Fetch part number from the 'configs' collection
+//     const configData = await mongoDbService.collection.findOne({});
+//     const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
 
-    // Fetch records from 'main-data' collection (or any other collection as needed)
-    const mainDataRecords = await mongoDbService.collection.find({}).toArray();
+//     // Fetch records from 'main-data' collection (or any other collection as needed)
+//     const mainDataRecords = await mongoDbService.collection.find({}).toArray();
 
-    logger.info(`Fetched part number: ${partNumber} and main data records`);
+//     logger.info(`Fetched part number: ${partNumber} and main data records`);
 
-    return { partNumber, configData };
-  } catch (error) {
-    logger.error("Error fetching part number or data:", error);
-    throw error;
-  }
-}
+//     return { partNumber, configData };
+//   } catch (error) {
+//     logger.error("Error fetching part number or data:", error);
+//     throw error;
+//   }
+// }
 class BarcodeGenerator {
   constructor(shiftUtility) {
     this.shiftUtility = shiftUtility;
