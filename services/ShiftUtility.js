@@ -1,5 +1,6 @@
 import { parse, isAfter, isBefore, addDays, format, set } from "date-fns";
 import mongoDbService from "./mongoDbService.js";
+import logger from "../logger.js";
 
 export function transformMongoObject(shiftConfig) {
   // Create an array of shifts
@@ -22,7 +23,7 @@ export function transformMongoObject(shiftConfig) {
 }
 
 export async function getShiftConfigFromDB() {
-  await mongoDbService.connect("main-data", "config");
+  await mongoDbService.connect("laserU", "shiftconfigs");
   const collection = mongoDbService.collection;
   const config = await collection.findOne({});
   console.log({ config });
@@ -39,13 +40,61 @@ export async function updateShiftConfigInDB(newConfig) {
   );
 }
 class ShiftUtility {
-  constructor(shiftConfig = null) {
-    // Initialize shiftConfig from MongoDB
-    this.shiftConfig = shiftConfig || {
-      A: { start: "06:00", end: "14:30" },
-      B: { start: "14:30", end: "23:00" },
-      C: { start: "23:00", end: "06:00" },
-    };
+  constructor() {
+    this.shiftConfig = null;
+  }
+
+  async initialize() {
+    try {
+      // Connect to MongoDB
+      await mongoDbService.connect("laserU", "shiftconfigs");
+
+      // Fetch shift config
+      const config = await mongoDbService.collection.findOne({});
+
+      if (!config) {
+        // throw new Error("No shift configuration found in database");
+        this.shiftConfig = {
+          A: { start: "06:00", end: "14:30" },
+          B: { start: "14:30", end: "23:00" },
+          C: { start: "23:00", end: "06:00" },
+        };
+      }
+
+      // Transform MongoDB data to required format
+      this.shiftConfig = ShiftUtility.transformMongoObject(config);
+
+      logger.info("Shift utility initialized with config:", this.shiftConfig);
+
+      return this.shiftConfig;
+    } catch (error) {
+      logger.error("Error initializing ShiftUtility:", error);
+      throw error;
+    }
+  }
+
+  static transformMongoObject(mongoObject) {
+    if (!mongoObject || !mongoObject.shifts) {
+      return null;
+    }
+
+    const transformedShifts = {};
+
+    mongoObject.shifts.forEach((shift) => {
+      // Use first character of shift name as the key
+      const shiftKey = shift.name;
+
+      transformedShifts[shiftKey] = {
+        start: shift.startTime,
+        end: shift.endTime,
+      };
+    });
+
+    return transformedShifts;
+  }
+
+  getShifts() {
+    return this.shiftConfig;
   }
 
   setShiftConfig(newConfig) {
@@ -124,12 +173,13 @@ export default ShiftUtility;
 
 async function run() {
   // Create an instance of ShiftUtility
-  const shiftUtil = await getShiftConfigFromDB();
-  console.log({ shiftUtil });
+  const shiftUtil = new ShiftUtility();
+  await shiftUtil.initialize();
+  console.log({ d: shiftUtil.getShifts() });
 
   // Usage example
-  const newConfig = transformMongoObject(shiftUtil);
-  console.log({ newConfig });
+  // const newConfig = transformMongoObject(shiftUtil);
+  // console.log({ newConfig });
 
   // // Fetch the current shift based on the system time
   // const currentShift = shiftUtil.getCurrentShift();
@@ -162,6 +212,6 @@ async function run() {
 }
 
 // // Run the example
-// run().catch((error) => {
-//   console.error("Error running the shift utility:", error);
-// });
+run().catch((error) => {
+  console.error("Error running the shift utility:", error);
+});
