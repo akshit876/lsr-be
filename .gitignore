@@ -50,3 +50,9 @@ next-env.d.ts
 /services/logs/**
 /com_port_logs
 /com_port_logs/**
+
+# Add to .gitignore file
+# Ignore COM port logs
+com_port_logs/
+*.log
+application-*.log
