@@ -73,8 +73,8 @@ class BarcodeGenerator {
       // Map values to fields from config
       const fields = configData.currentModelConfig.fields.map((field) => {
         switch (field.fieldName) {
-          case "PART NO":
-            return { ...field, value: finalPartNumber };
+          // case "PART NO":
+          //   return { ...field, value: finalPartNumber };
           case "Year":
             return { ...field, value: year };
           case "Month":

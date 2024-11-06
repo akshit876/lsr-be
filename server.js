@@ -103,7 +103,7 @@ export async function fetchPartNumberAndData() {
 
     logger.info(`Fetched part number: ${partNumber} and main data records`);
 
-    return { partNumber, mainDataRecords: [] };
+    return { partNumber, configData };
   } catch (error) {
     logger.error("Error fetching part number or data:", error);
     throw error;
