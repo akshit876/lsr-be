@@ -1,7 +1,7 @@
-import { format } from 'date-fns';
-import SerialNumberGeneratorService from './serialNumber.js';
-import logger from '../logger.js';
-import mongoDbService from './mongoDbService.js';
+import { format } from "date-fns";
+import SerialNumberGeneratorService from "./serialNumber.js";
+import logger from "../logger.js";
+import mongoDbService from "./mongoDbService.js";
 
 async function fetchPartNumberAndData(mongoDbService) {
   try {
