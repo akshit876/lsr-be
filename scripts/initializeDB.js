@@ -21,6 +21,7 @@ async function initializeDatabase() {
     const mainDataCollections = {
       config: "config",
       records: "records",
+      serialNoConfig: "serialNoConfig",
     };
 
     // Create Collections for LaserU
@@ -34,6 +35,7 @@ async function initializeDatabase() {
     await Promise.all([
       mainDataDb.createCollection(mainDataCollections.config),
       mainDataDb.createCollection(mainDataCollections.records),
+      mainDataDb.createCollection(mainDataCollections.serialNoConfig),
     ]);
 
     // Initialize Admin User

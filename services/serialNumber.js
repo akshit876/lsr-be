@@ -53,7 +53,21 @@ class SerialNumberGeneratorService {
     }
 
     try {
-      // Connect to MongoDB and fetch the last document
+      // Connect to MongoDB and fetch configurations
+      await MongoDBService.connect("main-data", "serialNoconfig");
+      const config = await MongoDBService.collection.findOne({});
+
+      if (config) {
+        this.initialSerialNumber = parseInt(config.initialValue, 10);
+        this.currentSerialNumber = parseInt(config.initialValue, 10);
+        logger.info(
+          `Initialized with config - Initial: ${this.initialSerialNumber}, Current: ${this.currentSerialNumber}`
+        );
+      } else {
+        logger.info("No configuration found, using default values");
+      }
+
+      // Connect to the main collection for serial number tracking
       await MongoDBService.connect(dbName, collectionName);
       const lastDocument = await this.getLastDocumentFromMongoDB();
 
@@ -61,12 +75,7 @@ class SerialNumberGeneratorService {
         this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
         this.lastResetDate = new Date(lastDocument.Timestamp);
         logger.info(
-          `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
-        );
-      } else {
-        this.currentSerialNumber = 1;
-        logger.info(
-          "No previous documents found, starting with serial number 0001"
+          `Updated serial number to ${this.currentSerialNumber} from last MongoDB document`
         );
       }
 
@@ -184,33 +193,69 @@ class SerialNumberGeneratorService {
   }
 
   // Modified method to accept reset value
-  async manualSerialNumberReset(resetValue) {
+  async manualSerialNumberReset() {
     try {
-      const parsedValue = parseInt(resetValue, 10);
-      if (isNaN(parsedValue) || parsedValue < 0) {
-        throw new Error("Invalid reset value");
+      // First fetch the latest config from MongoDB
+      await MongoDBService.connect('main-data', 'serialNoconfig');
+      const config = await MongoDBService.collection.findOne({});
+      
+      if (!config || !config.resetValue) {
+        throw new Error("Reset value not found in configuration");
       }
 
-      this.currentSerialNumber = parsedValue;
+      const resetValue = parseInt(config.resetValue, 10);
+      if (isNaN(resetValue) || resetValue < 0) {
+        throw new Error("Invalid reset value in configuration");
+      }
+
+      this.currentSerialNumber = resetValue;
       this.lastResetDate = new Date();
       this.isManualReset = true; // Set flag when manual reset occurs
 
       logger.info(
-        `Serial number manually reset to ${parsedValue
-          .toString()
-          .padStart(4, "0")} at ${format(
+        `Serial number manually reset to ${resetValue.toString().padStart(4, '0')} at ${format(
           this.lastResetDate,
-          "yyyy-MM-dd HH:mm:ss"
+          'yyyy-MM-dd HH:mm:ss'
         )}`
       );
 
       return {
         success: true,
         currentValue: this.currentSerialNumber,
-        resetTime: this.lastResetDate,
+        resetTime: this.lastResetDate
       };
     } catch (error) {
       logger.error("Error during manual serial number reset:", error);
+      throw error;
+    }
+  }
+
+  async updateConfiguration(config) {
+    try {
+      await MongoDBService.connect("main-data", "serialNoconfig");
+      await MongoDBService.collection.updateOne(
+        {}, // Update first document
+        {
+          $set: {
+            currentValue: config.currentValue?.toString() || "0",
+            initialValue: config.initialValue?.toString() || "0",
+            resetInterval: config.resetInterval || "daily",
+            resetValue: config.resetValue?.toString() || "0",
+            updatedAt: new Date().toISOString(),
+            updatedBy: config.updatedBy || "system",
+          },
+        },
+        { upsert: true }
+      );
+
+      // Update local values
+      this.initialSerialNumber = parseInt(config.initialValue, 10);
+      this.currentSerialNumber = parseInt(config.currentValue, 10);
+
+      logger.info("Serial number configuration updated successfully");
+      return true;
+    } catch (error) {
+      logger.error("Error updating serial number configuration:", error);
       throw error;
     }
   }

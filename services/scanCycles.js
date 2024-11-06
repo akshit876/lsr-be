@@ -15,6 +15,7 @@ import { promisify } from "util";
 import fs from "fs";
 import { format } from "date-fns";
 import { Worker } from "worker_threads";
+import serialNumberService from "./serialNumber.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -604,6 +605,28 @@ class ScannerController {
         error
       );
       throw error;
+    }
+  }
+
+  async handleManualReset() {
+    try {
+      logger.section("Manual Serial Number Reset");
+      logger.info("🔄 Manual reset triggered");
+
+      const result = await serialNumberService.manualSerialNumberReset();
+      logger.success(`Serial number reset to ${result.currentValue}`);
+
+      return {
+        success: true,
+        currentValue: result.currentValue,
+        resetTime: result.resetTime,
+      };
+    } catch (error) {
+      logger.error("❌ Error during manual reset:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
     }
   }
 }

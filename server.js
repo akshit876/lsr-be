@@ -1,17 +1,13 @@
 import { createServer } from "http";
-import fs from "fs";
+import { MongoClient } from "mongodb";
 import morgan from "morgan";
+import { dirname } from "path";
 import { Server } from "socket.io";
-import logger from "./logger.js";
-import {
-  handleFirstScan,
-  handleSecondScan,
-  watchCodeFile,
-} from "./services/serialPortService.js";
-import { MockSerialPort } from "./services/mockSerialPort.js";
 import { fileURLToPath } from "url";
-import path, { dirname } from "path";
-import { getCurrentDate } from "./services/scanUtils.js";
+import logger from "./logger.js";
+import BufferedComPortService from "./services/ComPortService.js";
+import cronService from "./services/cronService.js";
+import { manualRun } from "./services/manualRunService.js";
 import {
   connect,
   readBit,
@@ -19,15 +15,9 @@ import {
   writeBit,
   writeRegister,
 } from "./services/modbus.js";
-import { manualRun } from "./services/manualRunService.js";
 import mongoDbService from "./services/mongoDbService.js";
-import { runContinuousScan } from "./services/testCycle.js";
-import cronService from "./services/cronService.js";
-import ShiftUtility from "./services/ShiftUtility.js";
-import BufferedComPortService from "./services/ComPortService.js";
-import BarcodeGenerator from "./services/barcodeGenrator.js";
-import { MongoClient } from "mongodb";
 import { scannerController } from "./services/scanCycles.js";
+import serialNumberService from "./services/serialNumber.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -264,6 +254,67 @@ io.on("connection", (socket) => {
         success: false,
         setting: data.setting,
         message: error.message,
+      });
+    }
+  });
+
+  // Handle scanner trigger event
+  socket.on("scanner_trigger", async () => {
+    try {
+      logger.info("Received scanner trigger request");
+      await writeBit(1700, 0, 1);
+      logger.success("Scanner trigger bit (1700.0) set successfully");
+
+      socket.emit("scanner_trigger_response", {
+        success: true,
+        message: "Scanner triggered successfully",
+      });
+    } catch (error) {
+      logger.error("Error triggering scanner:", error);
+      socket.emit("scanner_trigger_response", {
+        success: false,
+        message: error.message,
+      });
+    }
+  });
+
+  // Handle mark on event
+  socket.on("mark_on", async () => {
+    try {
+      logger.info("Received mark on request");
+      await writeBit(1800, 0, 1);
+      logger.success("Mark on bit (1800.0) set successfully");
+
+      socket.emit("mark_on_response", {
+        success: true,
+        message: "Mark on triggered successfully",
+      });
+    } catch (error) {
+      logger.error("Error triggering mark on:", error);
+      socket.emit("mark_on_response", {
+        success: false,
+        message: error.message,
+      });
+    }
+  });
+
+  socket.on("triggerManualReset", async () => {
+    try {
+      logger.info("🔄 Manual serial number reset triggered");
+      const result = await serialNumberService.manualSerialNumberReset();
+
+      socket.emit("resetComplete", {
+        success: true,
+        currentValue: result.currentValue,
+        resetTime: result.resetTime,
+      });
+
+      logger.success(`Serial number reset to ${result.currentValue}`);
+    } catch (error) {
+      logger.error("❌ Error during manual reset:", error);
+      socket.emit("resetComplete", {
+        success: false,
+        error: error.message,
       });
     }
   });
