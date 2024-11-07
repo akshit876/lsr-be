@@ -19,7 +19,9 @@ class ModbusConnection {
   }
 
   async connect() {
-    if (this.isConnected) return;
+    if (this.isConnected) {
+      return;
+    }
 
     try {
       await this.client.connectTCP(MODBUS_IP, { port: MODBUS_PORT });
@@ -57,18 +59,20 @@ class ModbusConnection {
     await this.ensureConnection();
     try {
       const { data } = await this.client.readHoldingRegisters(address, len);
-      if (isPrint)
-        if (!conti && !bit)
+      if (isPrint) {
+        if (!conti && !bit) {
           logger.info(
             `Read registers starting at address ${address} (length: ${len}): ${data}`
           );
-        else {
+        } else {
           logger.info(
             `Read registers starting at address ${address} (length: ${len}) (bit : ${bit}): ${data}`
           );
         }
+      }
       return data;
     } catch (error) {
+      console.log({ error });
       emitErrorEvent(
         this.socket,
         "MODBUS_READ_ERROR",
@@ -223,10 +227,11 @@ class ModbusConnection {
       //   `16-bit register value for register ${address}: ${binaryString}`
       // );
       // console.log(`Bit array for register ${address}:`, bitArray);
-      if (conti)
+      if (conti) {
         logger.info(
           `Read bit ${bitPosition} from register ${address}: ${bitValue}`
         );
+      }
       return bitValue;
     } catch (error) {
       console.log({ error });

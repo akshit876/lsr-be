@@ -352,7 +352,7 @@ server.listen(PORT, async (err) => {
       logDir: "com_port_logs",
     });
     await comService.initSerialPort();
-    await connect();
+    // await connect();
     // Fetch part number and pass it to runContinuousScan
     const { partNumber } = await fetchPartNumberAndData();
 
