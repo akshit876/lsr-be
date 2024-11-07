@@ -1,13 +1,17 @@
 import { createServer } from "http";
-import { MongoClient } from "mongodb";
+import fs from "fs";
 import morgan from "morgan";
-import { dirname } from "path";
 import { Server } from "socket.io";
-import { fileURLToPath } from "url";
 import logger from "./logger.js";
-import BufferedComPortService from "./services/ComPortService.js";
-import cronService from "./services/cronService.js";
-import { manualRun } from "./services/manualRunService.js";
+import {
+  handleFirstScan,
+  handleSecondScan,
+  watchCodeFile,
+} from "./services/serialPortService.js";
+import { MockSerialPort } from "./services/mockSerialPort.js";
+import { fileURLToPath } from "url";
+import path, { dirname } from "path";
+import { getCurrentDate } from "./services/scanUtils.js";
 import {
   connect,
   readBit,
@@ -15,9 +19,16 @@ import {
   writeBit,
   writeRegister,
 } from "./services/modbus.js";
+import { manualRun } from "./services/manualRunService.js";
 import mongoDbService from "./services/mongoDbService.js";
-import { scannerController } from "./services/scanCycles.js";
+import { runContinuousScan } from "./services/testCycle.js";
+import cronService from "./services/cronService.js";
+import ShiftUtility from "./services/ShiftUtility.js";
+import BufferedComPortService from "./services/ComPortService.js";
+import BarcodeGenerator from "./services/barcodeGenrator.js";
+import { MongoClient } from "mongodb";
 import serialNumberService from "./services/serialNumber.js";
+import { scannerController } from "./services/scanCycles.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

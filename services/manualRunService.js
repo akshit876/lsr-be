@@ -2,7 +2,7 @@ import {
   readRegister,
   readRegisterAndProvideASCII,
   writeBit,
-  connect
+  connect,
 } from "./modbus.js";
 import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
@@ -85,4 +85,4 @@ async function runTest() {
     // logger.error(errorMessage);
   }
 }
-runTest();
+// runTest();
