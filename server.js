@@ -309,18 +309,30 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("triggerManualReset", async () => {
+  socket.on("triggerManualReset", async (serialConfig) => {
     try {
-      logger.info("🔄 Manual serial number reset triggered");
-      const result = await serialNumberService.manualSerialNumberReset();
+      logger.info(
+        "🔄 Manual serial number reset triggered with config:",
+        serialConfig
+      );
+
+      // Pass the resetValue from frontend to the manualSerialNumberReset method
+      const result = await serialNumberService.manualSerialNumberReset(
+        serialConfig.resetValue
+      );
 
       socket.emit("resetComplete", {
         success: true,
         currentValue: result.currentValue,
         resetTime: result.resetTime,
+        resetValue: serialConfig.resetValue,
+        initialValue: serialConfig.initialValue,
+        resetInterval: serialConfig.resetInterval,
       });
 
-      logger.success(`Serial number reset to ${result.currentValue}`);
+      logger.success(
+        `Serial number reset to ${result.currentValue} with reset value ${serialConfig.resetValue}`
+      );
     } catch (error) {
       logger.error("❌ Error during manual reset:", error);
       socket.emit("resetComplete", {

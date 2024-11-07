@@ -193,37 +193,55 @@ class SerialNumberGeneratorService {
   }
 
   // Modified method to accept reset value
-  async manualSerialNumberReset() {
+  // async manualSerialNumberReset() {
+  //   try {
+  //     // First fetch the latest config from MongoDB
+  //     await MongoDBService.connect("main-data", "serialNoconfig");
+  //     const config = await MongoDBService.collection.findOne({});
+
+  //     if (!config || !config.resetValue) {
+  //       throw new Error("Reset value not found in configuration");
+  //     }
+
+  //     const resetValue = parseInt(config.resetValue, 10);
+  //     if (isNaN(resetValue) || resetValue < 0) {
+  //       throw new Error("Invalid reset value in configuration");
+  //     }
+
+  //     this.currentSerialNumber = resetValue;
+  //     this.lastResetDate = new Date();
+  //     this.isManualReset = true; // Set flag when manual reset occurs
+  //     this.hasResetEventOccurred = true; // Set the flag when reset occurs
+
+  //     logger.info(
+  //       `Serial number manually reset to ${resetValue.toString().padStart(4, "0")} at ${format(
+  //         this.lastResetDate,
+  //         "yyyy-MM-dd HH:mm:ss"
+  //       )}`
+  //     );
+
+  //     return {
+  //       success: true,
+  //       currentValue: this.currentSerialNumber,
+  //       resetTime: this.lastResetDate,
+  //     };
+  //   } catch (error) {
+  //     logger.error("Error during manual serial number reset:", error);
+  //     throw error;
+  //   }
+  // }
+
+  async manualSerialNumberReset(resetValue) {
     try {
-      // First fetch the latest config from MongoDB
-      await MongoDBService.connect("main-data", "serialNoconfig");
-      const config = await MongoDBService.collection.findOne({});
-
-      if (!config || !config.resetValue) {
-        throw new Error("Reset value not found in configuration");
-      }
-
-      const resetValue = parseInt(config.resetValue, 10);
-      if (isNaN(resetValue) || resetValue < 0) {
-        throw new Error("Invalid reset value in configuration");
-      }
-
-      this.currentSerialNumber = resetValue;
+      // Use the resetValue passed from frontend instead of fetching from DB
+      this.currentSerialNumber = parseInt(resetValue, 10);
       this.lastResetDate = new Date();
-      this.isManualReset = true; // Set flag when manual reset occurs
-      this.hasResetEventOccurred = true; // Set the flag when reset occurs
-
-      logger.info(
-        `Serial number manually reset to ${resetValue.toString().padStart(4, "0")} at ${format(
-          this.lastResetDate,
-          "yyyy-MM-dd HH:mm:ss"
-        )}`
-      );
+      this.isManualReset = true;
+      this.hasResetEventOccurred = true;
 
       return {
-        success: true,
         currentValue: this.currentSerialNumber,
-        resetTime: this.lastResetDate,
+        resetTime: this.lastResetDate
       };
     } catch (error) {
       logger.error("Error during manual serial number reset:", error);
