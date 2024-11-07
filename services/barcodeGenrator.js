@@ -83,7 +83,7 @@ class BarcodeGenerator {
             return { ...field, value: day };
           case "Julian Date":
             return { ...field, value: julianDay };
-          case "Serial No":
+          case "Serial Number":
             return { ...field, value: serialString };
           case "Shift":
             return { ...field, value: shift };
