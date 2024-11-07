@@ -81,11 +81,11 @@ class BarcodeGenerator {
             return { ...field, value: month };
           case "Date":
             return { ...field, value: day };
-          case "JULIAN DATE":
+          case "Julian Date":
             return { ...field, value: julianDay };
-          case "SERIAL NO":
+          case "Serial No":
             return { ...field, value: serialString };
-          case "SHIFT":
+          case "Shift":
             return { ...field, value: shift };
           // case "SUPPLIER CODE":
           //   return { ...field, value: "04101" }; // Hardcoded as per original

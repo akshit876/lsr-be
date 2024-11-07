@@ -273,8 +273,8 @@ io.on("connection", (socket) => {
   socket.on("scanner_trigger", async () => {
     try {
       logger.info("Received scanner trigger request");
-      await writeBit(1700, 0, 1);
-      logger.success("Scanner trigger bit (1700.0) set successfully");
+      await writeBit(1481, 0, 1);
+      logger.success("Scanner trigger bit (1481.0) set successfully");
 
       socket.emit("scanner_trigger_response", {
         success: true,
@@ -293,8 +293,8 @@ io.on("connection", (socket) => {
   socket.on("mark_on", async () => {
     try {
       logger.info("Received mark on request");
-      await writeBit(1800, 0, 1);
-      logger.success("Mark on bit (1800.0) set successfully");
+      await writeBit(1480, 0, 1);
+      logger.success("Mark on bit (1480.0) set successfully");
 
       socket.emit("mark_on_response", {
         success: true,
@@ -303,6 +303,26 @@ io.on("connection", (socket) => {
     } catch (error) {
       logger.error("Error triggering mark on:", error);
       socket.emit("mark_on_response", {
+        success: false,
+        message: error.message,
+      });
+    }
+  });
+
+  // Handle LIGHT on event
+  socket.on("light_on", async () => {
+    try {
+      logger.info("Received LIGHT on request");
+      await writeBit(1482, 0, 1);
+      logger.success("LIGHT on bit (1482.0) set successfully");
+
+      socket.emit("LIGHT_on_response", {
+        success: true,
+        message: "LIGHT on triggered successfully",
+      });
+    } catch (error) {
+      logger.error("Error triggering LIGHT on:", error);
+      socket.emit("LIGHT_on_response", {
         success: false,
         message: error.message,
       });
