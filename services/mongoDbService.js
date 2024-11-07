@@ -31,8 +31,17 @@ class MongoDBService {
     }
   }
 
-  async insertRecord(data) {
+  async insertRecord(data, dbName = "main-data", collectionName = "records") {
     try {
+      // Check if we need to connect or reconnect with the specified db and collection
+      if (
+        !this.collection ||
+        this.db?.databaseName !== dbName ||
+        this.collection.collectionName !== collectionName
+      ) {
+        await this.connect(dbName, collectionName);
+      }
+
       const result = await this.collection.insertOne(data);
       logger.info(`Inserted record with ID: ${result.insertedId}`);
       return result.insertedId;
@@ -141,6 +150,7 @@ class MongoDBService {
         ScannerData: item?.ScannerData,
         Shift: item?.Shift,
         Result: item?.Result,
+        User: item?.User,
         Date: item?.Date,
       }));
 
@@ -153,6 +163,38 @@ class MongoDBService {
       console.error({ error });
       logger.error("Error in sendMongoDbDataToClient: ", error.message);
       socket.emit("error", { message: "Error fetching data from database" });
+    }
+  }
+
+  async getUserDetails(userId = null) {
+    try {
+      // Connect to the laserU database
+      const db = this.client.db("laserU");
+      const collection = db.collection("usersessionlogs");
+
+      // Find the most recent session log for the given userId, sorted by loginTime
+      const userDetails = await collection
+        // .find({ userId: userId })
+        .sort({ loginTime: -1 }) // Sort by loginTime in descending order
+        .limit(1) // Limit to the most recent entry
+        .toArray();
+
+      if (userDetails.length === 0) {
+        throw new Error(`User with ID ${userId} not found`);
+      }
+
+      const latestUserDetails = userDetails[0];
+      return {
+        email: latestUserDetails.email,
+        role: latestUserDetails.role,
+        loginTime: latestUserDetails.loginTime,
+        userAgent: latestUserDetails.userAgent,
+        ipAddress: latestUserDetails.ipAddress,
+        status: latestUserDetails.status,
+      };
+    } catch (error) {
+      logger.error("Error fetching user details:", error);
+      throw error;
     }
   }
 }

@@ -295,16 +295,20 @@ class ScannerController {
     const now = new Date();
     const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
 
-    const data = {
-      Timestamp: new Date(timestamp),
-      SerialNumber: serialNumber,
-      MarkingData: markingData,
-      ScannerData: scannerData,
-      Result: result ? "OK" : "NG",
-    };
-
     try {
-      await mongoDbService.insertRecord(data);
+      // Fetch user details from the usersessionlogs collection
+      const userDetails = await mongoDbService.getUserDetails();
+
+      const data = {
+        Timestamp: new Date(timestamp),
+        SerialNumber: serialNumber,
+        MarkingData: markingData,
+        ScannerData: scannerData,
+        Result: result ? "OK" : "NG",
+        User: userDetails?.email || "Unknown",
+      };
+
+      await mongoDbService.insertRecord(data, "main-data", "records");
       logger.info("Data saved to MongoDB");
 
       if (io) {
@@ -481,6 +485,7 @@ class ScannerController {
           markingData: text,
           scannerData: secondScannerData,
           result: isDataMatching,
+          userId: "user-id", // Replace "user-id" with actual user ID
         });
         logger.success("Data saved successfully");
 
