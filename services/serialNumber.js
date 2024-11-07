@@ -12,6 +12,7 @@ class SerialNumberGeneratorService {
     this.resetMinute = 0;
     this.isInitialized = false;
     this.isManualReset = false;
+    this.hasResetEventOccurred = false;
   }
 
   // Add new method to update initial serial number
@@ -122,14 +123,15 @@ class SerialNumberGeneratorService {
     );
 
     // Check if this is the first call after manual reset
-    if (this.isManualReset) {
+    if (this.isManualReset || this.hasResetEventOccurred) {
       this.isManualReset = false;
+      this.hasResetEventOccurred = false; // Reset the flag after use
       const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
       this.currentSerialNumber++;
       return serialNumber;
     }
 
-    // Regular flow
+    // Regular flow - only execute if no reset event has occurred
     const lastDocument = await this.getLastDocumentFromMongoDB();
 
     if (
@@ -137,18 +139,16 @@ class SerialNumberGeneratorService {
       lastDocument &&
       isAfter(new Date(lastDocument.Timestamp), resetTime)
     ) {
-      // Only use last document's serial if its timestamp is after today's reset time
       this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
       this.lastResetDate = new Date(lastDocument.Timestamp);
       logger.info(
         `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
       );
-      return this.currentSerialNumber.toString().padStart(4, "0");
-    } else {
-      const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
-      this.currentSerialNumber++;
-      return serialNumber;
     }
+
+    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
+    this.currentSerialNumber++;
+    return serialNumber;
   }
 
   decSerialNumber() {
@@ -196,9 +196,9 @@ class SerialNumberGeneratorService {
   async manualSerialNumberReset() {
     try {
       // First fetch the latest config from MongoDB
-      await MongoDBService.connect('main-data', 'serialNoconfig');
+      await MongoDBService.connect("main-data", "serialNoconfig");
       const config = await MongoDBService.collection.findOne({});
-      
+
       if (!config || !config.resetValue) {
         throw new Error("Reset value not found in configuration");
       }
@@ -211,18 +211,19 @@ class SerialNumberGeneratorService {
       this.currentSerialNumber = resetValue;
       this.lastResetDate = new Date();
       this.isManualReset = true; // Set flag when manual reset occurs
+      this.hasResetEventOccurred = true; // Set the flag when reset occurs
 
       logger.info(
-        `Serial number manually reset to ${resetValue.toString().padStart(4, '0')} at ${format(
+        `Serial number manually reset to ${resetValue.toString().padStart(4, "0")} at ${format(
           this.lastResetDate,
-          'yyyy-MM-dd HH:mm:ss'
+          "yyyy-MM-dd HH:mm:ss"
         )}`
       );
 
       return {
         success: true,
         currentValue: this.currentSerialNumber,
-        resetTime: this.lastResetDate
+        resetTime: this.lastResetDate,
       };
     } catch (error) {
       logger.error("Error during manual serial number reset:", error);
