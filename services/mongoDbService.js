@@ -114,19 +114,23 @@ class MongoDBService {
     }
   }
 
-  async sendMongoDbDataToClient(socket, dbName, collectionName) {
+  async sendMongoDbDataToClient(socket) {
     try {
+      // Always use main-data and records
+      const DB_NAME = "main-data";
+      const COLLECTION_NAME = "records";
+
       // Check if we're connected to the database, if not, try to connect
       if (!this.collection) {
         logger.info(
           "MongoDB connection not established. Attempting to connect..."
         );
-        if (!dbName || !collectionName) {
-          throw new Error(
-            "Database name and collection name are required for connection"
-          );
-        }
-        await this.connect(dbName, collectionName);
+        await this.connect(DB_NAME, COLLECTION_NAME);
+      } else {
+        // Even if connected, ensure we're using the correct database and collection
+        this.db = this.client.db(DB_NAME);
+        this.collection = this.db.collection(COLLECTION_NAME);
+        logger.info("Ensuring connection to main-data.records collection");
       }
 
       // Fetch data from MongoDB, sorted in descending order by Timestamp
@@ -154,13 +158,10 @@ class MongoDBService {
         Date: item?.Date,
       }));
 
-      // console.log({ transformedData });
-
       // Send the data to the client
       socket.emit("csv-data", { data: transformedData });
       logger.info(`Emitted MongoDB data to client: ${socket.id}`);
     } catch (error) {
-      console.error({ error });
       logger.error("Error in sendMongoDbDataToClient: ", error.message);
       socket.emit("error", { message: "Error fetching data from database" });
     }
