@@ -261,6 +261,14 @@ class ScannerController {
       await this.clearCodeFile(CODE_FILE_PATH);
       fs.writeFileSync(CODE_FILE_PATH, ocrDataString, "utf8");
       logger.info("OCR data written to code.txt");
+
+      // Emit marking data to UI
+      if (this.io) {
+        this.io.emit("marking_data", {
+          timestamp: new Date(),
+          data: ocrDataString,
+        });
+      }
     } catch (error) {
       logger.error(`Error writing OCR data to file: ${error.message}`);
       throw error;
@@ -342,6 +350,7 @@ class ScannerController {
   async runContinuousScan(io = null, comService, { partNumber }) {
     let isRunning = true;
     let c = 0;
+    this.io = io;
 
     try {
       logger.section("Scanner Initialization");
@@ -551,11 +560,6 @@ class ScannerController {
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
 
     try {
-      // TEMPORARY: Return hardcoded "NG" for testing
-      // logger.warn(`⚠️ Using hardcoded "NG" value for ${scannerLabel.toLowerCase()} scanner (testing mode)`);
-      // return 'NG';
-
-      //  PRODUCTION CODE (Currently Disabled)
       logger.info(
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
@@ -565,6 +569,16 @@ class ScannerController {
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
+
+          // Emit scanner read event to UI
+          if (this.io) {
+            this.io.emit("scanner_read", {
+              timestamp: new Date(),
+              scannerType: scannerLabel,
+              data: data,
+            });
+          }
+
           clearTimeout(timeoutId);
           resolve(data);
           this.comService.off("dataGot", dataHandler);
