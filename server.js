@@ -122,6 +122,9 @@ const io = new Server(server, {
 
 io.on("connection", (socket) => {
   let intervalId = null;
+  let lightTimeoutId = null;
+  let scannerTimeoutId = null;
+  let markTimeoutId = null;
   logger.info(`New client connected: ${socket.id}`);
 
   socket.on("request-csv-data", () => {
@@ -153,6 +156,15 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     if (intervalId) {
       clearInterval(intervalId);
+    }
+    if (lightTimeoutId) {
+      clearTimeout(lightTimeoutId);
+    }
+    if (scannerTimeoutId) {
+      clearTimeout(scannerTimeoutId);
+    }
+    if (markTimeoutId) {
+      clearTimeout(markTimeoutId);
     }
     logger.info(`Client disconnected: ${socket.id}`);
   });
@@ -274,7 +286,22 @@ io.on("connection", (socket) => {
     try {
       logger.info("Received scanner trigger request");
       await writeBit(1481, 0, 1);
-      logger.success("Scanner trigger bit (1481.0) set successfully");
+
+      // Clear any existing timeout
+      if (scannerTimeoutId) {
+        clearTimeout(scannerTimeoutId);
+      }
+
+      // Set new timeout to clear the bit after 300ms
+      scannerTimeoutId = setTimeout(async () => {
+        try {
+          await writeBit(1481, 0, 0);
+          logger.info("Scanner trigger bit cleared after timeout");
+          scannerTimeoutId = null;
+        } catch (error) {
+          logger.error("Error clearing scanner trigger bit:", error);
+        }
+      }, 300);
 
       socket.emit("scanner_trigger_response", {
         success: true,
@@ -294,7 +321,22 @@ io.on("connection", (socket) => {
     try {
       logger.info("Received mark on request");
       await writeBit(1480, 0, 1);
-      logger.success("Mark on bit (1480.0) set successfully");
+
+      // Clear any existing timeout
+      if (markTimeoutId) {
+        clearTimeout(markTimeoutId);
+      }
+
+      // Set new timeout to clear the bit after 300ms
+      markTimeoutId = setTimeout(async () => {
+        try {
+          await writeBit(1480, 0, 0);
+          logger.info("Mark on bit cleared after timeout");
+          markTimeoutId = null;
+        } catch (error) {
+          logger.error("Error clearing mark on bit:", error);
+        }
+      }, 300);
 
       socket.emit("mark_on_response", {
         success: true,
@@ -314,7 +356,22 @@ io.on("connection", (socket) => {
     try {
       logger.info("Received LIGHT on request");
       await writeBit(1482, 0, 1);
-      logger.success("LIGHT on bit (1482.0) set successfully");
+
+      // Clear any existing timeout
+      if (lightTimeoutId) {
+        clearTimeout(lightTimeoutId);
+      }
+
+      // Set new timeout to clear the bit after 200ms
+      lightTimeoutId = setTimeout(async () => {
+        try {
+          await writeBit(1482, 0, 0);
+          logger.info("LIGHT bit cleared after timeout");
+          lightTimeoutId = null;
+        } catch (error) {
+          logger.error("Error clearing LIGHT bit:", error);
+        }
+      }, 200);
 
       socket.emit("LIGHT_on_response", {
         success: true,

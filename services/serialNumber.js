@@ -61,6 +61,8 @@ class SerialNumberGeneratorService {
       if (config) {
         this.initialSerialNumber = parseInt(config.initialValue, 10);
         this.currentSerialNumber = parseInt(config.initialValue, 10);
+        this.resetHour = config.resetTime.split(":")[0];
+        this.resetMinute = config.resetTime.split(":")[1];
         logger.info(
           `Initialized with config - Initial: ${this.initialSerialNumber}, Current: ${this.currentSerialNumber}`
         );
@@ -241,7 +243,7 @@ class SerialNumberGeneratorService {
 
       return {
         currentValue: this.currentSerialNumber,
-        resetTime: this.lastResetDate
+        resetTime: this.lastResetDate,
       };
     } catch (error) {
       logger.error("Error during manual serial number reset:", error);

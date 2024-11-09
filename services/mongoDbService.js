@@ -174,7 +174,7 @@ class MongoDBService {
 
       // Find the most recent session log for the given userId, sorted by loginTime
       const userDetails = await collection
-        // .find({ userId: userId })
+        .find({})
         .sort({ loginTime: -1 }) // Sort by loginTime in descending order
         .limit(1) // Limit to the most recent entry
         .toArray();

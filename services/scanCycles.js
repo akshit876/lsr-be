@@ -411,7 +411,7 @@ class ScannerController {
           logger.error("First scan data is OK, stopping machine");
           logger.info("✍️ Writing bit 1414.6 to signal OK scan");
           await writeBitsWithRest(1414, 6, 1, 200, false);
-          await this.resetBits2();
+          // await this.resetBits2();
           continue;
         }
 
