@@ -418,6 +418,47 @@ io.on("connection", (socket) => {
       });
     }
   });
+
+  // Handle reset time update
+  socket.on("updateResetTime", async (resetTimeConfig) => {
+    try {
+      logger.info(
+        "🕒 Serial number reset time update triggered with config:",
+        resetTimeConfig
+      );
+
+      // Validate input
+      const hour = parseInt(resetTimeConfig.hour);
+      const minute = parseInt(resetTimeConfig.minute);
+
+      if (isNaN(hour) || hour < 0 || hour > 23) {
+        throw new Error("Invalid hour. Must be between 0 and 23");
+      }
+      if (isNaN(minute) || minute < 0 || minute > 59) {
+        throw new Error("Invalid minute. Must be between 0 and 59");
+      }
+
+      // Update reset time in the scanner controller
+      await scannerController.updateResetTime(hour, minute);
+
+      socket.emit("resetTimeComplete", {
+        success: true,
+        hour: hour,
+        minute: minute,
+        message: `Reset time updated to ${hour}:${minute.toString().padStart(2, "0")}`,
+      });
+
+      logger.success(
+        `Serial number reset time updated to ${hour}:${minute.toString().padStart(2, "0")}`
+      );
+    } catch (error) {
+      logger.error("❌ Error updating reset time:", error);
+      socket.emit("resetTimeComplete", {
+        success: false,
+        error: error.message,
+      });
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3002;

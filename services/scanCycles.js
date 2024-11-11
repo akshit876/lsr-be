@@ -648,6 +648,21 @@ class ScannerController {
       };
     }
   }
+
+  async updateResetTime(hour, minute) {
+    try {
+      logger.info(`Updating reset time to ${hour}:${minute}`);
+
+      // Update the reset time in the barcode generator
+      this.barcodeGenerator.setResetTime(hour, minute);
+
+      logger.success("Reset time updated successfully");
+      return { hour, minute };
+    } catch (error) {
+      logger.error("Error updating reset time:", error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
