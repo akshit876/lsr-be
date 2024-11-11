@@ -8,45 +8,43 @@ async function initializeDatabase() {
     const client = await MongoClient.connect(MONGODB_URI);
     console.log("Connected to MongoDB");
 
-    // Initialize LaserU Database
-    const laserUDb = client.db("laserU");
-    const laserUCollections = {
+    // Use only main-data database
+    const mainDataDb = client.db("main-data");
+
+    // Define all collections to be created in main-data
+    const collections = {
+      // Original main-data collections
+      config: "config",
+      records: "records",
+      serialNoConfig: "serialNoConfig",
+
+      // Moved from laserU
       partnumberconfigs: "partnumberconfigs",
       shiftconfigs: "shiftconfigs",
       users: "users",
     };
 
-    // Initialize Main-Data Database
-    const mainDataDb = client.db("main-data");
-    const mainDataCollections = {
-      config: "config",
-      records: "records",
-      serialNoConfig: "serialNoConfig",
-    };
+    // Create all collections in main-data
+    await Promise.all(
+      Object.values(collections).map((collectionName) =>
+        mainDataDb.createCollection(collectionName).catch((error) => {
+          if (error.code !== 48) {
+            // Ignore "collection already exists" error
+            throw error;
+          }
+        })
+      )
+    );
 
-    // Create Collections for LaserU
-    await Promise.all([
-      laserUDb.createCollection(laserUCollections.partnumberconfigs),
-      laserUDb.createCollection(laserUCollections.shiftconfigs),
-      laserUDb.createCollection(laserUCollections.users),
-    ]);
-
-    // Create Collections for Main-Data
-    await Promise.all([
-      mainDataDb.createCollection(mainDataCollections.config),
-      mainDataDb.createCollection(mainDataCollections.records),
-      mainDataDb.createCollection(mainDataCollections.serialNoConfig),
-    ]);
-
-    // Initialize Admin User
-    const adminExists = await laserUDb
-      .collection(laserUCollections.users)
+    // Initialize Admin User in main-data.users
+    const adminExists = await mainDataDb
+      .collection(collections.users)
       .findOne({ email: "super" });
 
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash("admin", 10);
 
-      await laserUDb.collection(laserUCollections.users).insertOne({
+      await mainDataDb.collection(collections.users).insertOne({
         name: "Super Admin",
         email: "super",
         password: hashedPassword,
@@ -56,9 +54,9 @@ async function initializeDatabase() {
         updatedAt: new Date(),
       });
 
-      console.log("Admin user created successfully");
+      console.log("Admin user created successfully in main-data.users");
     } else {
-      console.log("Admin user already exists");
+      console.log("Admin user already exists in main-data.users");
     }
 
     console.log("Database initialization completed successfully");

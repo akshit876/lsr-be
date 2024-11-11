@@ -23,7 +23,7 @@ export function transformMongoObject(shiftConfig) {
 }
 
 export async function getShiftConfigFromDB() {
-  await mongoDbService.connect("laserU", "shiftconfigs");
+  await mongoDbService.connect("main-data", "config");
   const collection = mongoDbService.collection;
   const config = await collection.findOne({});
   console.log({ config });
@@ -47,7 +47,7 @@ class ShiftUtility {
   async initialize() {
     try {
       // Connect to MongoDB
-      await mongoDbService.connect("laserU", "shiftconfigs");
+      await mongoDbService.connect("main-data", "shiftconfigs");
 
       // Fetch shift config
       const config = await mongoDbService.collection.findOne({});
