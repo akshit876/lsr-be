@@ -204,34 +204,49 @@ class ScannerController {
     }
   }
 
-  async checkResetOrBit(register, bit, value) {
+  async checkResetOrBit(register, bit, value, timeout = 100 * 1000) {
     logger.info(
       "-----------------------------------------------------------------------------------------------------------"
     );
-    logger.debug(`awaiting ${register} , bit ${bit}`);
+    logger.debug(
+      `Awaiting ${register}.${bit} to be ${value} (timeout: ${timeout}ms)`
+    );
     logger.info(
       "-----------------------------------------------------------------------------------------------------------"
     );
 
     return new Promise(async (resolve) => {
-      // eslint-disable-next-line prefer-const
       let timeoutId;
-      // eslint-disable-next-line prefer-const
       let intervalId;
+      let lastResetTime = 0;
+      const RESET_COOLDOWN = 2000; // 2 second cooldown between resets
 
       const cleanup = () => {
         clearTimeout(timeoutId);
         clearInterval(intervalId);
       };
 
+      timeoutId = setTimeout(() => {
+        cleanup();
+        logger.warn(`⏰ Timeout waiting for ${register}.${bit} to be ${value}`);
+        resolve("timeout");
+      }, timeout);
+
       const checkReset = async () => {
         try {
           const resetSignal = await readBit(1600, 0);
-          if (resetSignal) {
-            cleanup();
-            logger.info(`Reset detected while waiting for ${register}.${bit}.`);
+          const currentTime = Date.now();
+
+          if (resetSignal && currentTime - lastResetTime > RESET_COOLDOWN) {
+            lastResetTime = currentTime;
+            logger.info(
+              `Reset signal (1600.0) detected, with cooldown protection`
+            );
             await this.resetBits();
+            cleanup();
             resolve(true);
+          } else if (resetSignal) {
+            logger.debug(`Reset signal ignored (in cooldown period)`);
           }
         } catch (error) {
           logger.error(`Error checking reset signal: ${error}`);
@@ -241,29 +256,25 @@ class ScannerController {
       const checkBit = async () => {
         try {
           const bitValue = await readBit(register, bit);
-          if (bitValue == value) {
+          if (bitValue === value) {
             cleanup();
-            logger.info(`Received signal from PLC at ${register}.${bit}`);
+            logger.info(
+              `Received expected signal from PLC at ${register}.${bit}`
+            );
             resolve(false);
           }
         } catch (error) {
-          logger.error(`Error reading bit ${register}.${bit}: ${error}`);
+          logger.error(`Error checking bit ${register}.${bit}: ${error}`);
         }
       };
 
-      timeoutId = setTimeout(() => {
-        cleanup();
-        logger.warn(
-          `Timeout waiting for ${register}.${bit} to become ${value}`
-        );
-        resolve(true);
-      }, TIMEOUT);
-
+      // Check conditions every 500ms
       intervalId = setInterval(async () => {
         await checkReset();
         await checkBit();
-      }, 100);
+      }, 500);
 
+      // Initial check
       await checkReset();
       await checkBit();
     });
