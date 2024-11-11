@@ -106,7 +106,7 @@ class ScannerController {
       ]);
 
       // Add a small delay to ensure PLC has time to process
-      await sleep(100);
+      await sleep(500);
 
       logger.success("Bits reset successfully");
     } catch (error) {
@@ -205,12 +205,7 @@ class ScannerController {
   }
 
   async checkResetOrBit(register, bit, value, timeout = 100 * 1000) {
-    logger.info(
-      "-----------------------------------------------------------------------------------------------------------"
-    );
-    logger.debug(
-      `Awaiting ${register}.${bit} to be ${value} (timeout: ${timeout}ms)`
-    );
+    logger.info("🧹 Waiting for reset or bit 1410.0 to be 0");
     logger.info(
       "-----------------------------------------------------------------------------------------------------------"
     );
@@ -218,84 +213,77 @@ class ScannerController {
     return new Promise(async (resolve) => {
       let timeoutId;
       let intervalId;
-      let consecutiveResets = 0;
-      const RESET_CHECK_INTERVAL = 500; // Check every 500ms
+      let checkCount = 0;
+      const CHECK_INTERVAL = 500; // 500ms between checks
 
       const cleanup = () => {
-        clearTimeout(timeoutId);
-        clearInterval(intervalId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
       };
 
-      const getWaitTime = (resets) => {
-        // Exponential backoff: 1s, 2s, 4s, 8s, etc.
-        return Math.min(Math.pow(2, resets) * 1000, 30000); // Max 30 seconds
-      };
-
+      // Main timeout
       timeoutId = setTimeout(() => {
         cleanup();
-        logger.warn(`⏰ Timeout waiting for ${register}.${bit} to be ${value}`);
+        logger.warn(
+          `⏰ Timeout after ${timeout / 1000} seconds waiting for ${register}.${bit}`
+        );
         resolve("timeout");
       }, timeout);
 
-      const checkReset = async () => {
+      const check = async () => {
         try {
-          const resetSignal = await readBit(1600, 0);
-
-          if (resetSignal) {
-            consecutiveResets++;
-            const waitTime = getWaitTime(consecutiveResets);
-
-            logger.warn(
-              `Reset signal detected (${consecutiveResets} consecutive resets)`
-            );
+          checkCount++;
+          if (checkCount % 10 === 0) {
+            // Log every 5 seconds (10 * 500ms)
             logger.info(
-              `Waiting ${waitTime / 1000} seconds before handling reset`
+              `Still waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
             );
-
-            await this.resetBits();
-            await sleep(waitTime);
-
-            cleanup();
-            resolve(true);
-          } else {
-            if (consecutiveResets > 0) {
-              logger.info(
-                `Reset signal cleared after ${consecutiveResets} consecutive resets`
-              );
-              consecutiveResets = 0;
-            }
           }
-        } catch (error) {
-          logger.error(`Error checking reset signal: ${error}`);
-        }
-      };
 
-      const checkBit = async () => {
-        try {
+          // Check reset signal first
+          const resetSignal = await readBit(1600, 0);
+          if (resetSignal) {
+            cleanup();
+            logger.info("Reset signal (1600.0) detected");
+            await this.resetBits();
+            resolve(true);
+            return;
+          }
+
+          // Check target bit
           const bitValue = await readBit(register, bit);
           if (bitValue === value) {
             cleanup();
-            logger.info(
-              `Received expected signal from PLC at ${register}.${bit}`
-            );
+            logger.info(`Target bit ${register}.${bit} is ${value}`);
             resolve(false);
+            return;
+          }
+
+          // Log current bit values periodically
+          if (checkCount % 20 === 0) {
+            // Every 10 seconds
+            logger.info(
+              `Current values - Reset(1600.0): ${resetSignal}, Target(${register}.${bit}): ${bitValue}`
+            );
           }
         } catch (error) {
-          logger.error(`Error checking bit ${register}.${bit}: ${error}`);
+          logger.error(`Error in check cycle: ${error.message}`);
+          // Don't resolve here, let the timeout handle it
         }
       };
 
-      // Check conditions at the specified interval
-      intervalId = setInterval(async () => {
-        await checkReset();
-        await checkBit();
-      }, RESET_CHECK_INTERVAL);
+      // Start periodic checking
+      intervalId = setInterval(check, CHECK_INTERVAL);
 
       // Initial check
-      await checkReset();
-      await checkBit();
+      await check();
     });
   }
+
   async writeOCRDataToFile(ocrDataString) {
     try {
       await this.clearCodeFile(CODE_FILE_PATH);
