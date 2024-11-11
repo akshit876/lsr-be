@@ -170,7 +170,7 @@ class MongoDBService {
   async getUserDetails(userId = null) {
     try {
       // Connect to the laserU database
-      const db = this.client.db("laserU");
+      const db = this.client.db("main-data");
       const collection = db.collection("usersessionlogs");
 
       // Find the most recent session log for the given userId, sorted by loginTime
