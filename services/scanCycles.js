@@ -96,10 +96,23 @@ class ScannerController {
   }
 
   async resetBits() {
-    logger.info("🔄 Resetting bits...");
-    await this.resetSpecificBits(1414, [3, 4, 6, 7]);
-    await this.resetSpecificBits(1415, [4]);
-    logger.success("Bits reset successfully");
+    try {
+      logger.info("🔄 Resetting bits...");
+
+      // Perform both resets in parallel to be more efficient
+      await Promise.all([
+        this.resetSpecificBits(1414, [3, 4, 6, 7]),
+        this.resetSpecificBits(1415, [4]),
+      ]);
+
+      // Add a small delay to ensure PLC has time to process
+      await sleep(100);
+
+      logger.success("Bits reset successfully");
+    } catch (error) {
+      logger.error("Error in resetBits:", error);
+      throw error;
+    }
   }
 
   async resetSpecificBits(register, bitsToReset) {
@@ -108,36 +121,36 @@ class ScannerController {
         `🎯 Resetting bits ${bitsToReset.join(", ")} in register ${register}`
       );
 
-      if (
-        !Array.isArray(bitsToReset) ||
-        bitsToReset.some((bit) => bit < 0 || bit > 15)
-      ) {
-        throw new Error("Invalid bits array. Must be an array of numbers 0-15");
-      }
-
+      // Read current value once
       const [currentValue] = await readRegister(register, 1);
+
+      // Create mask and calculate new value
       const mask = bitsToReset.reduce(
         (mask, bit) => mask & ~(1 << bit),
         0xffff
       );
       const newValue = currentValue & mask;
 
-      const resetPromise = writeRegister(register, newValue);
+      // Write new value with timeout protection
+      const writePromise = writeRegister(register, newValue);
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(
           () =>
             reject(new Error(`Timeout resetting bits in register ${register}`)),
-          TIMEOUT
+          5000
         )
       );
 
-      await Promise.race([resetPromise, timeoutPromise]);
+      await Promise.race([writePromise, timeoutPromise]);
+
+      // Add a small delay to ensure PLC processes the write
+      await sleep(50);
+
       logger.success(
         `Reset complete for bits ${bitsToReset.join(", ")} in register ${register}`
       );
     } catch (error) {
-      logger.separator.hash();
-      logger.error(`❌ Error resetting bits in register ${register}:`, error);
+      logger.error(`Error resetting bits in register ${register}:`, error);
       throw error;
     }
   }
@@ -375,6 +388,7 @@ class ScannerController {
 
           await this.resetBits();
           await this.clearCodeFile(CODE_FILE_PATH);
+          await sleep(1000);
 
           this.runContinuousScan(io, comService, { partNumber });
         }
@@ -405,6 +419,7 @@ class ScannerController {
         logger.info("🧹Waiting for reset or bit 1410.0 to be 0");
         if (await this.checkResetOrBit(1410, 0, 1)) {
           logger.warn("⚠️ Reset detected at final step, restarting cycle");
+          await sleep(1000);
           continue;
         }
         // await writeBit(1410, 0, 0);
@@ -454,6 +469,7 @@ class ScannerController {
             "⚠️ Reset detected while waiting for 1410.2, restarting cycle"
           );
           this.barcodeGenerator.decSerialNo();
+          await sleep(1000);
           continue;
         }
 
@@ -501,6 +517,7 @@ class ScannerController {
         logger.info("🔍 Checking for reset or waiting for bit 1410.12");
         if (await this.checkResetOrBit(1410, 12, 1)) {
           logger.warn("⚠️ Reset detected at final step, restarting cycle");
+          await sleep(1000);
           continue;
         }
 
