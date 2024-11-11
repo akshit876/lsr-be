@@ -244,8 +244,10 @@ class ScannerController {
             cleanup();
             logger.info("Reset signal (1600.0) detected");
             try {
+              await sleep(1200);
               await this.resetBits();
               logger.info("Reset bits completed, restarting cycle");
+              await sleep(1200);
               resolve(true);
             } catch (error) {
               logger.error("Error during reset bits:", error);
@@ -456,12 +458,14 @@ class ScannerController {
 
     while (isRunning) {
       try {
+        await sleep(1200);
         logger.section(`Scan Cycle ${c + 1}`);
 
         // Reset and initial setup
-        logger.info("🔄 Resetting bits...");
-        await this.resetBits();
+        // logger.info("🔄 Resetting bits...");
+        // await this.resetBits();
         // await writeBit(1410, 0, 1);
+        await sleep(1200);
 
         logger.info("🧹Waiting for reset or bit 1410.0 to be 0");
         if (await this.checkResetOrBit(1410, 0, 1)) {
