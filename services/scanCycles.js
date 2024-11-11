@@ -232,41 +232,38 @@ class ScannerController {
       // Main timeout
       timeoutId = setTimeout(() => {
         cleanup();
-        logger.warn(
-          `⏰ Timeout after ${timeout / 1000} seconds waiting for ${register}.${bit}`
-        );
+        logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
         resolve("timeout");
       }, timeout);
 
-      // Separate interval for reset check
+      // Reset check interval
       resetCheckInterval = setInterval(async () => {
         try {
           const resetSignal = await readBit(1600, 0);
           if (resetSignal) {
             cleanup();
             logger.info("Reset signal (1600.0) detected");
-            await this.resetBits();
-            resolve(true);
+            try {
+              await this.resetBits();
+              logger.info("Reset bits completed, restarting cycle");
+              resolve(true);
+            } catch (error) {
+              logger.error("Error during reset bits:", error);
+              resolve("timeout"); // Force timeout on reset error
+            }
           }
         } catch (error) {
           logger.error(`Error checking reset signal: ${error.message}`);
         }
       }, CHECK_INTERVAL);
 
-      // Separate interval for bit check
+      // Bit check interval
       bitCheckInterval = setInterval(async () => {
         try {
           checkCount++;
           const bitValue = await readBit(register, bit);
-
-          // Convert both to numbers and compare
           const currentValue = Number(bitValue);
           const expectedValue = Number(value);
-
-          // Debug log to see exact values and types
-          logger.debug(
-            `Bit check - Current: ${currentValue} (${typeof currentValue}), Expected: ${expectedValue} (${typeof expectedValue})`
-          );
 
           if (currentValue === expectedValue) {
             cleanup();
@@ -292,23 +289,30 @@ class ScannerController {
         }
       }, CHECK_INTERVAL);
 
-      // Initial check also needs the same conversion
-      readBit(register, bit)
-        .then((bitValue) => {
-          const currentValue = Number(bitValue);
-          const expectedValue = Number(value);
+      // Initial checks
+      try {
+        const [resetSignal, bitValue] = await Promise.all([
+          readBit(1600, 0),
+          readBit(register, bit),
+        ]);
 
-          if (currentValue === expectedValue) {
-            cleanup();
-            logger.info(
-              `✅ Target bit ${register}.${bit} is ${value} on initial check`
-            );
-            resolve(false);
-          }
-        })
-        .catch((error) => {
-          logger.error(`Error in initial bit check: ${error.message}`);
-        });
+        if (resetSignal) {
+          cleanup();
+          logger.info("Reset signal detected on initial check");
+          await this.resetBits();
+          resolve(true);
+          return;
+        }
+
+        if (Number(bitValue) === Number(value)) {
+          cleanup();
+          logger.info(`Target bit matched on initial check`);
+          resolve(false);
+          return;
+        }
+      } catch (error) {
+        logger.error(`Error in initial checks: ${error.message}`);
+      }
     });
   }
 
