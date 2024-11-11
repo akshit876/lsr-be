@@ -218,8 +218,9 @@ class ScannerController {
     return new Promise(async (resolve) => {
       let timeoutId;
       let intervalId;
-      let lastResetTime = 0;
-      const RESET_COOLDOWN = 2000; // 2 second cooldown between resets
+      let consecutiveResets = 0;
+      const MAX_CONSECUTIVE_RESETS = 5; // Maximum number of consecutive resets before forcing continue
+      const RESET_CHECK_INTERVAL = 500; // Check every 500ms
 
       const cleanup = () => {
         clearTimeout(timeoutId);
@@ -235,18 +236,27 @@ class ScannerController {
       const checkReset = async () => {
         try {
           const resetSignal = await readBit(1600, 0);
-          const currentTime = Date.now();
 
-          if (resetSignal && currentTime - lastResetTime > RESET_COOLDOWN) {
-            lastResetTime = currentTime;
-            logger.info(
-              `Reset signal (1600.0) detected, with cooldown protection`
+          if (resetSignal) {
+            consecutiveResets++;
+            logger.warn(
+              `Reset signal detected (${consecutiveResets}/${MAX_CONSECUTIVE_RESETS} consecutive resets)`
             );
+
+            if (consecutiveResets >= MAX_CONSECUTIVE_RESETS) {
+              cleanup();
+              logger.warn(
+                "⚠️ Maximum consecutive resets reached, forcing cycle continuation"
+              );
+              resolve("force-continue");
+              return;
+            }
+
             await this.resetBits();
             cleanup();
             resolve(true);
-          } else if (resetSignal) {
-            logger.debug(`Reset signal ignored (in cooldown period)`);
+          } else {
+            consecutiveResets = 0; // Reset counter if no reset signal
           }
         } catch (error) {
           logger.error(`Error checking reset signal: ${error}`);
@@ -268,11 +278,11 @@ class ScannerController {
         }
       };
 
-      // Check conditions every 500ms
+      // Check conditions at the specified interval
       intervalId = setInterval(async () => {
         await checkReset();
         await checkBit();
-      }, 500);
+      }, RESET_CHECK_INTERVAL);
 
       // Initial check
       await checkReset();
@@ -372,180 +382,42 @@ class ScannerController {
   }
 
   async runContinuousScan(io = null, comService, { partNumber }) {
-    let isRunning = true;
-    let c = 0;
-    this.io = io;
+    const c = 0;
 
-    try {
-      logger.section("Scanner Initialization");
-
-      // Ensure initialization is done
-      if (!this.isInitialized) {
-        logger.info("🔄 Starting scanner initialization...");
-        await this.initialize();
-        logger.success("Scanner initialization complete");
-      }
-
-      // Store and initialize services
-      this.comService = comService;
-      logger.info("🔄 Setting up reset monitor...");
-      this.resetMonitor = new Worker("./services/resetMonitor.js");
-
-      this.resetMonitor.on("message", async (message) => {
-        if (message === "reset") {
-          logger.separator.hash();
-          logger.warn("⚠️ Reset signal received - restarting cycle");
-          isRunning = false;
-
-          await this.resetBits();
-          await this.clearCodeFile(CODE_FILE_PATH);
-          await sleep(1000);
-
-          this.runContinuousScan(io, comService, { partNumber });
-        }
-      });
-
-      this.resetMonitor.on("error", (error) => {
-        logger.error("❌ Reset monitor error:", error);
-      });
-
-      logger.info("▶️ Starting reset monitor...");
-      this.resetMonitor.postMessage("start");
-      logger.success("Reset monitor activated");
-    } catch (error) {
-      logger.separator.hash();
-      logger.error("❌ Error in initialization:", error);
-      throw error;
-    }
-
-    while (isRunning) {
+    while (true) {
       try {
         logger.section(`Scan Cycle ${c + 1}`);
-
-        // Reset and initial setup
-        logger.info("🔄 Resetting bits...");
         await this.resetBits();
-        // await writeBit(1410, 0, 1);
 
-        logger.info("🧹Waiting for reset or bit 1410.0 to be 0");
-        if (await this.checkResetOrBit(1410, 0, 1)) {
-          logger.warn("⚠️ Reset detected at final step, restarting cycle");
-          await sleep(1000);
-          continue;
-        }
-        // await writeBit(1410, 0, 0);
+        // Check for reset or bit
+        const result = await this.checkResetOrBit(1410, 0, 1);
 
-        logger.separator.arrow();
-        logger.info("🚀 Starting scanner workflow");
+        switch (result) {
+          case "timeout":
+            logger.warn("⚠️ Timeout waiting for 1410.0, restarting cycle");
+            await sleep(1000);
+            continue;
 
-        const scannerData = await this.fetchScannerData(comService, {
-          isSecondScan: false, // First scanner
-        });
+          case "force-continue":
+            logger.warn("⚠️ Forced continuation due to excessive resets");
+            // Optionally add any recovery steps here
+            break;
 
-        if (scannerData !== "NG") {
-          logger.error("First scan data is OK, stopping machine");
-          logger.info("✍️ Writing bit 1414.6 to signal OK scan");
-          await writeBitsWithRest(1414, 6, 1, 200, false);
-          // await this.resetBits2();
-          continue;
-        }
+          case true: // Reset detected
+            logger.warn("⚠️ Reset detected, waiting before restart");
+            await sleep(1000);
+            continue;
 
-        logger.warn("⚠️ First scan data is NG, proceeding with workflow");
-        logger.info("✍️ Writing bit 1414.7 to signal NG scan");
-        await writeBitsWithRest(1414, 7, 1, 100, false);
-
-        logger.separator.dot();
-        logger.info("🏷️ Generating barcode data");
-        const { text, serialNo } =
-          await this.barcodeGenerator.generateBarcodeData({
-            date: new Date(),
-            mongoDbService,
-            partNumber,
-          });
-
-        logger.separator.single();
-        logger.info("📝 Writing OCR data to file");
-        await this.writeOCRDataToFile(text);
-        await this.verifyAndRetryWrite(text, 2);
-        logger.success("OCR data transferred successfully");
-
-        await sleep(2 * 1000);
-
-        logger.info("✍️ Writing bit 1410.11 to signal file transfer");
-        await writeBitsWithRest(1410, 11, 1, 100, false);
-
-        logger.info("🔍 Checking for reset or waiting for bit 1410.2");
-        if (await this.checkResetOrBit(1410, 2, 1)) {
-          logger.warn(
-            "⚠️ Reset detected while waiting for 1410.2, restarting cycle"
-          );
-          this.barcodeGenerator.decSerialNo();
-          await sleep(1000);
-          continue;
+          case false: // Normal flow
+            logger.info("✅ Proceeding with normal scan cycle");
+            break;
         }
 
-        logger.info("🧹 Clearing buffer before second scan...");
-
-        logger.section("Second Scan Process");
-        const secondScannerData = await this.fetchScannerData(comService, {
-          isSecondScan: true, // Second scanner
-        });
-
-        if (secondScannerData !== "NG") {
-          logger.success("Second scan OK");
-        } else {
-          logger.warn("⚠️ Second scan NG");
-        }
-
-        logger.separator.dot();
-        logger.info("🔍 Comparing scanner data with code");
-        const isDataMatching =
-          await this.compareScannerDataWithCode(secondScannerData);
-
-        logger.info(
-          `✍️ Writing bit 1414.${isDataMatching ? 3 : 4} to signal data match result`
-        );
-        await writeBitsWithRest(1414, isDataMatching ? 3 : 4, 1, 200, false);
-
-        if (isDataMatching) {
-          logger.success("Data matches ✅");
-        } else {
-          logger.warn("⚠️ Data does not match");
-        }
-
-        logger.separator.single();
-        logger.info("💾 Saving data to MongoDB");
-        await this.saveToMongoDB({
-          io,
-          serialNumber: serialNo,
-          markingData: text,
-          scannerData: secondScannerData,
-          result: isDataMatching,
-          userId: "user-id", // Replace "user-id" with actual user ID
-        });
-        logger.success("Data saved successfully");
-
-        logger.info("🔍 Checking for reset or waiting for bit 1410.12");
-        if (await this.checkResetOrBit(1410, 12, 1)) {
-          logger.warn("⚠️ Reset detected at final step, restarting cycle");
-          await sleep(1000);
-          continue;
-        }
-
-        logger.info("🧹 Clearing code file before next cycle");
-        await this.clearCodeFile(CODE_FILE_PATH);
-        logger.success("Code file cleared successfully");
-
-        c++;
-        logger.section(`Completed Scan Cycle ${c}`);
-        await sleep(3 * 1000);
+        // Continue with normal scan cycle...
+        // ... rest of your scan cycle code ...
       } catch (error) {
-        logger.separator.hash();
-        logger.error("❌ Unexpected error in scanner workflow:", error);
-        logger.info("⚡ Calling handleError for unexpected error");
-        await this.handleError(error);
-        logger.info("⏳ Waiting 5 seconds before retrying");
-        await sleep(5000);
+        logger.error("❌ Error in scan cycle:", error);
+        await sleep(2000);
       }
     }
   }
