@@ -1,12 +1,12 @@
-import cron from "node-cron";
-import { createObjectCsvWriter } from "csv-writer";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import mongoDbService from "./mongoDbService.js";
-import logger from "../logger.js";
+const cron = require("node-cron");
+const { createObjectCsvWriter } = require("csv-writer");
+const path = require("path");
+const fs = require("fs");
+const { fileURLToPath } = require("url");
+const mongoDbService = require("./mongoDbService.js");
+const logger = require("../logger.js");
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = fileURLToPath(__filename);
 const __dirname = path.dirname(__filename);
 
 class CronService {
@@ -81,4 +81,4 @@ class CronService {
   }
 }
 
-export default new CronService();
+module.exports = new CronService();

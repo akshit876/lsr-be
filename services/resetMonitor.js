@@ -1,6 +1,6 @@
-import { parentPort } from "worker_threads";
-import { connect, readBit } from "./modbus.js";
-import logger from "../logger.js";
+const { parentPort } = require("worker_threads");
+const { connect, readBit } = require("./modbus.js");
+const logger = require("../logger.js");
 
 async function monitorResetSignal() {
   try {

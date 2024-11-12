@@ -1,6 +1,6 @@
-import { format, isAfter, isBefore, isSameDay } from "date-fns";
-import logger from "../logger.js";
-import MongoDBService from "./mongoDbService.js";
+const { format, isAfter, isBefore, isSameDay } = require("date-fns");
+const logger = require("../logger.js");
+const MongoDBService = require("./mongoDbService.js");
 
 const INITIAL_SERIAL_NUMBER = 1; // Default value
 
@@ -282,4 +282,4 @@ class SerialNumberGeneratorService {
   }
 }
 
-export default new SerialNumberGeneratorService();
+module.exports = new SerialNumberGeneratorService();

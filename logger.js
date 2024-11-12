@@ -1,7 +1,7 @@
-import winston from 'winston';
-import fs from 'fs';
-import path from 'path';
-import { format } from 'date-fns';
+const winston = require('winston');
+const fs = require('fs');
+const path = require('path');
+const { format } = require('date-fns');
 
 // Ensure log directory exists
 const logDir = 'logs';
@@ -100,4 +100,4 @@ logger.section = (title) => {
   separator.line();
 };
 
-export default logger;
+module.exports = logger;

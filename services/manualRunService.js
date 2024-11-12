@@ -1,12 +1,12 @@
-import {
+const {
   readRegister,
   readRegisterAndProvideASCII,
   writeBit,
   connect,
-} from "./modbus.js";
-import logger from "../logger.js";
-import { emitErrorEvent } from "./utils.js";
-// import { emitErrorEvent } from "../utils/errorHandler.js"; // Import the error utility
+} = require("./modbus.js");
+const logger = require("../logger.js");
+const { emitErrorEvent } = require("./utils.js");
+// const { emitErrorEvent } = require("../utils/errorHandler.js"); // Import the error utility
 
 const resetTime = 200;
 
@@ -24,7 +24,11 @@ const MANUAL_RUN_ADDRESSES = {
   servoHome: { address: 1414, bit: 10 },
 };
 
-export async function manualRun(operation, socket) {
+module.exports = {
+  manualRun,
+};
+
+async function manualRun(operation, socket) {
   if (!MANUAL_RUN_ADDRESSES[operation]) {
     const errorMessage = `Invalid operation: ${operation}`;
     emitErrorEvent(socket, "INVALID_MANUAL_RUN_OPERATION", errorMessage);

@@ -1,6 +1,6 @@
-import logger from "../logger.js";
+const logger = require("../logger.js");
 
-export function emitErrorEvent(socket, errorType, errorMessage) {
+function emitErrorEvent(socket, errorType, errorMessage) {
   if (socket) {
     socket.emit("error", {
       type: errorType,
@@ -9,3 +9,5 @@ export function emitErrorEvent(socket, errorType, errorMessage) {
   }
   logger.error(`${errorType}: ${errorMessage}`);
 }
+
+module.exports = { emitErrorEvent };

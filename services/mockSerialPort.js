@@ -1,6 +1,6 @@
-import { SerialPort } from "serialport";
+const { SerialPort } = require("serialport");
 
-export class MockSerialPort extends SerialPort {
+class MockSerialPort extends SerialPort {
   constructor(options) {
     super(options);
     this.mockData = ["NG"];
@@ -29,4 +29,5 @@ export class MockSerialPort extends SerialPort {
     this.emit("open");
   }
 }
-// /demo
+
+module.exports = MockSerialPort; // Export the class

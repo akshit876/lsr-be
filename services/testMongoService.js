@@ -1,6 +1,6 @@
 // import MongoDBService from "./MongoDBService.js";
 import { format, subDays } from "date-fns";
-import mongoDbService from "./mongoDbService.js";
+const mongoDbService = require("./mongoDbService.js");
 
 const TEST_DB_NAME = "test_dummy";
 const TEST_COLLECtions_NAME = "test_dummy_records";
@@ -71,5 +71,11 @@ async function insertDummyRecords() {
 
   console.log("Inserted 20 dummy records");
 }
+
+// Export the functions for CommonJS
+module.exports = {
+  runTests,
+  insertDummyRecords,
+};
 
 // runTests().catch(console.error);

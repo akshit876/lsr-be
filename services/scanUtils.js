@@ -1,16 +1,16 @@
 /* eslint-disable camelcase */
 /* eslint-disable consistent-return */
-import fs from "fs";
-import path, { dirname } from "path";
-import ExcelJS from "exceljs";
-import logger from "../logger.js";
+const fs = require("fs");
+const path = require("path");
+const ExcelJS = require("exceljs");
+const logger = require("../logger.js");
 
-import { fileURLToPath } from "url";
-import { parse, stringify } from "csv";
-import { writeBit } from "./modbus.js";
+const { fileURLToPath } = require("url");
+const { parse, stringify } = require("csv");
+const { writeBit } = require("./modbus.js");
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = path.dirname(__filename);
 
 let buffer = ""; // Buffer to store incoming data
 
@@ -29,29 +29,14 @@ function getCurrentTime24HourFormat() {
 }
 
 // Handle incoming data and update buffer
-export function updateBuffer(data) {
+function updateBuffer(data) {
   buffer += data.toString();
   return buffer.split(/(NG|\r)/);
 }
-
-// Process the first scan
-// export async function processFirstScan(part) {
-//   try {
-//     await waitForBitToBecomeOne(1400, 1);
-//     const cameraData = await readRegisterAndProvideASCII(1450, 15);
-//     const cameraDataString = String.fromCharCode(...cameraData);
-//   } catch (error) {
-//     logger.error("Error during first scan:", error);
-//   }
-
-//   const DEFAULT_CAMERA_DATA = await getData("defaultCameraData");
-//   logger.info(`First scan data received: ${part}`);
-//   buffer = ""; // Clear buffer after processing first scan
-//   return part; // Return the first scan data for later comparison
-// }
+module.exports.updateBuffer = updateBuffer; // Export function
 
 // Process the second scan
-export async function processSecondScan(io, part, firstScanData) {
+async function processSecondScan(io, part, firstScanData) {
   const secondScanData = part;
   logger.info(`Second scan data received: ${secondScanData}`);
 
@@ -71,14 +56,16 @@ export async function processSecondScan(io, part, firstScanData) {
   // Clear the code file and reset for the next operation
   await clearCodeFile("code.txt");
 }
+module.exports.processSecondScan = processSecondScan; // Export function
 
 // Compare the two scans and return "OK" or "NG"
-export function compareScans(scan1, scan2) {
+function compareScans(scan1, scan2) {
   return scan1 === scan2 ? "OK" : "NG";
 }
+module.exports.compareScans = compareScans; // Export function
 
 // Save the result to an Excel file
-export async function saveToExcel(manualCode, result) {
+async function saveToExcel(manualCode, result) {
   const fileName = `${getCurrentDate()}.xlsx`;
   const filePath = path.join(__dirname, "../data", fileName);
 
@@ -122,6 +109,7 @@ export async function saveToExcel(manualCode, result) {
   console.log({ manualCode, result, ws: worksheet?._rows });
   logger.info(`Data saved to Excel file: ${fileName}`);
 }
+module.exports.saveToExcel = saveToExcel; // Export function
 
 function sanitizeData(data) {
   return data.replace(/"/g, '""').replace(/\r?\n|\r/g, " ");
@@ -240,7 +228,7 @@ function readCsvAndEmit(io, filePath) {
 }
 
 // Read the manual code from the file
-export function readFromFile(fileName) {
+function readFromFile(fileName) {
   return new Promise((resolve, reject) => {
     const filePath = path.join(__dirname, "../data", fileName);
     fs.readFile(filePath, "utf8", (err, data) => {
@@ -252,9 +240,10 @@ export function readFromFile(fileName) {
     });
   });
 }
+module.exports.readFromFile = readFromFile; // Export function
 
 // Clear the code file after processing
-export function clearCodeFile(fileName) {
+function clearCodeFile(fileName) {
   return new Promise((resolve, reject) => {
     const filePath = path.join(__dirname, "../data", fileName);
     fs.writeFile(filePath, "", (err) => {
@@ -267,12 +256,14 @@ export function clearCodeFile(fileName) {
     });
   });
 }
+module.exports.clearCodeFile = clearCodeFile; // Export function
 
 // Function to get the current date as a string for the file name
-export function getCurrentDate() {
+function getCurrentDate() {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+module.exports.getCurrentDate = getCurrentDate; // Export function

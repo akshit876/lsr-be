@@ -1,6 +1,6 @@
-import { MongoClient } from "mongodb";
-import logger from "../logger.js";
-// import logger from "./logger.js";
+const { MongoClient } = require("mongodb");
+const logger = require("../logger.js");
+// const logger = require("./logger.js");
 
 class MongoDBService {
   constructor() {
@@ -200,4 +200,4 @@ class MongoDBService {
   }
 }
 
-export default new MongoDBService();
+module.exports = new MongoDBService();

@@ -1,4 +1,4 @@
-import logger from "../logger.js";
+const logger = require("../logger.js");
 
 // Handle the port open event
 function handlePortOpen() {
@@ -31,7 +31,7 @@ function handlePortFlush() {
 }
 
 // Export the utility functions
-export {
+module.exports = {
   handlePortOpen,
   handlePortClose,
   handlePortError,

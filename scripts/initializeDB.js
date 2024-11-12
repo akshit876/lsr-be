@@ -1,5 +1,5 @@
-import { MongoClient } from "mongodb";
-import bcrypt from "bcryptjs";
+const MongoClient = require("mongodb").MongoClient;
+const bcrypt = require("bcryptjs");
 
 const MONGODB_URI = "mongodb://localhost:27017";
 

@@ -1,6 +1,6 @@
-// import BufferedComPortService from "./ComPortService.js";
-import { writeBitsWithRest } from "./modbus.js";
-// import { sleep } from "./testCycle.js";
+// const BufferedComPortService = require("./ComPortService.js");
+const { writeBitsWithRest } = require("./modbus.js");
+// const { sleep } = require("./testCycle.js");
 
 // const comService = new BufferedComPortService({
 //   path: "COM3",
@@ -43,4 +43,4 @@ async function runn() {
   }
 }
 
-runn();
+// runn();

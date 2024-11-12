@@ -1,6 +1,6 @@
-import ModbusRTU from "modbus-serial";
-import logger from "../logger.js";
-import { emitErrorEvent } from "./utils.js";
+const ModbusRTU = require("modbus-serial");
+const logger = require("../logger.js");
+const { emitErrorEvent } = require("./utils.js");
 
 // Default values
 const DEFAULT_MODBUS_IP = "192.168.3.146";
@@ -395,31 +395,26 @@ class ModbusConnection {
 
 const modbusConnection = new ModbusConnection();
 
-export const setSocket = (socket) => {
+const setSocket = (socket) => {
   modbusConnection.socket = socket;
 };
 
-export const connect = () => modbusConnection.connect();
-export const readRegister = (
-  address,
-  len,
-  conti = null,
-  bit = null,
-  isPrint = true
-) => modbusConnection.readRegister(address, len, conti, bit, isPrint);
-export const writeRegister = (address, value) =>
+const connect = () => modbusConnection.connect();
+const readRegister = (address, len, conti = null, bit = null, isPrint = true) =>
+  modbusConnection.readRegister(address, len, conti, bit, isPrint);
+const writeRegister = (address, value) =>
   modbusConnection.writeRegister(address, value);
-export const readRegisterAndProvideASCII = (address, len) =>
+const readRegisterAndProvideASCII = (address, len) =>
   modbusConnection.readRegisterAndProvideASCII(address, len);
-export const readBit = (address, bitPosition, conti = false) =>
+const readBit = (address, bitPosition, conti = false) =>
   modbusConnection.readBit(address, bitPosition, conti);
-export const writeBit = (address, bitPosition, value) =>
+const writeBit = (address, bitPosition, value) =>
   modbusConnection.writeBit(address, bitPosition, value);
-export const readBits = (address, bitPositions) =>
+const readBits = (address, bitPositions) =>
   modbusConnection.readBits(address, bitPositions);
-export const writeBits = (address, bitValues) =>
+const writeBits = (address, bitValues) =>
   modbusConnection.writeBits(address, bitValues);
-export const writeBitsWithRest = (
+const writeBitsWithRest = (
   address,
   bitPosition,
   value,
@@ -433,7 +428,7 @@ export const writeBitsWithRest = (
     delay,
     isPrint
   );
-export const readDataAndConfirm = (
+const readDataAndConfirm = (
   address,
   len,
   inputFeedbackBit,
@@ -447,9 +442,24 @@ export const readDataAndConfirm = (
     outputFeedbackBit,
     delay
   );
-export const writeRegisterFull = (add, val) =>
+const writeRegisterFull = (add, val) =>
   modbusConnection.writeRegistersFull(add, val);
-// writeBitsWithRest(1415, 9, 1, 2000);
+
+// Export the functions
+module.exports = {
+  setSocket,
+  connect,
+  readRegister,
+  writeRegister,
+  readRegisterAndProvideASCII,
+  readBit,
+  writeBit,
+  readBits,
+  writeBits,
+  writeBitsWithRest,
+  readDataAndConfirm,
+  writeRegisterFull,
+};
 
 async function trackBits2() {
   const register = 1700; // Define the register address

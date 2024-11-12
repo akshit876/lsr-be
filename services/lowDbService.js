@@ -1,11 +1,11 @@
 /* eslint-disable consistent-return */
-import { Low } from "lowdb";
-import { JSONFilePreset } from "lowdb/node";
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
+const { Low } = require("lowdb");
+const { JSONFilePreset } = require("lowdb/node");
+const path = require("path");
+const { fileURLToPath } = require("url");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename = fileURLToPath(__filename);
+const __dirname = path.dirname(__filename);
 
 // Define the path to the database file
 const filePath = path.join(__dirname, "../data", "db.json");
@@ -66,7 +66,8 @@ async function getAllData() {
   return db.data.data;
 }
 
-export { setData, getData, deleteData, getAllData };
+// Export functions using CommonJS syntax
+module.exports = { setData, getData, deleteData, getAllData };
 
 // For testing purposes
 // try {

@@ -1,8 +1,8 @@
-import { parse, isAfter, isBefore, addDays, format, set } from "date-fns";
-import mongoDbService from "./mongoDbService.js";
-import logger from "../logger.js";
+const { parse, isAfter, isBefore, addDays, format, set } = require("date-fns");
+const mongoDbService = require("./mongoDbService.js");
+const logger = require("../logger.js");
 
-export function transformMongoObject(shiftConfig) {
+function transformMongoObject(shiftConfig) {
   // Create an array of shifts
   const shifts = Object.keys(shiftConfig);
   const transformedConfig = {};
@@ -22,7 +22,7 @@ export function transformMongoObject(shiftConfig) {
   return transformedConfig;
 }
 
-export async function getShiftConfigFromDB() {
+async function getShiftConfigFromDB() {
   await mongoDbService.connect("main-data", "config");
   const collection = mongoDbService.collection;
   const config = await collection.findOne({});
@@ -30,7 +30,7 @@ export async function getShiftConfigFromDB() {
   return config ? config.shiftConfig : null; // Assuming the document structure has a field 'shiftConfig'
 }
 
-export async function updateShiftConfigInDB(newConfig) {
+async function updateShiftConfigInDB(newConfig) {
   await mongoDbService.connect("main-data", "config");
   const collection = mongoDbService.collection;
   await collection.updateOne(
@@ -39,6 +39,7 @@ export async function updateShiftConfigInDB(newConfig) {
     { upsert: true } // Create a new document if none exists
   );
 }
+
 class ShiftUtility {
   constructor() {
     this.shiftConfig = null;
@@ -169,7 +170,7 @@ class ShiftUtility {
 // console.log(shiftUtil.getNextShift("B")); // Should return 'C'
 // console.log(shiftUtil.getShiftStartTime("A")); // Should return '07:00'
 
-export default ShiftUtility;
+module.exports = ShiftUtility;
 
 async function run() {
   // Create an instance of ShiftUtility
@@ -211,7 +212,7 @@ async function run() {
   // console.log(`Shift A End Time: ${shiftAEndTime}`);
 }
 
-// // // Run the example
-// run().catch((error) => {
-//   console.error("Error running the shift utility:", error);
-// });
+// Run the example
+run().catch((error) => {
+  console.error("Error running the shift utility:", error);
+});
