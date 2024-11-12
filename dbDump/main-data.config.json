@@ -1,0 +1,54 @@
+[{
+  "_id": {
+    "$oid": "6729b45b7f2d650a62f8d039"
+  },
+  "currentPartNumber": "",
+  "partNo": "",
+  "selectedAt": "2024-11-12T06:12:20.723Z",
+  "selectedBy": "super",
+  "updatedAt": "2024-11-12T06:12:21.014Z",
+  "currentModelConfig": {
+    "id": "6732f166290f449fa4faa2f9",
+    "modelNumber": "Sample",
+    "fields": [
+      {
+        "_id": "6732f1a0696336bdb07a74f2",
+        "fieldName": "Model Number",
+        "order": 999,
+        "isChecked": false,
+        "value": "Sample",
+        "maxLength": 20,
+        "isRequired": true
+      },
+      {
+        "_id": "6732f1a0696336bdb07a74f3",
+        "fieldName": "SHIFT",
+        "order": 12,
+        "isChecked": true,
+        "value": "",
+        "maxLength": 1,
+        "isRequired": true
+      }
+    ]
+  },
+  "modelFields": [
+    {
+      "_id": "6732f1a0696336bdb07a74f2",
+      "fieldName": "Model Number",
+      "order": 999,
+      "isChecked": false,
+      "value": "Sample",
+      "maxLength": 20,
+      "isRequired": true
+    },
+    {
+      "_id": "6732f1a0696336bdb07a74f3",
+      "fieldName": "SHIFT",
+      "order": 12,
+      "isChecked": true,
+      "value": "",
+      "maxLength": 1,
+      "isRequired": true
+    }
+  ]
+}]

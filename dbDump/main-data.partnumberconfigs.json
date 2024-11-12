@@ -1,0 +1,29 @@
+[{
+  "_id": {
+    "$oid": "6732f166290f449fa4faa2f9"
+  },
+  "fields": [
+    {
+      "fieldName": "Model Number",
+      "order": 999,
+      "isChecked": false,
+      "value": "Sample",
+      "maxLength": 20,
+      "isRequired": true
+    },
+    {
+      "fieldName": "SHIFT",
+      "order": 12,
+      "isChecked": true,
+      "value": "",
+      "maxLength": 1,
+      "isRequired": true
+    }
+  ],
+  "createdAt": {
+    "$date": "2024-11-12T06:10:46.932Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-12T06:10:46.932Z"
+  }
+}]

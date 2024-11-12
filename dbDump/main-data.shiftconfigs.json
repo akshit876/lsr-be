@@ -1,0 +1,44 @@
+[{
+  "_id": {
+    "$oid": "6732f166290f449fa4faa2fa"
+  },
+  "shifts": [
+    {
+      "shiftId": "1",
+      "name": "A",
+      "startTime": "06:00",
+      "endTime": "14:00",
+      "duration": 8,
+      "_id": {
+        "$oid": "6732f224696336bdb07a752f"
+      }
+    },
+    {
+      "shiftId": "2",
+      "name": "B",
+      "startTime": "14:00",
+      "endTime": "22:00",
+      "duration": 8,
+      "_id": {
+        "$oid": "6732f224696336bdb07a7530"
+      }
+    },
+    {
+      "shiftId": "3",
+      "name": "C",
+      "startTime": "22:00",
+      "endTime": "06:00",
+      "duration": 8,
+      "_id": {
+        "$oid": "6732f224696336bdb07a7531"
+      }
+    }
+  ],
+  "totalHours": 24,
+  "createdAt": {
+    "$date": "2024-11-12T06:10:46.937Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-12T06:13:56.787Z"
+  }
+}]
