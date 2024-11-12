@@ -1,17 +1,35 @@
 {
   "name": "laser-be",
   "version": "1.0.0",
-  "main": "logger.js",
+  "main": "server.js",
   "private": true,
   "type": "module",
+  "bin": "index.cjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "build": "node build.js",
+    "pkg": "pkg . --targets node18-win-x64 --output dist/laser-be.exe --no-bytecode --public",
+    "build:all": "npm run build && npm run pkg"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "pkg": {
+    "scripts": [
+      "*.js",
+      "src/**/*.js"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist",
+    "assets": [
+      "node_modules/**/*",
+      ".env",
+      "config/**/*"
+    ],
+    "options": [
+      "experimental-modules"
+    ]
+  },
   "dependencies": {
     "async": "^3.2.6",
     "bcrypt": "^5.1.1",
@@ -34,7 +52,8 @@
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
     "winston": "^3.14.2",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "pkg": "^5.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

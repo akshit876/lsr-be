@@ -44,6 +44,8 @@ next-env.d.ts
 /services/data/**
 
 # Log folders
+/dist
+/dist/**
 /logs
 /logs/**
 /services/logs
