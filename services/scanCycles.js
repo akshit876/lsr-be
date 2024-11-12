@@ -16,9 +16,8 @@ const fs = require("fs");
 const { format } = require("date-fns");
 const { Worker } = require("worker_threads");
 const serialNumberService = require("./serialNumber.js");
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// This is already available in CommonJS
+// const __dirname = path.dirname(__filename); // Get the directory name
 
 const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
 const sleep = promisify(setTimeout);

@@ -1,6 +1,7 @@
 // import MongoDBService from "./MongoDBService.js";
-import { format, subDays } from "date-fns";
+// import { format, subDays } from "date-fns";
 const mongoDbService = require("./mongoDbService.js");
+const { format, subDays } = require("date-fns");
 
 const TEST_DB_NAME = "test_dummy";
 const TEST_COLLECtions_NAME = "test_dummy_records";

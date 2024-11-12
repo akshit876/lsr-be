@@ -1,11 +1,27 @@
 {
   "name": "laser-be",
   "version": "1.0.0",
-  "main": "logger.js",
+  "main": "server.js",
   "private": true,
+  "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "pkg . --targets node18-win-x64 --output dist/laser-be.exe",
+    "build:debug": "pkg . --targets node18-win-x64 --output dist/laser-be.exe --debug",
+    "build:all": "pkg . --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --output dist/laser-be"
+  },
+  "bin": "server.js",
+  "pkg": {
+    "assets": [
+      "node_modules/**/*",
+      ".env",
+      "**/*.node"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
   },
   "keywords": [],
   "author": "",
@@ -52,6 +68,7 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "globals": "^15.11.0",
     "nodemon": "^3.1.4",
+    "pkg": "^5.8.1",
     "postcss": "^8.4.41",
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.10"

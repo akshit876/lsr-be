@@ -6,9 +6,9 @@ const { fileURLToPath } = require("url");
 const mongoDbService = require("./mongoDbService.js");
 const logger = require("../logger.js");
 
-const __filename = fileURLToPath(__filename);
-const __dirname = path.dirname(__filename);
-
+// This is already available in CommonJS
+// const __dirname = path.dirname(__filename); // Get the directory name
+// 
 class CronService {
   constructor() {
     this.jobs = {};

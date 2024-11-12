@@ -9,8 +9,8 @@ const { fileURLToPath } = require("url");
 const { parse, stringify } = require("csv");
 const { writeBit } = require("./modbus.js");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// This is already available in CommonJS
+// const __dirname = path.dirname(__filename); // Get the directory name
 
 let buffer = ""; // Buffer to store incoming data
 
@@ -115,7 +115,7 @@ function sanitizeData(data) {
   return data.replace(/"/g, '""').replace(/\r?\n|\r/g, " ");
 }
 
-export async function saveToCSV(io, manualCode, result) {
+module.exports.saveToCSV = async function (io, manualCode, result) {
   const fileName = `${getCurrentDate()}.csv`;
   const filePath = path.join(__dirname, "../data", fileName);
 
@@ -142,9 +142,9 @@ export async function saveToCSV(io, manualCode, result) {
 
   // Emit CSV data to the frontend
   readCsvAndEmit(io, filePath);
-}
+};
 
-export async function saveToCSVNew(
+module.exports.saveToCSVNew = async function (
   io,
   sno,
   scannerData,
@@ -199,7 +199,7 @@ export async function saveToCSVNew(
 
   // Emit CSV data to the frontend
   readCsvAndEmit(io, filePath);
-}
+};
 
 function readCsvAndEmit(io, filePath) {
   const csvData = [];

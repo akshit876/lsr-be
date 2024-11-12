@@ -13,23 +13,19 @@ async function runn() {
     // console.log("Attempting to initialize serial port...");
     // await comService.initSerialPort();
     // console.log("Initialized serial port successfully");
-
     // while (true) {
     //   try {
-    await writeBitsWithRest(1417, 0, 1, 100, false);
+    // await writeBitsWithRest(1417, 0, 1, 100, false);
     // Wait for the next data event before proceeding
     //     const scannerData = await new Promise((resolve) => {
     //       comService.once("data", resolve);
     //     });
-
     //     console.log("=== STARTING NEW SCAN CYCLE ===");
     //     console.log(
     //       "-----------------------------------------------------------------------------------------------------------"
     //     );
     //     console.log(`Received scanner data: ${scannerData}`);
-
     //     // Process the scanner data after receiving it
-
     //     // Optional delay before the next cycle, if needed
     //     await sleep(5 * 1000);
     //   } catch (error) {

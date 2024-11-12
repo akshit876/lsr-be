@@ -30,8 +30,8 @@ const { MongoClient } = require("mongodb");
 const serialNumberService = require("./services/serialNumber.js");
 const { scannerController } = require("./services/scanCycles.js");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// This is already available in CommonJS
+// const __dirname = path.dirname(__filename); // Get the directory name
 
 const MODBUS_IP = process.env.MODBUS_IP;
 const MODBUS_PORT = parseInt(process.env.MODBUS_PORT, 10);
@@ -82,9 +82,34 @@ const server = createServer((req, res) => {
   });
 });
 
-module.exports = {
-  fetchPartNumberAndData,
-};
+async function fetchPartNumberAndData() {
+  try {
+    // Connect to the MongoDB if not already connected
+
+    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+    const client = new MongoClient(uri);
+    await client.connect();
+    const db = client.db("main-data");
+    // console.log({ db });
+    const collection = db.collection("config");
+    logger.info("Connected successfully to MongoDB database: main-data");
+
+    // Fetch part number from the 'configs' collection
+    const configData = await collection.findOne({});
+    // console.log({ configData });
+    const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
+
+    // Fetch records from 'main-data' collection (or any other collection as needed)
+    // const mainDataRecords = await mongoDbService.collection.find({}).toArray();
+
+    logger.info(`Fetched part number: ${partNumber} and main data records`);
+
+    return { partNumber, configData };
+  } catch (error) {
+    logger.error("Error fetching part number or data:", error);
+    throw error;
+  }
+}
 
 const io = new Server(server, {
   cors: {
@@ -451,7 +476,7 @@ server.listen(PORT, async (err) => {
     logger.info("Modbus connection initialized");
 
     cronService.scheduleJob(
-      "monthlyExport",
+      "monthly  ",
       "1 0 1 * *",
       cronService.generateMonthlyCsv.bind(cronService)
     );
