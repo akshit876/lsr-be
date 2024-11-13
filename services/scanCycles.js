@@ -460,9 +460,9 @@ class ScannerController {
           comService,
           barcodeData
         );
-        if (!secondScanResult.success) {
-          continue;
-        }
+        // if (!secondScanResult.success) {
+        //   continue;
+        // }
 
         // Step 6: Final Checks and Cleanup
         if (await this.performFinalChecks()) {
