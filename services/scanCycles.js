@@ -719,6 +719,38 @@ class ScannerController {
       throw error;
     }
   }
+
+  async signalFileTransfer() {
+    try {
+      logger.info("🔄 Signaling file transfer...");
+      await writeBitsWithRest(1414, 2, 1, 200, false);
+      logger.success("File transfer signal sent");
+    } catch (error) {
+      logger.error("❌ Error signaling file transfer:", error);
+      throw error;
+    }
+  }
+
+  async performFinalChecks() {
+    try {
+      logger.info("🔍 Performing final checks...");
+      if (await this.checkResetOrBit(1410, 12, 1)) {
+        logger.warn("⚠️ Reset detected at final step, restarting cycle");
+        await sleep(1000);
+        return false;
+      }
+
+      logger.info("🧹 Clearing code file before next cycle");
+      await this.clearCodeFile(CODE_FILE_PATH);
+      logger.success("Code file cleared successfully");
+
+      await sleep(3 * 1000);
+      return true;
+    } catch (error) {
+      logger.error("❌ Error in final checks:", error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
