@@ -46,6 +46,7 @@ class ScannerController {
     this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
     this.setupShutdownHandlers();
     this.isRunning = false;
+    this.cycleCount = 0;
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
@@ -412,10 +413,7 @@ class ScannerController {
   }
 
   async runContinuousScan(io = null, comService, { partNumber }) {
-    const DELAY_BETWEEN_CYCLES = 1200;
-    const VERIFICATION_DELAY = 2000;
-    let cycleCount = 0;
-    this.isRunning = true;
+    const isRunning = true;
     this.io = io;
     this.currentPartNumber = partNumber;
 
@@ -426,10 +424,10 @@ class ScannerController {
       throw error;
     }
 
-    while (this.isRunning) {
+    while (isRunning) {
       try {
-        logger.section(`Scan Cycle ${cycleCount + 1}`);
-        await sleep(DELAY_BETWEEN_CYCLES);
+        await sleep(1200);
+        logger.section(`Scan Cycle ${this.cycleCount + 1}`);
 
         // Step 1: Check initial conditions
         if (await this.checkResetOrBit(1410, 0, 1)) {
@@ -468,8 +466,8 @@ class ScannerController {
 
         // Step 6: Final Checks and Cleanup
         if (await this.performFinalChecks()) {
-          cycleCount++;
-          logger.section(`Completed Scan Cycle ${cycleCount}`);
+          this.cycleCount++;
+          logger.section(`Completed Scan Cycle ${this.cycleCount}`);
         }
       } catch (error) {
         await this.handleScanError(error);
@@ -750,6 +748,11 @@ class ScannerController {
       logger.error("❌ Error in final checks:", error);
       throw error;
     }
+  }
+
+  resetCycleCount() {
+    this.cycleCount = 0;
+    logger.info("Cycle count reset to 0");
   }
 }
 
