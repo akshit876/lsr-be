@@ -2,6 +2,8 @@ import { parentPort } from "worker_threads";
 import { connect, readBit } from "./modbus.js";
 import logger from "../logger.js";
 
+const CHECK_INTERVAL = 10; // Check every 100ms
+
 async function monitorResetSignal() {
   try {
     await connect();
@@ -13,7 +15,7 @@ async function monitorResetSignal() {
         logger.info("Reset signal detected (1600.0 = 1)");
         parentPort.postMessage("reset");
       }
-      await new Promise((resolve) => setTimeout(resolve, 100)); // Check every 100ms
+      await new Promise((resolve) => setTimeout(resolve, CHECK_INTERVAL)); // Check every 100ms
     }
   } catch (error) {
     console.log({ error });
@@ -22,8 +24,12 @@ async function monitorResetSignal() {
   }
 }
 
-parentPort.on("message", (message) => {
+parentPort.on("message", async (message) => {
   if (message === "start") {
-    monitorResetSignal();
+    try {
+      await monitorResetSignal();
+    } catch (error) {
+      logger.error("Error starting monitor:", error);
+    }
   }
 });
