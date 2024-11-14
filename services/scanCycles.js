@@ -431,11 +431,16 @@ class ScannerController {
           socket.on("pulse_on", () => {
             logger.info("📡 Received pulse_on signal from UI");
             this.isPulseOn = true;
+            if (!this.isRunning) {
+              this.runContinuousScan(this.io, comService, { partNumber });
+            }
+            this.isRunning = true;
           });
 
           socket.on("pulse_off", () => {
             logger.info("📡 Received pulse_off signal from UI");
             this.isPulseOn = false;
+            this.isRunning = false;
           });
         });
       }
@@ -444,6 +449,7 @@ class ScannerController {
         try {
           if (!this.isPulseOn) {
             logger.info("⏸️ Cycle paused - waiting for pulse_on signal");
+            this.isRunning = false;
             await sleep(1000);
             continue;
           }
@@ -467,6 +473,7 @@ class ScannerController {
                 if (!this.isPulseOn) {
                   clearInterval(pulseCheck);
                   logger.warn("⏸️ Pulse off detected, interrupting cycle");
+                  this.isRunning = false;
                   resolve("PULSE_OFF");
                 }
               }, 100);
