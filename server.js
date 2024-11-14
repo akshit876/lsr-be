@@ -39,6 +39,40 @@ const MODBUS_PORT = parseInt(process.env.MODBUS_PORT, 10);
 const BARCODE_RESET_HOUR = 6;
 const BARCODE_RESET_MINUTE = 0;
 
+import { exec } from "child_process";
+import util from "util";
+const execAsync = util.promisify(exec);
+
+// Function to kill process using port 3002
+async function killProcessOnPorts(ports) {
+  for (const port of ports) {
+    try {
+      // For Windows
+      if (process.platform === "win32") {
+        const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
+        const lines = stdout.split("\n");
+        const line = lines.find((l) => l.includes(":" + port));
+        if (line) {
+          const pid = line.trim().split(/\s+/).pop();
+          await execAsync(`taskkill /F /PID ${pid}`);
+          console.log(`Process using port ${port} has been killed`);
+        }
+      } else {
+        // For Linux/Mac
+        await execAsync(
+          `lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs kill -9`
+        );
+        console.log(`Process using port ${port} has been killed`);
+      }
+    } catch (error) {
+      console.log(
+        `No process found using port ${port} or error killing process:`,
+        error.message
+      );
+    }
+  }
+}
+
 console.log({ MODBUS_IP, MODBUS_PORT });
 
 function emitErrorEvent(socket, errorType, errorMessage) {
@@ -462,53 +496,70 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3002;
-server.listen(PORT, async (err) => {
-  if (err) {
-    emitErrorEvent(io, "server-start-failure", JSON.stringify(err));
-    logger.error("Server failed to start: %s", err.message);
-    throw err;
-  }
-  logger.info(`> Server ready on http://localhost:${PORT}`);
+const PORTS = [3000, 3002];
 
-  let comService = null;
+// Add error handling for the server
+const startServer = async () => {
   try {
-    await connect();
-    logger.info("Modbus connection initialized");
+    await killProcessOnPorts(PORTS);
 
-    cronService.scheduleJob(
-      "monthlyExport",
-      "1 0 1 * *",
-      cronService.generateMonthlyCsv.bind(cronService)
-    );
+    // Wait a moment for the port to be released
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    cronService.startAllJobs();
+    server.listen(PORT, async (err) => {
+      if (err) {
+        emitErrorEvent(io, "server-start-failure", JSON.stringify(err));
+        logger.error("Server failed to start: %s", err.message);
+        throw err;
+      }
+      logger.info(`> Server ready on http://localhost:${PORT}`);
 
-    // const shiftUtility = new ShiftUtility();
-    // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
-    // barcodeGenerator.initialize('main-data', 'records');
-    // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-    comService = new BufferedComPortService({
-      path: "COM3",
-      baudRate: 9600,
-      logDir: "com_port_logs",
+      let comService = null;
+      try {
+        await connect();
+        logger.info("Modbus connection initialized");
+
+        cronService.scheduleJob(
+          "monthlyExport",
+          "1 0 1 * *",
+          cronService.generateMonthlyCsv.bind(cronService)
+        );
+
+        cronService.startAllJobs();
+
+        // const shiftUtility = new ShiftUtility();
+        // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
+        // barcodeGenerator.initialize('main-data', 'records');
+        // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
+        comService = new BufferedComPortService({
+          path: "COM3",
+          baudRate: 9600,
+          logDir: "com_port_logs",
+        });
+        await comService.initSerialPort();
+        // await connect();
+        // Fetch part number and pass it to runContinuousScan
+        const { partNumber } = await fetchPartNumberAndData();
+
+        // runContinuousScan(io, null, { partNumber }).catch((error) => {
+        //   logger.error('Failed to start continuous scan:', error);
+        //   process.exit(1);
+        // });
+        await scannerController.runContinuousScan(io, comService, {
+          partNumber,
+        });
+      } catch (error) {
+        console.log({ error });
+        emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
+        logger.error("Failed to initialize Modbus connection:", error);
+        // await comService.closePort();
+      }
     });
-    await comService.initSerialPort();
-    // await connect();
-    // Fetch part number and pass it to runContinuousScan
-    const { partNumber } = await fetchPartNumberAndData();
-
-    // runContinuousScan(io, null, { partNumber }).catch((error) => {
-    //   logger.error('Failed to start continuous scan:', error);
-    //   process.exit(1);
-    // });
-    await scannerController.runContinuousScan(io, comService, { partNumber });
   } catch (error) {
-    console.log({ error });
-    emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
-    logger.error("Failed to initialize Modbus connection:", error);
-    // await comService.closePort();
+    console.error("Failed to start server:", error);
+    process.exit(1);
   }
-});
+};
 
 server.on("error", (err) => {
   console.log({ err });
@@ -576,3 +627,5 @@ process.on("SIGTERM", async () => {
   await mongoDbService.disconnect();
   process.exit(0);
 });
+
+startServer();
