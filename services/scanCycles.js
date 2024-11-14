@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
@@ -544,6 +545,19 @@ class ScannerController {
 
       // Step 3: Signal Transfer and Wait
       await this.signalFileTransfer();
+
+      logger.info("✍️ Writing bit 1410.11 to signal file transfer");
+      await writeBitsWithRest(1410, 11, 1, 100, false);
+
+      logger.info("🔍 Checking for reset or waiting for bit 1410.2");
+      if (await this.checkResetOrBit(1410, 2, 1)) {
+        logger.warn(
+          "⚠️ Reset detected while waiting for 1410.2, restarting cycle"
+        );
+        this.barcodeGenerator.decSerialNo();
+        await sleep(1000);
+        return;
+      }
 
       // Step 4: Second Scanner Check
       const secondScanResult = await this.handleSecondScan(
