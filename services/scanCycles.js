@@ -461,6 +461,16 @@ class ScannerController {
           await Promise.race([
             this.executeScanCycle(comService, partNumber),
             resetMonitoring,
+            // Add pulse monitoring promise
+            new Promise((resolve) => {
+              const pulseCheck = setInterval(() => {
+                if (!this.isPulseOn) {
+                  clearInterval(pulseCheck);
+                  logger.warn("⏸️ Pulse off detected, interrupting cycle");
+                  resolve("PULSE_OFF");
+                }
+              }, 100);
+            }),
           ]);
 
           // Cleanup monitoring after cycle
@@ -471,6 +481,9 @@ class ScannerController {
             continue;
           } else if (error.message === "RESTART_CYCLE") {
             logger.info("🔄 Restarting cycle due to OK first scan");
+            continue;
+          } else if (error === "PULSE_OFF") {
+            logger.info("⏸️ Cycle paused due to pulse off");
             continue;
           }
           await this.handleScanError(error);
