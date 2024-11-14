@@ -40,6 +40,7 @@ class ScannerController {
 
     logger.info("🎯 Creating new scanner controller instance");
     this.resetMonitor = null;
+    this.resetListeners = new Set();
     this.comService = null;
     this.isInitialized = false;
     this.shiftUtility = new ShiftUtility();
@@ -184,7 +185,9 @@ class ScannerController {
     try {
       if (this.resetMonitor) {
         logger.info("🔄 Terminating reset monitor...");
-        this.resetMonitor.terminate();
+        this.cleanupResetListeners();
+        await this.resetMonitor.terminate();
+        this.resetMonitor = null;
       }
 
       if (this.comService) {
@@ -413,65 +416,148 @@ class ScannerController {
   }
 
   async runContinuousScan(io = null, comService, { partNumber }) {
-    const isRunning = true;
     this.io = io;
     this.currentPartNumber = partNumber;
+    this.isRunning = true;
+    this.cycleCount = 0;
 
     try {
       await this.initializeScannerAndMonitor(io, comService);
+
+      while (this.isRunning) {
+        try {
+          await sleep(1200);
+
+          // Clear separator and print cycle count
+          logger.separator.hash();
+          logger.warn(`⚡ Scan Cycle ${this.cycleCount + 1}`);
+          logger.separator.hash();
+
+          // Create new reset monitoring for each cycle
+          const resetMonitoring = this.startResetMonitoring();
+
+          await Promise.race([
+            this.executeScanCycle(comService, partNumber),
+            resetMonitoring,
+          ]);
+
+          // Cleanup monitoring after cycle
+          this.cleanupResetListeners();
+        } catch (error) {
+          if (error.message === "RESET_DETECTED") {
+            logger.warn("⚠️ Reset detected, restarting cycle");
+            continue;
+          } else if (error.message === "RESTART_CYCLE") {
+            logger.info("🔄 Restarting cycle due to OK first scan");
+            continue;
+          }
+          await this.handleScanError(error);
+        }
+      }
     } catch (error) {
-      logger.error("❌ Initialization error:", error);
+      logger.error("❌ Fatal error in continuous scan:", error);
       throw error;
+    } finally {
+      this.cleanupResetListeners();
+    }
+  }
+
+  setupResetMonitor() {
+    if (!this.resetMonitor) {
+      this.resetMonitor = new Worker("./services/resetMonitor.js");
+      // Increase max listeners if needed
+      this.resetMonitor.setMaxListeners(20);
     }
 
-    while (isRunning) {
-      try {
-        await sleep(1200);
-        logger.section(`Scan Cycle ${this.cycleCount + 1}`);
+    // Clean up any existing listeners
+    this.cleanupResetListeners();
 
-        // Step 1: Check initial conditions
-        if (await this.checkResetOrBit(1410, 0, 1)) {
-          logger.warn("⚠️ Reset detected, restarting cycle");
-          continue;
-        }
+    this.resetMonitor.on("error", (error) => {
+      logger.error("❌ Reset monitor error:", error);
+    });
 
-        // Step 2: First Scanner Check
-        const firstScanResult = await this.handleFirstScan(comService);
-        if (!firstScanResult.shouldContinue) {
-          continue;
-        }
-
-        // Step 3: Generate and Write Barcode
-        const barcodeData = await this.generateAndWriteBarcode(partNumber);
-        if (!barcodeData) {
-          this.barcodeGenerator.decSerialNo();
-          continue;
-        }
-
-        // Step 4: Signal Transfer and Wait
-        await this.signalFileTransfer();
-        if (await this.checkResetOrBit(1410, 2, 1)) {
-          this.barcodeGenerator.decSerialNo();
-          continue;
-        }
-
-        // Step 5: Second Scanner Check
-        const secondScanResult = await this.handleSecondScan(
-          comService,
-          barcodeData
-        );
-        // if (!secondScanResult.success) {
-        //   continue;
-        // }
-
-        // Step 6: Final Checks and Cleanup
-        if (await this.performFinalChecks()) {
-          this.cycleCount++;
-          logger.section(`Completed Scan Cycle ${this.cycleCount}`);
-        }
-      } catch (error) {
-        await this.handleScanError(error);
+    this.resetMonitor.on("exit", (code) => {
+      logger.warn(`Reset monitor exited with code ${code}`);
+      this.cleanupResetListeners();
+      if (code !== 0) {
+        this.setupResetMonitor();
       }
+    });
+  }
+
+  // New method to clean up listeners
+  cleanupResetListeners() {
+    if (this.resetMonitor) {
+      this.resetMonitor.removeAllListeners("message");
+      this.resetListeners.clear();
+    }
+  }
+
+  startResetMonitoring() {
+    return new Promise(async (resolve) => {
+      const messageHandler = async (message) => {
+        if (message === "reset") {
+          logger.warn("🔄 Reset signal detected from monitor");
+          this.resetMonitor.removeListener("message", messageHandler);
+          this.resetListeners.delete(messageHandler);
+          await this.handleReset();
+          resolve("RESET_DETECTED");
+        }
+      };
+
+      // Add to tracking set
+      this.resetListeners.add(messageHandler);
+      this.resetMonitor.on("message", messageHandler);
+
+      // Cleanup when monitoring stops
+      return () => {
+        this.resetMonitor.removeListener("message", messageHandler);
+        this.resetListeners.delete(messageHandler);
+      };
+    });
+  }
+
+  // New method to encapsulate the main scan cycle logic
+  async executeScanCycle(comService, partNumber) {
+    try {
+      // First check for 1410.0
+      logger.info("Waiting for start signal (1410.0)...");
+      const resetResult = await this.checkResetOrBit(1410, 0, 1);
+      if (resetResult === true) {
+        logger.info("Reset detected, restarting cycle");
+        return;
+      }
+
+      // Step 1: First Scanner Check
+      const firstScanResult = await this.handleFirstScan(comService);
+      if (!firstScanResult.shouldContinue) {
+        logger.info("Cycle stopped after first scan");
+        return;
+      }
+
+      // Step 2: Generate and Write Barcode
+      const barcodeData = await this.generateAndWriteBarcode(partNumber);
+      if (!barcodeData) {
+        this.barcodeGenerator.decSerialNo();
+        return;
+      }
+
+      // Step 3: Signal Transfer and Wait
+      await this.signalFileTransfer();
+
+      // Step 4: Second Scanner Check
+      const secondScanResult = await this.handleSecondScan(
+        comService,
+        barcodeData
+      );
+
+      // Step 5: Final Checks and Cleanup
+      if (await this.performFinalChecks()) {
+        this.cycleCount++;
+        logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
+      }
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -483,38 +569,45 @@ class ScannerController {
     }
 
     this.comService = comService;
-    this.resetMonitor = new Worker("./services/resetMonitor.js");
-
     this.setupResetMonitor();
   }
 
-  setupResetMonitor() {
-    this.resetMonitor.on("message", async (message) => {
-      if (message === "reset") {
-        logger.warn("⚠️ Reset signal received - restarting cycle");
-        await this.handleReset();
-      }
-    });
-
-    this.resetMonitor.on("error", (error) => {
-      logger.error("❌ Reset monitor error:", error);
-    });
-  }
-
   async handleFirstScan(comService) {
+    logger.info("Starting first scan handler");
+
     const scannerData = await this.fetchScannerData(comService, {
       isSecondScan: false,
     });
 
-    if (scannerData !== "NG") {
-      logger.error("First scan data is OK, stopping machine");
-      await writeBitsWithRest(1414, 6, 1, 200, false);
+    logger.info(`Received scanner data: "${scannerData}"`);
+
+    // Check for reset signal before proceeding
+    if (await this.checkReset()) {
+      logger.warn("⚠️ Reset detected during first scan, restarting cycle");
       return { shouldContinue: false };
     }
 
-    logger.warn("⚠️ First scan data is NG, proceeding with workflow");
-    await writeBitsWithRest(1414, 7, 1, 100, false);
-    return { shouldContinue: true };
+    // If scannerData is "NG", proceed with workflow
+    if (scannerData && scannerData.trim().toUpperCase() === "NG") {
+      logger.warn("⚠️ First scan data is NG, proceeding with workflow");
+      await writeBitsWithRest(1414, 7, 1, 100, false);
+      return { shouldContinue: true };
+    }
+
+    // If scannerData is OK, emit socket event and restart cycle
+    logger.info("First scan data is OK, stopping machine and restarting cycle");
+
+    // Emit socket event if io is available
+    if (this.io) {
+      this.io.emit("first_scan_ok", {
+        timestamp: new Date(),
+        scannerData: scannerData,
+        message: "First scan detected OK part, cycle restarting",
+      });
+    }
+
+    await writeBitsWithRest(1414, 6, 1, 200, false);
+    throw new Error("RESTART_CYCLE");
   }
 
   async generateAndWriteBarcode(partNumber) {
@@ -523,6 +616,14 @@ class ScannerController {
       mongoDbService,
       partNumber,
     });
+
+    // Check for reset signal before writing OCR data
+    if (await this.checkReset()) {
+      logger.warn(
+        "⚠️ Reset detected during barcode generation, restarting cycle"
+      );
+      return null;
+    }
 
     await this.writeOCRDataToFile(text);
     const isVerified = await this.verifyAndRetryWrite(text, 2);
@@ -570,13 +671,14 @@ class ScannerController {
 
   async checkReset() {
     return new Promise((resolve) => {
-      const resetHandler = () => {
-        this.resetEmitter.removeListener("reset", resetHandler);
+      const resetHandler = async () => {
+        await this.handleReset();
+        this.resetMonitor.removeListener("reset", resetHandler);
         resolve(true);
       };
-      this.resetEmitter.once("reset", resetHandler);
+      this.resetMonitor.once("reset", resetHandler);
       setTimeout(() => {
-        this.resetEmitter.removeListener("reset", resetHandler);
+        this.resetMonitor.removeListener("reset", resetHandler);
         resolve(false);
       }, 50);
     });
@@ -593,18 +695,27 @@ class ScannerController {
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
 
+    // Add a flag to prevent multiple triggers
+    if (this.isScanning) {
+      logger.warn("Scanner already in progress, skipping new trigger");
+      return null;
+    }
+    this.isScanning = true;
+
     try {
       logger.info(
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      const scannerData = await new Promise((resolve, reject) => {
+      const scannerDataPromise = new Promise((resolve, reject) => {
+        // Remove any existing listeners first
+        this.comService.removeAllListeners("dataGot");
+
         const dataHandler = (data) => {
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
 
-          // Emit scanner read event to UI
           if (this.io) {
             this.io.emit("scanner_read", {
               timestamp: new Date(),
@@ -614,24 +725,24 @@ class ScannerController {
           }
 
           clearTimeout(timeoutId);
+          this.isScanning = false; // Reset the scanning flag
           resolve(data);
           this.comService.off("dataGot", dataHandler);
         };
 
-        // Set up event listener
         logger.info("👂 Adding event listener for scanner data");
         this.comService.on("dataGot", dataHandler);
 
-        // Configure timeout
         const timeoutId = setTimeout(() => {
           logger.error(
             `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
           );
           this.comService.off("dataGot", dataHandler);
+          this.isScanning = false; // Reset the scanning flag
           reject(new Error(`${scannerLabel} scanner data timeout`));
         }, timeout);
 
-        // Trigger scanner
+        // Only trigger scanner if not already scanning
         logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
         writeBitsWithRest(register, bit, 1, 100, false)
           .then(() =>
@@ -643,14 +754,13 @@ class ScannerController {
               err
             );
             clearTimeout(timeoutId);
+            this.isScanning = false; // Reset the scanning flag
             reject(err);
           });
       });
 
-      logger.success(
-        `📊 ${scannerLabel} scanner data received: ${scannerData}`
-      );
-      return scannerData;
+      const result = await scannerDataPromise;
+      return result;
     } catch (error) {
       logger.separator.hash();
       logger.error(
@@ -658,6 +768,8 @@ class ScannerController {
         error
       );
       throw error;
+    } finally {
+      this.isScanning = false; // Always reset the scanning flag
     }
   }
 
@@ -701,17 +813,11 @@ class ScannerController {
   async handleReset() {
     try {
       logger.info("🔄 Handling reset signal");
-      this.isRunning = false;
       await writeBit(1500, 3, 1);
-      logger.success("Reset handling completed");
-
-      // Restart the continuous scan with the existing parameters
-      if (this.comService) {
-        logger.info("🔄 Restarting continuous scan...");
-        await this.runContinuousScan(this.io, this.comService, {
-          partNumber: this.currentPartNumber,
-        });
-      }
+      await this.resetBits();
+      this.barcodeGenerator.decSerialNo(); // Decrement serial number if needed
+      await this.clearCodeFile(CODE_FILE_PATH);
+      throw new Error("RESET_DETECTED");
     } catch (error) {
       logger.error("❌ Error handling reset:", error);
       throw error;

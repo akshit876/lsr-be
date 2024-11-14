@@ -58,3 +58,23 @@ next-env.d.ts
 com_port_logs/
 *.log
 application-*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Build output
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/

@@ -1,5 +1,6 @@
 import { MongoClient } from "mongodb";
 import logger from "../logger.js";
+import config from "../config/config.js";
 // import logger from "./logger.js";
 
 class MongoDBService {
@@ -9,18 +10,28 @@ class MongoDBService {
     this.collection = null;
   }
 
-  async connect(dbName, collectionName) {
-    try {
-      const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
-      this.client = new MongoClient(uri);
-      await this.client.connect();
-      this.db = this.client.db(dbName);
-      this.collection = this.db.collection(collectionName);
-      logger.info(`Connected successfully to MongoDB database: ${dbName}`);
-    } catch (error) {
-      console.error({ error });
-      logger.error("MongoDB connection error:", error);
-      throw error;
+  async connect(database, collection) {
+    const maxRetries = 5;
+    const retryDelay = 5000; // 5 seconds
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger.info(
+          `Attempting to connect to MongoDB (attempt ${attempt}/${maxRetries})...`
+        );
+        this.client = await MongoClient.connect(config.mongodb.url);
+        this.db = this.client.db(database);
+        this.collection = this.db.collection(collection);
+        logger.success("MongoDB connected successfully");
+        return;
+      } catch (error) {
+        logger.error(`MongoDB connection error: ${error.message}`);
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        logger.info(`Retrying in ${retryDelay / 1000} seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
     }
   }
 
