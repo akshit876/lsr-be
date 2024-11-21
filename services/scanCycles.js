@@ -426,27 +426,27 @@ class ScannerController {
     try {
       await this.initializeScannerAndMonitor(io, comService);
 
-      if (io) {
-        io.on("connection", (socket) => {
-          socket.on("pulse_on", () => {
-            logger.info("📡 Received pulse_on signal from UI");
-            this.isPulseOn = true;
-          });
+      // if (io) {
+      //   io.on("connection", (socket) => {
+      //     socket.on("pulse_on", () => {
+      //       logger.info("📡 Received pulse_on signal from UI");
+      //       this.isPulseOn = true;
+      //     });
 
-          socket.on("pulse_off", () => {
-            logger.info("📡 Received pulse_off signal from UI");
-            this.isPulseOn = false;
-          });
-        });
-      }
+      //     socket.on("pulse_off", () => {
+      //       logger.info("📡 Received pulse_off signal from UI");
+      //       this.isPulseOn = false;
+      //     });
+      //   });
+      // }
 
       while (this.isRunning) {
         try {
-          if (!this.isPulseOn) {
-            logger.info("⏸️ Cycle paused - waiting for pulse_on signal");
-            await sleep(1000);
-            continue;
-          }
+          // if (!this.isPulseOn) {
+          //   logger.info("⏸️ Cycle paused - waiting for pulse_on signal");
+          //   await sleep(1000);
+          //   continue;
+          // }
 
           await sleep(1200);
 
