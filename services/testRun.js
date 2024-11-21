@@ -3,7 +3,7 @@ import { writeBitsWithRest } from "./modbus.js";
 // import { sleep } from "./testCycle.js";
 
 // const comService = new BufferedComPortService({
-//   path: "COM3",
+//   path: "COM5",
 //   baudRate: 9600,
 //   logDir: "com_port_logs",
 // });

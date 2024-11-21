@@ -33,6 +33,69 @@ import { scannerController } from "./services/scanCycles.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const REGISTER_MONITORING_CONFIG = {
+  register: 1490,
+  interval: 100, // ms
+  bits: {
+    0: {
+      eventName: "part-presence",
+      message: "Part Presence signal detected",
+    },
+    1: {
+      eventName: "emergency-stop",
+      message: "Emergency Stop signal detected",
+    },
+    2: {
+      eventName: "light-curtation",
+      message: "Light Curtation signal detected",
+    },
+    // 3: {
+    //   eventName: "emergency-stop-detected",
+    //   message: "Emergency stop signal detected",
+    // },
+  },
+};
+
+let registerMonitorInterval = null;
+
+async function monitorRegisters(io) {
+  const { register, interval, bits } = REGISTER_MONITORING_CONFIG;
+
+  // Clear any existing interval
+  if (registerMonitorInterval) {
+    clearInterval(registerMonitorInterval);
+  }
+
+  registerMonitorInterval = setInterval(async () => {
+    try {
+      for (const [bit, config] of Object.entries(bits)) {
+        const value = await readBit(register, parseInt(bit));
+        console.log({ register, value });
+        if (value) {
+          io.emit(config.eventName, {
+            register,
+            bit: parseInt(bit),
+            value,
+            message: config.message,
+            timestamp: new Date().toISOString(),
+          });
+          logger.info(`${config.message} (Register ${register}.${bit})`);
+        }
+      }
+    } catch (error) {
+      logger.error("Error monitoring registers:", error);
+    }
+  }, interval);
+
+  return () => {
+    if (registerMonitorInterval) {
+      clearInterval(registerMonitorInterval);
+      registerMonitorInterval = null;
+      logger.info("Register monitoring stopped");
+    }
+  };
+}
+
 const MODBUS_IP = process.env.MODBUS_IP;
 const MODBUS_PORT = parseInt(process.env.MODBUS_PORT, 10);
 
@@ -515,6 +578,7 @@ const startServer = async () => {
       logger.info(`> Server ready on http://localhost:${PORT}`);
 
       let comService = null;
+      let cleanupMonitoring = null;
       try {
         await connect();
         logger.info("Modbus connection initialized");
@@ -532,7 +596,7 @@ const startServer = async () => {
         // barcodeGenerator.initialize('main-data', 'records');
         // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
         comService = new BufferedComPortService({
-          path: "COM3",
+          path: "COM5",
           baudRate: 9600,
           logDir: "com_port_logs",
         });
@@ -545,8 +609,26 @@ const startServer = async () => {
         //   logger.error('Failed to start continuous scan:', error);
         //   process.exit(1);
         // });
-        await scannerController.runContinuousScan(io, comService, {
-          partNumber,
+        // await scannerController.runContinuousScan(io, comService, {
+        //   partNumber,
+        // });
+        await Promise.all([
+          scannerController.runContinuousScan(io, comService, { partNumber }),
+          (async () => {
+            cleanupMonitoring = await monitorRegisters(io);
+          })(),
+        ]);
+
+        process.on("SIGINT", () => {
+          if (cleanupMonitoring) {
+            cleanupMonitoring();
+          }
+        });
+
+        process.on("SIGTERM", () => {
+          if (cleanupMonitoring) {
+            cleanupMonitoring();
+          }
         });
       } catch (error) {
         console.log({ error });
