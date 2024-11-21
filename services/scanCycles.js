@@ -634,7 +634,6 @@ class ScannerController {
     const scannerData = await this.fetchScannerData(comService, {
       isSecondScan: false,
     });
-    console.log({ scannerData });
 
     logger.info(`Received scanner data: "${scannerData}"`);
 
@@ -648,30 +647,25 @@ class ScannerController {
     if (scannerData && scannerData.trim().toUpperCase() === "NG") {
       logger.warn("⚠️ First scan data is NG, proceeding with workflow");
 
-      // Write NG signal
-      await writeBitsWithRest(1414, 7, 1, 100, false);
-
-      // Wait for PLC acknowledgment (1410.1)
-      // logger.info("Waiting for PLC acknowledgment (1410.1)...");
-      // const resetResult = await this.checkResetOrBit(1410, 1, 1, 10000);
-      // if (resetResult === true) {
-      //   logger.warn("Reset detected while waiting for PLC acknowledgment");
-      //   return { shouldContinue: false };
-      // }
-
-      // // Clear NG signal
-      // await writeBitsWithRest(1414, 7, 0, 100, false);
-
-      return { shouldContinue: true };
+      try {
+        // Write NG signal
+        logger.info("Writing NG signal (1414.7)");
+        await writeBit(1414, 7, 1);
+        await sleep(200); // Small delay to ensure PLC registers the signal
+        
+        logger.success("First scan NG workflow completed");
+        return { shouldContinue: true };
+      } catch (error) {
+        logger.error("Error in NG workflow:", error);
+        await this.resetBits();
+        throw error;
+      }
     }
 
     // If scannerData is OK, emit socket event and restart cycle
     if (scannerData != null) {
-      logger.info(
-        "First scan data is OK, stopping machine and restarting cycle"
-      );
+      logger.info("First scan data is OK, stopping machine and restarting cycle");
 
-      // Emit socket event if io is available
       if (this.io) {
         this.io.emit("first_scan_ok", {
           timestamp: new Date(),
@@ -680,14 +674,9 @@ class ScannerController {
         });
       }
 
-      await writeBitsWithRest(1414, 6, 1, 200, false);
-
-      // Wait for PLC acknowledgment
-      // await this.checkResetOrBit(1410, 1, 1, 10000);
-
-      // Clear OK signal
-      // await writeBitsWithRest(1414, 6, 0, 200, false);
-
+      await writeBit(1414, 6, 1);
+      await sleep(200);
+      
       throw new Error("RESTART_CYCLE");
     }
 
