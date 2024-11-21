@@ -70,7 +70,7 @@ async function monitorRegisters(io) {
     try {
       for (const [bit, config] of Object.entries(bits)) {
         const value = await readBit(register, parseInt(bit));
-        console.log({ register, value });
+        // console.log({ register, value });
         if (value) {
           io.emit(config.eventName, {
             register,

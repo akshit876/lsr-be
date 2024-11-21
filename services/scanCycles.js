@@ -426,33 +426,33 @@ class ScannerController {
     try {
       await this.initializeScannerAndMonitor(io, comService);
 
-      if (io) {
-        io.on("connection", (socket) => {
-          socket.on("pulse_on", () => {
-            logger.info("📡 Received pulse_on signal from UI");
-            this.isPulseOn = true;
-            if (!this.isRunning) {
-              this.runContinuousScan(this.io, comService, { partNumber });
-            }
-            this.isRunning = true;
-          });
+      // if (io) {
+      //   io.on("connection", (socket) => {
+      //     socket.on("pulse_on", () => {
+      //       logger.info("📡 Received pulse_on signal from UI");
+      //       this.isPulseOn = true;
+      //       if (!this.isRunning) {
+      //         this.runContinuousScan(this.io, comService, { partNumber });
+      //       }
+      //       this.isRunning = true;
+      //     });
 
-          socket.on("pulse_off", () => {
-            logger.info("📡 Received pulse_off signal from UI");
-            this.isPulseOn = false;
-            this.isRunning = false;
-          });
-        });
-      }
+      //     socket.on("pulse_off", () => {
+      //       logger.info("📡 Received pulse_off signal from UI");
+      //       this.isPulseOn = false;
+      //       this.isRunning = false;
+      //     });
+      //   });
+      // }
 
       while (this.isRunning) {
         try {
-          if (!this.isPulseOn) {
-            logger.info("⏸️ Cycle paused - waiting for pulse_on signal");
-            this.isRunning = false;
-            await sleep(1000);
-            continue;
-          }
+          // if (!this.isPulseOn) {
+          //   logger.info("⏸️ Cycle paused - waiting for pulse_on signal");
+          //   this.isRunning = false;
+          //   await sleep(1000);
+          //   continue;
+          // }
 
           await sleep(1200);
 
@@ -468,16 +468,16 @@ class ScannerController {
             this.executeScanCycle(comService, partNumber),
             resetMonitoring,
             // Add pulse monitoring promise
-            new Promise((resolve) => {
-              const pulseCheck = setInterval(() => {
-                if (!this.isPulseOn) {
-                  clearInterval(pulseCheck);
-                  logger.warn("⏸️ Pulse off detected, interrupting cycle");
-                  this.isRunning = false;
-                  resolve("PULSE_OFF");
-                }
-              }, 100);
-            }),
+            // new Promise((resolve) => {
+            //   const pulseCheck = setInterval(() => {
+            //     if (!this.isPulseOn) {
+            //       clearInterval(pulseCheck);
+            //       logger.warn("⏸️ Pulse off detected, interrupting cycle");
+            //       this.isRunning = false;
+            //       resolve("PULSE_OFF");
+            //     }
+            //   }, 100);
+            // }),
           ]);
 
           // Cleanup monitoring after cycle
@@ -588,7 +588,8 @@ class ScannerController {
       await this.signalFileTransfer();
 
       logger.info("✍️ Writing bit 1410.11 to signal file transfer");
-      await writeBitsWithRest(1410, 11, 1, 100, false);
+      // await writeBitsWithRest(1410, 11, 1, 100, false);
+      await writeBit(1410, 11, 1);
 
       logger.info("🔍 Checking for reset or waiting for bit 1410.2");
       if (await this.checkResetOrBit(1410, 2, 1)) {
@@ -806,7 +807,7 @@ class ScannerController {
 
         // Only trigger scanner if not already scanning
         logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        writeBitsWithRest(register, bit, 1, 100, false)
+        writeBit(register, bit, 1)
           .then(() =>
             logger.success(`${scannerLabel} scanner triggered successfully`)
           )
@@ -889,8 +890,8 @@ class ScannerController {
   async signalFileTransfer() {
     try {
       logger.info("🔄 Signaling file transfer...");
-      await writeBitsWithRest(1414, 2, 1, 200, false);
-      logger.success("File transfer signal sent");
+      // await writeBitsWithRest(1414, 2, 1, 200, false);
+      // logger.success("File transfer signal sent");
     } catch (error) {
       logger.error("❌ Error signaling file transfer:", error);
       throw error;
