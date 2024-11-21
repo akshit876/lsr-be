@@ -858,7 +858,7 @@ class ScannerController {
       await writeBit(1500, 3, 1);
       await this.resetBits();
       this.barcodeGenerator.decSerialNo(); // Decrement serial number if needed
-      await this.clearCodeFile(CODE_FILE_PATH);
+      // await this.clearCodeFile(CODE_FILE_PATH);
       throw new Error("RESET_DETECTED");
     } catch (error) {
       logger.error("❌ Error handling reset:", error);
@@ -887,7 +887,7 @@ class ScannerController {
       }
 
       logger.info("🧹 Clearing code file before next cycle");
-      await this.clearCodeFile(CODE_FILE_PATH);
+      // await this.clearCodeFile(CODE_FILE_PATH);
       logger.success("Code file cleared successfully");
 
       await sleep(3 * 1000);
