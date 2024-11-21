@@ -630,19 +630,26 @@ class ScannerController {
     }
 
     // If scannerData is OK, emit socket event and restart cycle
-    logger.info("First scan data is OK, stopping machine and restarting cycle");
+    if (scannerData != null) {
+      logger.info(
+        "First scan data is OK, stopping machine and restarting cycle"
+      );
 
-    // Emit socket event if io is available
-    if (this.io) {
-      this.io.emit("first_scan_ok", {
-        timestamp: new Date(),
-        scannerData: scannerData,
-        message: "First scan detected OK part, cycle restarting",
-      });
+      // Emit socket event if io is available
+      if (this.io) {
+        this.io.emit("first_scan_ok", {
+          timestamp: new Date(),
+          scannerData: scannerData,
+          message: "First scan detected OK part, cycle restarting",
+        });
+      }
+
+      await writeBitsWithRest(1414, 6, 1, 200, false);
+      throw new Error("RESTART_CYCLE");
     }
-
-    await writeBitsWithRest(1414, 6, 1, 200, false);
-    throw new Error("RESTART_CYCLE");
+    return {
+      shouldContinue: false,
+    };
   }
 
   async generateAndWriteBarcode(partNumber) {

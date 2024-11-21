@@ -8,6 +8,9 @@ const __dirname = dirname(__filename);
 // Load environment variables from .env file
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
+/***
+ * mongodb://localhost:27017/
+ */
 const config = {
   server: {
     port: process.env.PORT || 3000,
@@ -15,7 +18,7 @@ const config = {
   },
 
   mongodb: {
-    url: process.env.MONGODB_URL || "mongodb://mongodb:27017",
+    url: process.env.MONGODB_URL || "mongodb://localhost:27017",
     database: process.env.MONGODB_DATABASE || "main-data",
     collection: process.env.MONGODB_COLLECTION || "records",
   },

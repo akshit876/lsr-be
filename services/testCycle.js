@@ -148,7 +148,7 @@ const barcodeGenerator = new BarcodeGenerator(shiftUtility);
 barcodeGenerator.initialize("main-data", "records");
 barcodeGenerator.setResetTime(6, 0);
 // const comService = new BufferedComPortService({
-//   path: "COM3", // Make sure this matches your actual COM port
+//   path: "COM5", // Make sure this matches your actual COM port
 //   baudRate: 9600, // Adjust if needed
 //   logDir: "com_port_logs", // Specify the directory for log files
 // });
