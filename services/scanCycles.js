@@ -629,58 +629,68 @@ class ScannerController {
   }
 
   async handleFirstScan(comService) {
-    logger.info("Starting first scan handler");
+    try {
+      logger.info("Starting first scan handler");
 
-    const scannerData = await this.fetchScannerData(comService, {
-      isSecondScan: false,
-    });
+      // Ensure cleanup of any existing listeners
+      comService.removeAllListeners("dataGot");
+      this.isScanning = false;
 
-    logger.info(`Received scanner data: "${scannerData}"`);
+      const scannerData = await this.fetchScannerData(comService, {
+        isSecondScan: false,
+      });
 
-    // Check for reset signal before proceeding
-    if (await this.checkReset()) {
-      logger.warn("⚠️ Reset detected during first scan, restarting cycle");
+      logger.info(`Received scanner data: "${scannerData}"`);
+
+      // Check for reset signal before proceeding
+      if (await this.checkReset()) {
+        logger.warn("⚠️ Reset detected during first scan, restarting cycle");
+        return { shouldContinue: false };
+      }
+
+      // If scannerData is "NG", proceed with workflow
+      if (scannerData && scannerData.trim().toUpperCase() === "NG") {
+        logger.warn("⚠️ First scan data is NG, proceeding with workflow");
+
+        try {
+          // Write NG signal
+          logger.info("Writing NG signal (1414.7)");
+          await writeBit(1414, 7, 1);
+          await sleep(200);
+
+          logger.success("First scan NG workflow completed");
+          return { shouldContinue: true };
+        } catch (error) {
+          logger.error("Error in NG workflow:", error);
+          await this.resetBits();
+          throw error;
+        }
+      }
+
+      // If scannerData is OK, emit socket event and restart cycle
+      if (scannerData != null) {
+        logger.info("First scan data is OK, stopping machine and restarting cycle");
+
+        if (this.io) {
+          this.io.emit("first_scan_ok", {
+            timestamp: new Date(),
+            scannerData: scannerData,
+            message: "First scan detected OK part, cycle restarting",
+          });
+        }
+
+        await writeBit(1414, 6, 1);
+        await sleep(200);
+
+        throw new Error("RESTART_CYCLE");
+      }
+
       return { shouldContinue: false };
+    } finally {
+      // Ensure cleanup happens even if there's an error
+      comService.removeAllListeners("dataGot");
+      this.isScanning = false;
     }
-
-    // If scannerData is "NG", proceed with workflow
-    if (scannerData && scannerData.trim().toUpperCase() === "NG") {
-      logger.warn("⚠️ First scan data is NG, proceeding with workflow");
-
-      try {
-        // Write NG signal
-        logger.info("Writing NG signal (1414.7)");
-        await writeBit(1414, 7, 1);
-        await sleep(200); // Small delay to ensure PLC registers the signal
-        
-        logger.success("First scan NG workflow completed");
-        return { shouldContinue: true };
-      } catch (error) {
-        logger.error("Error in NG workflow:", error);
-        await this.resetBits();
-        throw error;
-      }
-    }
-
-    // If scannerData is OK, emit socket event and restart cycle
-    if (scannerData != null) {
-      logger.info("First scan data is OK, stopping machine and restarting cycle");
-
-      if (this.io) {
-        this.io.emit("first_scan_ok", {
-          timestamp: new Date(),
-          scannerData: scannerData,
-          message: "First scan detected OK part, cycle restarting",
-        });
-      }
-
-      await writeBit(1414, 6, 1);
-      await sleep(200);
-      
-      throw new Error("RESTART_CYCLE");
-    }
-
-    return { shouldContinue: false };
   }
 
   async generateAndWriteBarcode(partNumber) {
@@ -794,18 +804,23 @@ class ScannerController {
     this.isScanning = true;
 
     try {
-      logger.info(
-        `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
-      );
+      logger.info(`🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`);
 
       const scannerDataPromise = new Promise((resolve, reject) => {
         // Remove any existing listeners first
-        this.comService.removeAllListeners("dataGot");
+        comService.removeAllListeners("dataGot");
+
+        const timeoutId = setTimeout(() => {
+          comService.removeAllListeners("dataGot");
+          this.isScanning = false;
+          reject(new Error(`${scannerLabel} scanner data timeout`));
+        }, timeout);
 
         const dataHandler = (data) => {
-          logger.success(
-            `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-          );
+          clearTimeout(timeoutId);
+          comService.removeAllListeners("dataGot");
+          this.isScanning = false;
+          logger.success(`📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`);
 
           if (this.io) {
             this.io.emit("scanner_read", {
@@ -815,52 +830,32 @@ class ScannerController {
             });
           }
 
-          clearTimeout(timeoutId);
-          this.isScanning = false; // Reset the scanning flag
           resolve(data);
-          this.comService.off("dataGot", dataHandler);
         };
 
-        logger.info("👂 Adding event listener for scanner data");
-        this.comService.on("dataGot", dataHandler);
+        comService.on("dataGot", dataHandler);
 
-        const timeoutId = setTimeout(() => {
-          logger.error(
-            `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
-          );
-          this.comService.off("dataGot", dataHandler);
-          this.isScanning = false; // Reset the scanning flag
-          reject(new Error(`${scannerLabel} scanner data timeout`));
-        }, timeout);
-
-        // Only trigger scanner if not already scanning
+        // Trigger scanner
         logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
         writeBit(register, bit, 1)
-          .then(() =>
-            logger.success(`${scannerLabel} scanner triggered successfully`)
-          )
+          .then(() => logger.success(`${scannerLabel} scanner triggered successfully`))
           .catch((err) => {
-            logger.error(
-              `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-              err
-            );
             clearTimeout(timeoutId);
-            this.isScanning = false; // Reset the scanning flag
+            comService.removeAllListeners("dataGot");
+            this.isScanning = false;
             reject(err);
           });
       });
 
       const result = await scannerDataPromise;
       return result;
+
     } catch (error) {
-      logger.separator.hash();
-      logger.error(
-        `❌ Error acquiring ${scannerLabel.toLowerCase()} scanner data:`,
-        error
-      );
+      logger.error(`Error acquiring ${scannerLabel.toLowerCase()} scanner data:`, error);
       throw error;
     } finally {
-      this.isScanning = false; // Always reset the scanning flag
+      this.isScanning = false;
+      comService.removeAllListeners("dataGot");
     }
   }
 
