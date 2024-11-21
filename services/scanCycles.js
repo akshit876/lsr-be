@@ -634,6 +634,7 @@ class ScannerController {
     const scannerData = await this.fetchScannerData(comService, {
       isSecondScan: false,
     });
+    console.log({ scannerData });
 
     logger.info(`Received scanner data: "${scannerData}"`);
 
@@ -646,7 +647,21 @@ class ScannerController {
     // If scannerData is "NG", proceed with workflow
     if (scannerData && scannerData.trim().toUpperCase() === "NG") {
       logger.warn("⚠️ First scan data is NG, proceeding with workflow");
+
+      // Write NG signal
       await writeBitsWithRest(1414, 7, 1, 100, false);
+
+      // Wait for PLC acknowledgment (1410.1)
+      // logger.info("Waiting for PLC acknowledgment (1410.1)...");
+      // const resetResult = await this.checkResetOrBit(1410, 1, 1, 10000);
+      // if (resetResult === true) {
+      //   logger.warn("Reset detected while waiting for PLC acknowledgment");
+      //   return { shouldContinue: false };
+      // }
+
+      // // Clear NG signal
+      // await writeBitsWithRest(1414, 7, 0, 100, false);
+
       return { shouldContinue: true };
     }
 
@@ -666,11 +681,17 @@ class ScannerController {
       }
 
       await writeBitsWithRest(1414, 6, 1, 200, false);
+
+      // Wait for PLC acknowledgment
+      // await this.checkResetOrBit(1410, 1, 1, 10000);
+
+      // Clear OK signal
+      // await writeBitsWithRest(1414, 6, 0, 200, false);
+
       throw new Error("RESTART_CYCLE");
     }
-    return {
-      shouldContinue: false,
-    };
+
+    return { shouldContinue: false };
   }
 
   async generateAndWriteBarcode(partNumber) {
@@ -695,23 +716,41 @@ class ScannerController {
   }
 
   async handleSecondScan(comService, barcodeData) {
-    const secondScannerData = await this.fetchScannerData(comService, {
-      isSecondScan: true,
-    });
-    const isDataMatching =
-      await this.compareScannerDataWithCode(secondScannerData);
+    try {
+      const secondScannerData = await this.fetchScannerData(comService, {
+        isSecondScan: true,
+      });
+      const isDataMatching =
+        await this.compareScannerDataWithCode(secondScannerData);
 
-    await writeBitsWithRest(1414, isDataMatching ? 3 : 4, 1, 200, false);
+      // Write result bit
+      await writeBitsWithRest(1414, isDataMatching ? 3 : 4, 1, 200, false);
 
-    await this.saveToMongoDB({
-      io: this.io,
-      serialNumber: barcodeData.serialNo,
-      markingData: barcodeData.text,
-      scannerData: secondScannerData,
-      result: isDataMatching,
-    });
+      // Wait for PLC acknowledgment (1410.12)
+      logger.info("Waiting for PLC acknowledgment (1410.12)...");
+      const resetResult = await this.checkResetOrBit(1410, 12, 1, 10000); // 10 second timeout
+      if (resetResult === true) {
+        logger.warn("Reset detected while waiting for PLC acknowledgment");
+        return { success: false };
+      }
 
-    return { success: isDataMatching };
+      // Save to MongoDB
+      await this.saveToMongoDB({
+        io: this.io,
+        serialNumber: barcodeData.serialNo,
+        markingData: barcodeData.text,
+        scannerData: secondScannerData,
+        result: isDataMatching,
+      });
+
+      // Clear result bit
+      await writeBitsWithRest(1414, isDataMatching ? 3 : 4, 0, 200, false);
+
+      return { success: isDataMatching };
+    } catch (error) {
+      logger.error("Error in handleSecondScan:", error);
+      throw error;
+    }
   }
 
   async handleScanError(error) {
@@ -879,7 +918,7 @@ class ScannerController {
       await writeBit(1500, 3, 1);
       await this.resetBits();
       this.barcodeGenerator.decSerialNo(); // Decrement serial number if needed
-      await this.clearCodeFile(CODE_FILE_PATH);
+      // await this.clearCodeFile(CODE_FILE_PATH);
       throw new Error("RESET_DETECTED");
     } catch (error) {
       logger.error("❌ Error handling reset:", error);
@@ -908,10 +947,10 @@ class ScannerController {
       }
 
       logger.info("🧹 Clearing code file before next cycle");
-      await this.clearCodeFile(CODE_FILE_PATH);
+      // await this.clearCodeFile(CODE_FILE_PATH);
       logger.success("Code file cleared successfully");
 
-      await sleep(3 * 1000);
+      await sleep(1000);
       return true;
     } catch (error) {
       logger.error("❌ Error in final checks:", error);
