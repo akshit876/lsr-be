@@ -31,13 +31,15 @@ const config = {
   },
 
   modbus: {
-    host: process.env.MODBUS_HOST || "192.168.1.100",
+    host: process.env.MODBUS_HOST || "192.168.3.146",
     port: parseInt(process.env.MODBUS_PORT || "502", 10),
   },
 
   logging: {
     level: process.env.LOG_LEVEL || "info",
   },
+
+  serial_port: process.env.SERIAL_PORT || "COM5",
 };
 
 export default config;

@@ -104,6 +104,7 @@ const BARCODE_RESET_MINUTE = 0;
 
 import { exec } from "child_process";
 import util from "util";
+import config from "./config/config.js";
 const execAsync = util.promisify(exec);
 
 // Function to kill process using port 3002
@@ -578,7 +579,7 @@ const startServer = async () => {
       logger.info(`> Server ready on http://localhost:${PORT}`);
 
       let comService = null;
-      let cleanupMonitoring = null;
+      const cleanupMonitoring = null;
       try {
         await connect();
         logger.info("Modbus connection initialized");
@@ -596,7 +597,7 @@ const startServer = async () => {
         // barcodeGenerator.initialize('main-data', 'records');
         // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
         comService = new BufferedComPortService({
-          path: "COM5",
+          path: config.serial_port,
           baudRate: 9600,
           logDir: "com_port_logs",
         });
