@@ -213,37 +213,45 @@ class ScannerController {
 
   async checkResetOrBit(register, bit, value, timeout = 100 * 1000) {
     logger.info(`🧹 Waiting for bit ${register}.${bit} to become ${value}`);
-    logger.info(
-      "-----------------------------------------------------------------------------------------------------------"
-    );
+    logger.info("-----------------------------------------------------------------------------------------------------------");
 
+    while (true) { // Add continuous loop
+        try {
+            const result = await this.singleCheckAttempt(register, bit, value, timeout);
+            if (result !== "timeout") {
+                return result;
+            }
+            // If timeout occurred, continue the loop
+            logger.info(`Retrying check for bit ${register}.${bit}`);
+        } catch (error) {
+            logger.error(`Error in bit check: ${error.message}`);
+            await sleep(1000); // Add small delay before retry
+        }
+    }
+}
+
+  async singleCheckAttempt(register, bit, value, timeout) {
     return new Promise(async (resolve) => {
-      let timeoutId;
-      let resetCheckInterval;
-      let bitCheckInterval;
-      let checkCount = 0;
-      const CHECK_INTERVAL = 10;
+        let timeoutId;
+        let resetCheckInterval;
+        let bitCheckInterval;
+        let checkCount = 0;
+        const CHECK_INTERVAL = 10;
 
-      const cleanup = () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        if (resetCheckInterval) {
-          clearInterval(resetCheckInterval);
-        }
-        if (bitCheckInterval) {
-          clearInterval(bitCheckInterval);
-        }
-      };
+        const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (resetCheckInterval) clearInterval(resetCheckInterval);
+            if (bitCheckInterval) clearInterval(bitCheckInterval);
+        };
 
-      // Main timeout
-      timeoutId = setTimeout(() => {
-        cleanup();
-        logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
-        resolve("timeout");
-      }, timeout);
+        // Main timeout
+        timeoutId = setTimeout(() => {
+            cleanup();
+            logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
+            resolve("timeout");
+        }, timeout);
 
-      // Reset check interval
+           // Reset check interval
       resetCheckInterval = setInterval(async () => {
         try {
           const resetSignal = await readBit(1600, 0);
