@@ -39,15 +39,15 @@ const REGISTER_MONITORING_CONFIG = {
   bits: {
     0: {
       eventName: "part-presence",
-      message: "Part Presence signal detected",
+      message: "Part not present.............",
     },
     1: {
       eventName: "emergency-stop",
-      message: "Emergency Stop signal detected",
+      message: "Emergency button pressed.............",
     },
     2: {
       eventName: "light-curtation",
-      message: "Light Curtation signal detected",
+      message: "Light curtain error.............",
     },
     // 3: {
     //   eventName: "emergency-stop-detected",
