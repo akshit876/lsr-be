@@ -786,7 +786,7 @@ class ScannerController {
 
         // Only trigger scanner if not already scanning
         logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        writeBitsWithRest(register, bit, 1, 100, false)
+        writeBit(register, bit, 1)
           .then(() =>
             logger.success(`${scannerLabel} scanner triggered successfully`)
           )
