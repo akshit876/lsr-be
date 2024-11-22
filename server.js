@@ -589,7 +589,6 @@ const startServer = async () => {
           "1 0 1 * *",
           cronService.generateMonthlyCsv.bind(cronService)
         );
-
         cronService.startAllJobs();
 
         // const shiftUtility = new ShiftUtility();
@@ -606,13 +605,19 @@ const startServer = async () => {
         // Fetch part number and pass it to runContinuousScan
         const { partNumber } = await fetchPartNumberAndData();
 
-        // runContinuousScan(io, null, { partNumber }).catch((error) => {
-        //   logger.error('Failed to start continuous scan:', error);
-        //   process.exit(1);
-        // });
-        await scannerController.runContinuousScan(io, comService, {
-          partNumber,
+        // Start both processes independently
+        // Start register monitoring as a separate process
+        monitorRegisters(io).catch(error => {
+          logger.error("Register monitoring error:", error);
         });
+
+        // Start scanner controller as a separate process
+        scannerController.runContinuousScan(io, comService, {
+          partNumber,
+        }).catch(error => {
+          logger.error("Scanner controller error:", error);
+        });
+
       } catch (error) {
         console.log({ error });
         emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
