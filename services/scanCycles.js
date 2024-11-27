@@ -6,6 +6,7 @@ import mongoDbService from "./mongoDbService.js";
 import {
   readBit,
   readRegister,
+  readRegisterAndProvideASCII,
   writeBit,
   writeBitsWithRest,
   writeRegister,
@@ -27,6 +28,31 @@ export const sleep = promisify(setTimeout);
 const TIMEOUT = 100 * 1000;
 const BARCODE_RESET_HOUR = 6;
 const BARCODE_RESET_MINUTE = 0;
+
+import { MongoClient } from "mongodb";
+import logger from "your-logger-module"; // Replace with your logger module
+
+export async function fetchGradeConfig() {
+  try {
+    // Connect to the MongoDB if not already connected
+    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+    const client = new MongoClient(uri);
+    await client.connect();
+    const db = client.db("main-data");
+    logger.info("Connected successfully to MongoDB database: main-data");
+
+    // Fetch grading configuration from the 'gradeConfig' collection
+    const gradeConfigCollection = db.collection("gradeConfig");
+    const gradeConfigData = await gradeConfigCollection.find({}).toArray();
+
+    logger.info("Fetched grade configuration data successfully");
+
+    return gradeConfigData; // Return the grade configuration data
+  } catch (error) {
+    logger.error("Error fetching grade configuration data:", error);
+    throw error;
+  }
+}
 
 class ScannerController {
   static instance = null;
@@ -213,45 +239,53 @@ class ScannerController {
 
   async checkResetOrBit(register, bit, value, timeout = 100 * 1000) {
     logger.info(`🧹 Waiting for bit ${register}.${bit} to become ${value}`);
-    logger.info("-----------------------------------------------------------------------------------------------------------");
+    logger.info(
+      "-----------------------------------------------------------------------------------------------------------"
+    );
 
-    while (true) { // Add continuous loop
-        try {
-            const result = await this.singleCheckAttempt(register, bit, value, timeout);
-            if (result !== "timeout") {
-                return result;
-            }
-            // If timeout occurred, continue the loop
-            logger.info(`Retrying check for bit ${register}.${bit}`);
-        } catch (error) {
-            logger.error(`Error in bit check: ${error.message}`);
-            await sleep(1000); // Add small delay before retry
+    while (true) {
+      // Add continuous loop
+      try {
+        const result = await this.singleCheckAttempt(
+          register,
+          bit,
+          value,
+          timeout
+        );
+        if (result !== "timeout") {
+          return result;
         }
+        // If timeout occurred, continue the loop
+        logger.info(`Retrying check for bit ${register}.${bit}`);
+      } catch (error) {
+        logger.error(`Error in bit check: ${error.message}`);
+        await sleep(1000); // Add small delay before retry
+      }
     }
-}
+  }
 
   async singleCheckAttempt(register, bit, value, timeout) {
     return new Promise(async (resolve) => {
-        let timeoutId;
-        let resetCheckInterval;
-        let bitCheckInterval;
-        let checkCount = 0;
-        const CHECK_INTERVAL = 10;
+      let timeoutId;
+      let resetCheckInterval;
+      let bitCheckInterval;
+      let checkCount = 0;
+      const CHECK_INTERVAL = 10;
 
-        const cleanup = () => {
-            if (timeoutId) clearTimeout(timeoutId);
-            if (resetCheckInterval) clearInterval(resetCheckInterval);
-            if (bitCheckInterval) clearInterval(bitCheckInterval);
-        };
+      const cleanup = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (resetCheckInterval) clearInterval(resetCheckInterval);
+        if (bitCheckInterval) clearInterval(bitCheckInterval);
+      };
 
-        // Main timeout
-        timeoutId = setTimeout(() => {
-            cleanup();
-            logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
-            resolve("timeout");
-        }, timeout);
+      // Main timeout
+      timeoutId = setTimeout(() => {
+        cleanup();
+        logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
+        resolve("timeout");
+      }, timeout);
 
-           // Reset check interval
+      // Reset check interval
       resetCheckInterval = setInterval(async () => {
         try {
           const resetSignal = await readBit(1600, 0);
@@ -551,8 +585,8 @@ class ScannerController {
   async executeScanCycle(comService, partNumber) {
     try {
       // First check for 1410.0
-      logger.info("Waiting for start signal (1410.0)...");
-      const resetResult = await this.checkResetOrBit(1410, 0, 1);
+      logger.info("Waiting for start signal (1400.0)...");
+      const resetResult = await this.checkResetOrBit(1400, 0, 1);
       if (resetResult === true) {
         logger.info("Reset detected, restarting cycle");
         return;
@@ -573,13 +607,13 @@ class ScannerController {
       }
 
       // Step 3: Signal Transfer and Wait
-      await this.signalFileTransfer();
+      // await this.signalFileTransfer();
 
       logger.info("✍️ Writing bit 1410.11 to signal file transfer");
       await writeBitsWithRest(1410, 11, 1, 100, false);
 
       logger.info("🔍 Checking for reset or waiting for bit 1410.2");
-      if (await this.checkResetOrBit(1410, 2, 1)) {
+      if (await this.checkResetOrBit(1410, 3, 1)) {
         logger.warn(
           "⚠️ Reset detected while waiting for 1410.2, restarting cycle"
         );
@@ -615,12 +649,32 @@ class ScannerController {
     this.setupResetMonitor();
   }
 
+  async function checkGrading(scannerResult) {
+    // Get the last character from the scanner result and convert to uppercase
+    const lastChar = scannerResult.slice(-1).toUpperCase();
+  
+    // Retrieve grading information from LowDB
+    const gradeData = await getData("grades"); // Assume 'grades' is the key storing grade rules in LowDB
+  
+    if (!gradeData || !gradeData[lastChar]) {
+      // Return false if no grading data is found or if the grade is not valid
+      console.error(`No grading data found for character: ${lastChar}`);
+      return false;
+    }
+  
+    // If there are allowed grades for the last character, return true
+    return gradeData[lastChar].length > 0;
+  }
+
   async handleFirstScan(comService) {
     logger.info("Starting first scan handler");
 
-    const scannerData = await this.fetchScannerData(comService, {
-      isSecondScan: false,
-    });
+    // const scannerData = await this.fetchScannerData(comService, {
+    //   isSecondScan: false,
+    // });
+    logger.info("Reading first Scan Data from 1470 20 bits");
+
+    const scannerData = await readRegisterAndProvideASCII(1470, 20);
 
     logger.info(`Received scanner data: "${scannerData}"`);
 
@@ -633,7 +687,7 @@ class ScannerController {
     // If scannerData is "NG", proceed with workflow
     if (scannerData && scannerData.trim().toUpperCase() === "NG") {
       logger.warn("⚠️ First scan data is NG, proceeding with workflow");
-      await writeBitsWithRest(1414, 7, 1, 100, false);
+      await writeBitsWithRest(1414, 14, 1, 100, false);
       return { shouldContinue: true };
     }
 
@@ -652,7 +706,7 @@ class ScannerController {
         });
       }
 
-      await writeBitsWithRest(1414, 6, 1, 200, false);
+      await writeBitsWithRest(1414, 13, 1, 200, false);
       throw new Error("RESTART_CYCLE");
     }
     return {
@@ -682,11 +736,21 @@ class ScannerController {
   }
 
   async handleSecondScan(comService, barcodeData) {
-    const secondScannerData = await this.fetchScannerData(comService, {
-      isSecondScan: true,
-    });
-    const isDataMatching =
-      await this.compareScannerDataWithCode(secondScannerData);
+    // const secondScannerData = await this.fetchScannerData(comService, {
+    //   isSecondScan: true,
+    // });
+    const secondScannerData = await readRegisterAndProvideASCII(1470, 20);
+
+    // Extract the last character as grading
+    const grading = secondScannerData.slice(-1);
+
+    // Trim the last character from `secondScannerData`
+    const trimmedSecondScannerData = secondScannerData.slice(0, -1);
+
+    // Use the trimmed data for comparison
+    const isDataMatching = await this.compareScannerDataWithCode(
+      trimmedSecondScannerData
+    );
 
     await writeBitsWithRest(1414, isDataMatching ? 3 : 4, 1, 200, false);
 
