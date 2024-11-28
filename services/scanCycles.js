@@ -30,7 +30,7 @@ const BARCODE_RESET_HOUR = 6;
 const BARCODE_RESET_MINUTE = 0;
 
 import { MongoClient } from "mongodb";
-import logger from "your-logger-module"; // Replace with your logger module
+// import logger from "your-logger-module"; // Replace with your logger module
 
 export async function fetchGradeConfig() {
   try {
@@ -53,6 +53,7 @@ export async function fetchGradeConfig() {
     throw error;
   }
 }
+// fetchGradeConfig();
 
 class ScannerController {
   static instance = null;
@@ -273,9 +274,15 @@ class ScannerController {
       const CHECK_INTERVAL = 10;
 
       const cleanup = () => {
-        if (timeoutId) clearTimeout(timeoutId);
-        if (resetCheckInterval) clearInterval(resetCheckInterval);
-        if (bitCheckInterval) clearInterval(bitCheckInterval);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        if (resetCheckInterval) {
+          clearInterval(resetCheckInterval);
+        }
+        if (bitCheckInterval) {
+          clearInterval(bitCheckInterval);
+        }
       };
 
       // Main timeout
@@ -411,7 +418,14 @@ class ScannerController {
     }
   }
 
-  async saveToMongoDB({ io, serialNumber, markingData, scannerData, result }) {
+  async saveToMongoDB({
+    io,
+    serialNumber,
+    markingData,
+    scannerData,
+    grading,
+    result,
+  }) {
     const now = new Date();
     const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
 
@@ -426,6 +440,7 @@ class ScannerController {
         ScannerData: scannerData,
         Result: result ? "OK" : "NG",
         User: userDetails?.email || "Unknown",
+        Grade: grading?.toUpperCase(),
       };
 
       await mongoDbService.insertRecord(data, "main-data", "records");
@@ -649,21 +664,56 @@ class ScannerController {
     this.setupResetMonitor();
   }
 
-  async function checkGrading(scannerResult) {
-    // Get the last character from the scanner result and convert to uppercase
+  async checkGrading(scannerResult) {
+    // Get the last character from the scanner result and convert it to uppercase
     const lastChar = scannerResult.slice(-1).toUpperCase();
-  
-    // Retrieve grading information from LowDB
-    const gradeData = await getData("grades"); // Assume 'grades' is the key storing grade rules in LowDB
-  
-    if (!gradeData || !gradeData[lastChar]) {
-      // Return false if no grading data is found or if the grade is not valid
-      console.error(`No grading data found for character: ${lastChar}`);
+
+    // Retrieve grading configuration from MongoDB (using a mock fetch function here)
+    const gradeData = await fetchGradeConfig()?.[0]; // Assume this fetches the data in the format provided
+
+    if (!gradeData) {
+      console.error("Grading data is not valid or could not be retrieved.");
       return false;
     }
-  
-    // If there are allowed grades for the last character, return true
-    return gradeData[lastChar].length > 0;
+
+    // Find the grade entry in MongoDB that matches the last character
+    const gradeEntry = gradeData.r.find((item) => item.grade === lastChar);
+
+    if (!gradeEntry) {
+      console.error(
+        `No grading rule found in MongoDB for character: ${lastChar}`
+      );
+      return false;
+    }
+
+    // Define acceptable grades based on the MongoDB grade
+    const acceptableGradesMapping = {
+      A: ["A"],
+      B: ["A", "B"],
+      C: ["A", "B", "C"],
+      D: ["A", "B", "C", "D"],
+      // Add more grades as needed
+    };
+
+    // Check if the last character is valid according to the MongoDB config
+    const allowedGrades = acceptableGradesMapping[gradeEntry.grade];
+    if (!allowedGrades) {
+      console.error(
+        `No acceptable grades defined for MongoDB grade: ${gradeEntry.grade}`
+      );
+      return false;
+    }
+
+    // Validate the user input grade (lastChar) against the allowed grades
+    const isValid = allowedGrades.includes(lastChar);
+
+    if (!isValid) {
+      console.error(
+        `Grade "${lastChar}" is not acceptable for MongoDB grade: "${gradeEntry.grade}"`
+      );
+    }
+
+    return isValid;
   }
 
   async handleFirstScan(comService) {
@@ -751,6 +801,10 @@ class ScannerController {
     const isDataMatching = await this.compareScannerDataWithCode(
       trimmedSecondScannerData
     );
+    logger.info("🔄 Data matching without grade", isDataMatching);
+
+    const checkGrading = await this.checkGrading(secondScannerData);
+    logger.info("🔄 Grade acceptance ", checkGrading);
 
     await writeBitsWithRest(1414, isDataMatching ? 3 : 4, 1, 200, false);
 
@@ -759,7 +813,8 @@ class ScannerController {
       serialNumber: barcodeData.serialNo,
       markingData: barcodeData.text,
       scannerData: secondScannerData,
-      result: isDataMatching,
+      result: isDataMatching && checkGrading,
+      grading,
     });
 
     return { success: isDataMatching };

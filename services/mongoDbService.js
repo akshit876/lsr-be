@@ -157,7 +157,7 @@ class MongoDBService {
         return;
       }
 
-      // Transform the data
+      // Transform the data 
       const transformedData = data.map((item) => ({
         Timestamp: item?.Timestamp,
         SerialNumber: item?.SerialNumber,
@@ -166,6 +166,7 @@ class MongoDBService {
         Shift: item?.Shift,
         Result: item?.Result,
         User: item?.User,
+        Grade: item?.Grade,
         Date: item?.Date,
       }));
 

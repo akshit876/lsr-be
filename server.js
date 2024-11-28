@@ -578,7 +578,7 @@ const startServer = async () => {
       }
       logger.info(`> Server ready on http://localhost:${PORT}`);
 
-      let comService = null;
+      const comService = null;
       const cleanupMonitoring = null;
       try {
         await connect();
@@ -595,29 +595,30 @@ const startServer = async () => {
         // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
         // barcodeGenerator.initialize('main-data', 'records');
         // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-        comService = new BufferedComPortService({
-          path: config.serial_port,
-          baudRate: 9600,
-          logDir: "com_port_logs",
-        });
-        await comService.initSerialPort();
+        // comService = new BufferedComPortService({
+        //   path: config.serial_port,
+        //   baudRate: 9600,
+        //   logDir: "com_port_logs",
+        // });
+        // await comService.initSerialPort();
         // await connect();
         // Fetch part number and pass it to runContinuousScan
         const { partNumber } = await fetchPartNumberAndData();
 
         // Start both processes independently
         // Start register monitoring as a separate process
-        monitorRegisters(io).catch(error => {
+        monitorRegisters(io).catch((error) => {
           logger.error("Register monitoring error:", error);
         });
 
         // Start scanner controller as a separate process
-        scannerController.runContinuousScan(io, comService, {
-          partNumber,
-        }).catch(error => {
-          logger.error("Scanner controller error:", error);
-        });
-
+        scannerController
+          .runContinuousScan(io, null, {
+            partNumber,
+          })
+          .catch((error) => {
+            logger.error("Scanner controller error:", error);
+          });
       } catch (error) {
         console.log({ error });
         emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));

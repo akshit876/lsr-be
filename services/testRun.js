@@ -1,5 +1,7 @@
 // import BufferedComPortService from "./ComPortService.js";
-import { writeBitsWithRest } from "./modbus.js";
+import { MongoClient } from "mongodb";
+import { readBit, writeBitsWithRest } from "./modbus.js";
+import logger from "../logger.js";
 // import { sleep } from "./testCycle.js";
 
 // const comService = new BufferedComPortService({
@@ -7,16 +9,41 @@ import { writeBitsWithRest } from "./modbus.js";
 //   baudRate: 9600,
 //   logDir: "com_port_logs",
 // });
+export async function fetchGradeConfig() {
+  try {
+    // Connect to the MongoDB if not already connected
+    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+    const client = new MongoClient(uri);
+    await client.connect();
+    const db = client.db("main-data");
+    logger.info("Connected successfully to MongoDB database: main-data");
+
+    // Fetch grading configuration from the 'gradeConfig' collection
+    const gradeConfigCollection = db.collection("gradeConfig");
+    const gradeConfigData = await gradeConfigCollection.find({}).toArray();
+
+    logger.info("Fetched grade configuration data successfully");
+
+    return gradeConfigData; // Return the grade configuration data
+  } catch (error) {
+    logger.error("Error fetching grade configuration data:", error);
+    throw error;
+  }
+}
 
 async function runn() {
   try {
+    // const r = await fetchGradeConfig();
+    // console.log({ r });
+    const d = await readBit(1400, 0);
+    console.log({ d });
     // console.log("Attempting to initialize serial port...");
     // await comService.initSerialPort();
     // console.log("Initialized serial port successfully");
 
     // while (true) {
     //   try {
-    await writeBitsWithRest(1417, 0, 1, 100, false);
+    // await writeBitsWithRest(1417, 0, 1, 100, false);
     // Wait for the next data event before proceeding
     //     const scannerData = await new Promise((resolve) => {
     //       comService.once("data", resolve);

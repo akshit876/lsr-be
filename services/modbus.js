@@ -452,8 +452,8 @@ export const writeRegisterFull = (add, val) =>
 // writeBitsWithRest(1415, 9, 1, 2000);
 
 async function trackBits2() {
-  const register = 1700; // Define the register address
-  const bitPositions = [0, 1, 2, 3]; // Bits to track
+  const register = 1400; // Define the register address
+  const bitPositions = [0]; // Bits to track
   await connect();
 
   try {
@@ -461,7 +461,7 @@ async function trackBits2() {
       // Use Promise.all to read all bits in parallel
       const bitValues = await Promise.allSettled(
         bitPositions.map(async (bitPosition) => {
-          const bitValue = await readBit(register, bitPosition, true);
+          const bitValue = await readBit(register, bitPosition, false);
           console.log({ bitPosition, bitValue });
           return { bitPosition, bitValue };
         })
@@ -523,4 +523,4 @@ async function trackBits() {
 }
 
 // Start tracking bits
-// trackBits();
+trackBits2();
