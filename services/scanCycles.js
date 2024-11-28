@@ -23,7 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
-const CODE_FILE_PATH = path.join(__dirname, "../data/text.txt");
+const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
 export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
@@ -765,6 +765,33 @@ class ScannerController {
     };
   }
 
+  // Add this helper function to format date
+  function formatDateForSerial(date) {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${day}${month}${year}`;
+  }
+
+  // Reusable file writing function
+  async writeToFile(filePath, data, description = 'Data') {
+    try {
+      await fs.writeFileSync(filePath, data.toString(), 'utf8');
+      logger.info(`✅ ${description} written to ${path.basename(filePath)}`);
+      
+      // Verify the write was successful
+      const verificationData = await fs.readFileSync(filePath, 'utf8');
+      if (verificationData !== data.toString()) {
+        throw new Error(`File verification failed for ${path.basename(filePath)}`);
+      }
+
+      return true;
+    } catch (error) {
+      logger.error(`❌ Error writing ${description.toLowerCase()} to ${path.basename(filePath)}:`, error);
+      throw error;
+    }
+  }
+
   async generateAndWriteBarcode(partNumber) {
     const { text, serialNo } = await this.barcodeGenerator.generateBarcodeData({
       date: new Date(),
@@ -772,18 +799,38 @@ class ScannerController {
       partNumber,
     });
 
-    // Check for reset signal before writing OCR data
+    // Check for reset signal before writing data
     if (await this.checkReset()) {
-      logger.warn(
-        "⚠️ Reset detected during barcode generation, restarting cycle"
-      );
+      logger.warn("⚠️ Reset detected during barcode generation, restarting cycle");
       return null;
     }
 
-    await this.writeOCRDataToFile(text);
-    const isVerified = await this.verifyAndRetryWrite(text, 2);
+    try {
+      // Format the date and combine with serial number
+      const currentDate = new Date();
+      const formattedDate = formatDateForSerial(currentDate);
+      const serialWithDate = `${formattedDate}${serialNo}`;
 
-    return isVerified ? { text, serialNo } : null;
+      // Write both files using the reusable function
+      await Promise.all([
+        this.writeToFile(CODE_FILE_PATH, text, 'OCR data'),
+        this.writeToFile(TEXT_FILE_PATH, serialWithDate, 'Serial number with date')
+      ]);
+
+      // Emit marking data to UI
+      if (this.io) {
+        this.io.emit("marking_data", {
+          timestamp: new Date(),
+          data: text,
+        });
+      }
+
+      const isVerified = await this.verifyAndRetryWrite(text, 2);
+      return isVerified ? { text, serialNo } : null;
+    } catch (error) {
+      logger.error('❌ Error in file writing process:', error);
+      throw error;
+    }
   }
 
   async handleSecondScan(comService, barcodeData) {
