@@ -3,9 +3,9 @@ import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
 
 // Default values
-const DEFAULT_MODBUS_IP = "192.168.3.146";
+const DEFAULT_MODBUS_IP = "192.168.3.145";
 const DEFAULT_MODBUS_PORT = 502;
-
+console.log({ ip: process.env.MODBUS_HOST, port: process.env.MODBUS_PORT });
 const MODBUS_IP = process.env.MODBUS_HOST || DEFAULT_MODBUS_IP;
 const MODBUS_PORT =
   parseInt(process.env.MODBUS_PORT, 10) || DEFAULT_MODBUS_PORT;
@@ -523,4 +523,4 @@ async function trackBits() {
 }
 
 // Start tracking bits
-trackBits2();
+// trackBits2();

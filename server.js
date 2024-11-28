@@ -607,9 +607,9 @@ const startServer = async () => {
 
         // Start both processes independently
         // Start register monitoring as a separate process
-        monitorRegisters(io).catch((error) => {
-          logger.error("Register monitoring error:", error);
-        });
+        // monitorRegisters(io).catch((error) => {
+        //   logger.error("Register monitoring error:", error);
+        // });
 
         // Start scanner controller as a separate process
         scannerController

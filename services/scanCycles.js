@@ -23,6 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
+const CODE_FILE_PATH = path.join(__dirname, "../data/text.txt");
 export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
