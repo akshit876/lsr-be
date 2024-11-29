@@ -31,6 +31,13 @@ const BARCODE_RESET_HOUR = 6;
 const BARCODE_RESET_MINUTE = 0;
 
 import { MongoClient } from "mongodb";
+import { tcpClient } from "./tcp.js";
+
+const TCP_CONFIG = {
+  PORT: 5024,
+  HOST: "192.168.3.147"
+};
+
 // import logger from "your-logger-module"; // Replace with your logger module
 
 export async function fetchGradeConfig() {
@@ -110,6 +117,8 @@ class ScannerController {
         BARCODE_RESET_MINUTE
       );
       logger.success("Barcode generator initialized");
+      await tcpClient.connect({ port: TCP_CONFIG.PORT, host: TCP_CONFIG.HOST });
+      logger.success("TCP Scanner client connected.......");
 
       this.isInitialized = true;
       logger.success("Scanner controller initialization complete");
@@ -720,14 +729,14 @@ class ScannerController {
   async handleFirstScan(comService) {
     logger.info("Starting first scan handler");
 
-    // const scannerData = await this.fetchScannerData(comService, {
-    //   isSecondScan: false,
-    // });
+    const scannerData = await this.fetchScannerData(comService, {
+      isSecondScan: false,
+    });
     logger.info("Reading first Scan Data from 1470 20 bits");
 
-    const scannerData = await readRegisterAndProvideASCII(1470, 20);
+    // const scannerData = await readRegisterAndProvideASCII(1470, 20);
 
-    logger.info(`Received scanner data: "${scannerData}"`);
+    // logger.info(`Received scanner data: "${scannerData}"`);
 
     // Check for reset signal before proceeding
     if (await this.checkReset()) {
@@ -935,59 +944,59 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      const scannerDataPromise = new Promise((resolve, reject) => {
-        // Remove any existing listeners first
-        this.comService.removeAllListeners("dataGot");
+      // const scannerDataPromise = new Promise((resolve, reject) => {
+      //   // Remove any existing listeners first
+      //   this.comService.removeAllListeners("dataGot");
 
-        const dataHandler = (data) => {
-          logger.success(
-            `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-          );
+      //   const dataHandler = (data) => {
+      //     logger.success(
+      //       `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
+      //     );
 
-          if (this.io) {
-            this.io.emit("scanner_read", {
-              timestamp: new Date(),
-              scannerType: scannerLabel,
-              data: data,
-            });
-          }
+      //     if (this.io) {
+      //       this.io.emit("scanner_read", {
+      //         timestamp: new Date(),
+      //         scannerType: scannerLabel,
+      //         data: data,
+      //       });
+      //     }
 
-          clearTimeout(timeoutId);
-          this.isScanning = false; // Reset the scanning flag
-          resolve(data);
-          this.comService.off("dataGot", dataHandler);
-        };
+      //     clearTimeout(timeoutId);
+      //     this.isScanning = false; // Reset the scanning flag
+      //     resolve(data);
+      //     this.comService.off("dataGot", dataHandler);
+      //   };
 
-        logger.info("👂 Adding event listener for scanner data");
-        this.comService.on("dataGot", dataHandler);
+      //   logger.info("👂 Adding event listener for scanner data");
+      //   this.comService.on("dataGot", dataHandler);
 
-        const timeoutId = setTimeout(() => {
-          logger.error(
-            `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
-          );
-          this.comService.off("dataGot", dataHandler);
-          this.isScanning = false; // Reset the scanning flag
-          reject(new Error(`${scannerLabel} scanner data timeout`));
-        }, timeout);
+      //   const timeoutId = setTimeout(() => {
+      //     logger.error(
+      //       `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
+      //     );
+      //     this.comService.off("dataGot", dataHandler);
+      //     this.isScanning = false; // Reset the scanning flag
+      //     reject(new Error(`${scannerLabel} scanner data timeout`));
+      //   }, timeout);
 
-        // Only trigger scanner if not already scanning
-        logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        writeBit(register, bit, 1)
-          .then(() =>
-            logger.success(`${scannerLabel} scanner triggered successfully`)
-          )
-          .catch((err) => {
-            logger.error(
-              `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-              err
-            );
-            clearTimeout(timeoutId);
-            this.isScanning = false; // Reset the scanning flag
-            reject(err);
-          });
-      });
+      //   // Only trigger scanner if not already scanning
+      //   logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
+      //   writeBit(register, bit, 1)
+      //     .then(() =>
+      //       logger.success(`${scannerLabel} scanner triggered successfully`)
+      //     )
+      //     .catch((err) => {
+      //       logger.error(
+      //         `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
+      //         err
+      //       );
+      //       clearTimeout(timeoutId);
+      //       this.isScanning = false; // Reset the scanning flag
+      //       reject(err);
+      //     });
+      // });
 
-      const result = await scannerDataPromise;
+      const result = await tcpClient.getDataTwiceAndConcat();
       return result;
     } catch (error) {
       logger.separator.hash();
