@@ -629,7 +629,7 @@ class ScannerController {
       await writeBitsWithRest(1410, 11, 1, 100, false);
 
       logger.info("🔍 Checking for reset or waiting for bit 1410.2");
-      if (await this.checkResetOrBit(1410, 3, 1)) {
+      if (await this.checkResetOrBit(1410, 2, 1)) {
         logger.warn(
           "⚠️ Reset detected while waiting for 1410.2, restarting cycle"
         );
