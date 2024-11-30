@@ -35,7 +35,7 @@ import { tcpClient } from "./tcp.js";
 
 const TCP_CONFIG = {
   PORT: 5024,
-  HOST: "192.168.3.147"
+  HOST: "192.168.3.147",
 };
 
 // import logger from "your-logger-module"; // Replace with your logger module
@@ -634,13 +634,13 @@ class ScannerController {
       // Step 3: Signal Transfer and Wait
       // await this.signalFileTransfer();
 
-      logger.info("✍️ Writing bit 1410.11 to signal file transfer");
-      await writeBitsWithRest(1410, 11, 1, 100, false);
+      logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
+      await writeBit(1414, 15, 1);
 
-      logger.info("🔍 Checking for reset or waiting for bit 1410.2");
-      if (await this.checkResetOrBit(1410, 2, 1)) {
+      logger.info("🔍 Checking for reset or waiting for bit 1410.3");
+      if (await this.checkResetOrBit(1410, 3, 1)) {
         logger.warn(
-          "⚠️ Reset detected while waiting for 1410.2, restarting cycle"
+          "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
         );
         this.barcodeGenerator.decSerialNo();
         await sleep(1000);
@@ -732,7 +732,6 @@ class ScannerController {
     const scannerData = await this.fetchScannerData(comService, {
       isSecondScan: false,
     });
-    logger.info("Reading first Scan Data from 1470 20 bits");
 
     // const scannerData = await readRegisterAndProvideASCII(1470, 20);
 
@@ -747,7 +746,7 @@ class ScannerController {
     // If scannerData is "NG", proceed with workflow
     if (scannerData && scannerData.trim().toUpperCase() === "NG") {
       logger.warn("⚠️ First scan data is NG, proceeding with workflow");
-      await writeBitsWithRest(1414, 14, 1, 100, false);
+      await writeBit(1414, 14, 1);
       return { shouldContinue: true };
     }
 
@@ -766,7 +765,7 @@ class ScannerController {
         });
       }
 
-      await writeBitsWithRest(1414, 13, 1, 200, false);
+      await writeBit(1414, 13, 1);
       throw new Error("RESTART_CYCLE");
     }
     return {
@@ -854,10 +853,10 @@ class ScannerController {
   }
 
   async handleSecondScan(comService, barcodeData) {
-    // const secondScannerData = await this.fetchScannerData(comService, {
-    //   isSecondScan: true,
-    // });
-    const secondScannerData = await readRegisterAndProvideASCII(1470, 20);
+    const secondScannerData = await this.fetchScannerData(comService, {
+      isSecondScan: true,
+    });
+    // const secondScannerData = await readRegisterAndProvideASCII(1470, 20);
 
     // Extract the last character as grading
     const grading = secondScannerData.slice(-1);
@@ -874,7 +873,7 @@ class ScannerController {
     const checkGrading = await this.checkGrading(secondScannerData);
     logger.info("🔄 Grade acceptance ", checkGrading);
 
-    await writeBitsWithRest(1414, isDataMatching ? 3 : 4, 1, 200, false);
+    await writeBit(1417, isDataMatching ? 0 : 1, 1);
 
     await this.saveToMongoDB({
       io: this.io,
@@ -996,7 +995,25 @@ class ScannerController {
       //     });
       // });
 
-      const result = await tcpClient.getDataTwiceAndConcat();
+      await writeBit(register, bit, 1);
+      // .then(() =>
+      //   logger.success(`${scannerLabel} scanner triggered successfully`)
+      // )
+      // .catch((err) => {
+      //   logger.error(
+      //     `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
+      //     err
+      //   );
+      //   clearTimeout(timeoutId);
+      //   this.isScanning = false; // Reset the scanning flag
+      //   reject(err);
+      // });
+
+      const result = await tcpClient.getDataTwiceAndConcat({
+        isFirst: isSecondScan == false,
+        isSecond: isSecondScan,
+      });
+      console.log({ result });
       return result;
     } catch (error) {
       logger.separator.hash();
@@ -1075,15 +1092,15 @@ class ScannerController {
   async performFinalChecks() {
     try {
       logger.info("🔍 Performing final checks...");
-      if (await this.checkResetOrBit(1410, 12, 1)) {
+      if (await this.checkResetOrBit(1415, 7, 1)) {
         logger.warn("⚠️ Reset detected at final step, restarting cycle");
         await sleep(1000);
         return false;
       }
 
-      logger.info("🧹 Clearing code file before next cycle");
+      // logger.info("🧹 Clearing code file before next cycle");
       // await this.clearCodeFile(CODE_FILE_PATH);
-      logger.success("Code file cleared successfully");
+      // logger.success("Code file cleared successfully");
 
       await sleep(3 * 1000);
       return true;

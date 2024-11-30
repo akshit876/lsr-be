@@ -55,7 +55,7 @@ class TCPClient {
     });
   }
 
-  async getDataTwiceAndConcat() {
+  async getDataTwiceAndConcat({ isFirst = true, isSecond = false }) {
     if (!this.client) {
       throw new Error("TCP client is not connected.");
     }
@@ -64,12 +64,17 @@ class TCPClient {
     try {
       const firstData = await this.readData();
       console.log("First data received:", { firstData });
+      let concatenatedData = firstData;
+      if (firstData == "0\r\n0" || firstData == "0") {
+        concatenatedData = "NG";
+      }
 
-      const secondData = await this.readData();
-      console.log("Second data received:", { secondData });
-
-      const concatenatedData = `${firstData}${secondData}`;
-      console.log("Concatenated data:", concatenatedData);
+      if (isSecond && concatenatedData != "NG") {
+        const secondData = await this.readData();
+        console.log("Second data received:", { secondData });
+        concatenatedData += secondData;
+        console.log("Concatenated data:", concatenatedData);
+      }
 
       return concatenatedData;
     } catch (err) {
