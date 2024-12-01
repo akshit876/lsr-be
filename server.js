@@ -29,6 +29,7 @@ import BarcodeGenerator from "./services/barcodeGenrator.js";
 import { MongoClient } from "mongodb";
 import serialNumberService from "./services/serialNumber.js";
 import { scannerController } from "./services/scanCycles.js";
+import { Worker } from 'worker_threads';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -578,8 +579,6 @@ const startServer = async () => {
       }
       logger.info(`> Server ready on http://localhost:${PORT}`);
 
-      const comService = null;
-      const cleanupMonitoring = null;
       try {
         await connect();
         logger.info("Modbus connection initialized");
@@ -591,39 +590,59 @@ const startServer = async () => {
         );
         cronService.startAllJobs();
 
-        // const shiftUtility = new ShiftUtility();
-        // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
-        // barcodeGenerator.initialize('main-data', 'records');
-        // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-        // comService = new BufferedComPortService({
-        //   path: config.serial_port,
-        //   baudRate: 9600,
-        //   logDir: "com_port_logs",
-        // });
-        // await comService.initSerialPort();
-        // await connect();
-        // Fetch part number and pass it to runContinuousScan
         const { partNumber } = await fetchPartNumberAndData();
 
-        // Start both processes independently
-        // Start register monitoring as a separate process
-        // monitorRegisters(io).catch((error) => {
-        //   logger.error("Register monitoring error:", error);
-        // });
+        // Create workers
+        const registerWorker = new Worker(path.join(__dirname, 'workers/registerMonitorWorker.js'));
+        const scannerWorker = new Worker(path.join(__dirname, 'workers/scannerWorker.js'));
 
-        // Start scanner controller as a separate process
-        scannerController
-          .runContinuousScan(io, null, {
-            partNumber,
-          })
-          .catch((error) => {
-            logger.error("Scanner controller error:", error);
-          });
+        // Handle register worker messages
+        registerWorker.on('message', (message) => {
+          if (message.type === 'error') {
+            logger.error('Register worker error:', message.data);
+          } else {
+            io.emit(message.type, message.data);
+          }
+        });
+
+        // Handle scanner worker messages
+        scannerWorker.on('message', (message) => {
+          if (message.type === 'error') {
+            logger.error('Scanner worker error:', message.data);
+          } else {
+            io.emit(message.type, message.data);
+          }
+        });
+
+        // Start scanner worker
+        scannerWorker.postMessage({ type: 'start', partNumber });
+
+        // Handle worker errors
+        registerWorker.on('error', (error) => {
+          logger.error('Register worker error:', error);
+        });
+
+        scannerWorker.on('error', (error) => {
+          logger.error('Scanner worker error:', error);
+        });
+
+        // Handle worker exit
+        registerWorker.on('exit', (code) => {
+          if (code !== 0) {
+            logger.error(`Register worker stopped with exit code ${code}`);
+          }
+        });
+
+        scannerWorker.on('exit', (code) => {
+          if (code !== 0) {
+            logger.error(`Scanner worker stopped with exit code ${code}`);
+          }
+        });
+
       } catch (error) {
         console.log({ error });
         emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
         logger.error("Failed to initialize Modbus connection:", error);
-        // await comService.closePort();
       }
     });
   } catch (error) {
