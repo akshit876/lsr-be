@@ -30,6 +30,8 @@ import { MongoClient } from "mongodb";
 import serialNumberService from "./services/serialNumber.js";
 import { scannerController } from "./services/scanCycles.js";
 import { Worker } from 'worker_threads';
+import { truncateFile } from 'fs/promises';
+import { join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,6 +57,10 @@ const REGISTER_MONITORING_CONFIG = {
     //   message: "Emergency stop signal detected",
     // },
   },
+};
+const LOG_PATHS = {
+  combined: join(__dirname, 'logs', 'combined.log'),
+  error: join(__dirname, 'logs', 'error.log')
 };
 
 let registerMonitorInterval = null;
@@ -588,6 +594,21 @@ const startServer = async () => {
           "1 0 1 * *",
           cronService.generateMonthlyCsv.bind(cronService)
         );
+        
+        cronService.scheduleJob(
+          "clearLogs",
+          "0 0 1 * *", // Run at midnight on the first day of each month
+          async () => {
+            try {
+              await truncateFile(LOG_PATHS.combined, 0);
+              await truncateFile(LOG_PATHS.error, 0);
+              logger.info("Monthly log cleanup completed successfully");
+            } catch (error) {
+              logger.error("Error during monthly log cleanup:", error);
+            }
+          }
+        );
+
         cronService.startAllJobs();
 
         const { partNumber } = await fetchPartNumberAndData();
