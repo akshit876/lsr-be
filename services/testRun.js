@@ -31,6 +31,58 @@ export async function fetchGradeConfig() {
   }
 }
 
+async function checkGrading(scannerResult) {
+  // Get the last character from the scanner result and convert it to uppercase
+  const lastChar = scannerResult.slice(-1).toUpperCase();
+
+  // Retrieve grading configuration from MongoDB (using a mock fetch function here)
+  const gradeData = await fetchGradeConfig()?.[0]; // Assume this fetches the data in the format provided
+
+  if (!gradeData) {
+    console.error("Grading data is not valid or could not be retrieved.");
+    return false;
+  }
+
+  // Find the grade entry in MongoDB that matches the last character
+  const gradeEntry = gradeData.r.find((item) => item.grade === lastChar);
+
+  if (!gradeEntry) {
+    console.error(
+      `No grading rule found in MongoDB for character: ${lastChar}`
+    );
+    return false;
+  }
+
+  // Define acceptable grades based on the MongoDB grade
+  const acceptableGradesMapping = {
+    A: ["A"],
+    B: ["A", "B"],
+    C: ["A", "B", "C"],
+    D: ["A", "B", "C", "D"],
+    // Add more grades as needed
+  };
+
+  // Check if the last character is valid according to the MongoDB config
+  const allowedGrades = acceptableGradesMapping[gradeEntry.grade];
+  if (!allowedGrades) {
+    console.error(
+      `No acceptable grades defined for MongoDB grade: ${gradeEntry.grade}`
+    );
+    return false;
+  }
+
+  // Validate the user input grade (lastChar) against the allowed grades
+  const isValid = allowedGrades.includes(lastChar);
+
+  if (!isValid) {
+    console.error(
+      `Grade "${lastChar}" is not acceptable for MongoDB grade: "${gradeEntry.grade}"`
+    );
+  }
+
+  return isValid;
+}
+
 async function runn() {
   try {
     // const r = await fetchGradeConfig();
@@ -70,4 +122,4 @@ async function runn() {
   }
 }
 
-runn();
+// runn();
