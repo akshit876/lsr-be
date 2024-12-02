@@ -635,10 +635,13 @@ const startServer = async () => {
           }
         });
 
-        // Start scanner worker
-        scannerWorker.postMessage({ type: 'start', partNumber });
+        // Start the worker after everything else is initialized
+        registerWorker.postMessage({ type: 'start' });
 
-        // Handle worker errors
+        // Start scanner worker
+        scannerWorker.postMessage({ type: 'start', io, partNumber });
+
+        // Handle worker errors and exit
         registerWorker.on('error', (error) => {
           logger.error('Register worker error:', error);
         });
