@@ -628,10 +628,19 @@ const startServer = async () => {
 
         // Handle scanner worker messages
         scannerWorker.on('message', (message) => {
-          if (message.type === 'error') {
-            logger.error('Scanner worker error:', message.data);
-          } else {
-            io.emit(message.type, message.data);
+          switch (message.type) {
+            case 'error':
+              logger.error('Scanner worker error:', message.data);
+              io.emit('scanner-error', message.data);
+              break;
+            
+            case 'socket-event':
+              // Forward socket events from worker to clients
+              io.emit(message.event, message.data);
+              break;
+            
+            default:
+              logger.info('Unknown message type from scanner worker:', message.type);
           }
         });
 
@@ -639,7 +648,10 @@ const startServer = async () => {
         registerWorker.postMessage({ type: 'start' });
 
         // Start scanner worker
-        scannerWorker.postMessage({ type: 'start', io, partNumber });
+        scannerWorker.postMessage({ 
+          type: 'start',
+          partNumber 
+        });
 
         // Handle worker errors and exit
         registerWorker.on('error', (error) => {
