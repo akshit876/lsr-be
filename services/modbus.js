@@ -428,52 +428,50 @@ export const readBit = async (address, bitPosition, conti = false) => {
   return connection.readBit(address, bitPosition, conti);
 };
 
-export const readRegister = (
-  address,
-  len,
-  conti = null,
-  bit = null,
-  isPrint = true
-) => getModbusConnection().readRegister(address, len, conti, bit, isPrint);
-export const writeRegister = (address, value) =>
-  getModbusConnection().writeRegister(address, value);
-export const readRegisterAndProvideASCII = (address, len) =>
-  getModbusConnection().readRegisterAndProvideASCII(address, len);
-export const readBits = (address, bitPositions) =>
-  getModbusConnection().readBits(address, bitPositions);
-export const writeBits = (address, bitValues) =>
-  getModbusConnection().writeBits(address, bitValues);
-export const writeBitsWithRest = (
-  address,
-  bitPosition,
-  value,
-  delay,
-  isPrint = true
-) =>
-  getModbusConnection().writeBitWithReset(
-    address,
-    bitPosition,
-    value,
-    delay,
-    isPrint
-  );
-export const readDataAndConfirm = (
-  address,
-  len,
-  inputFeedbackBit,
-  outputFeedbackBit,
-  delay
-) =>
-  getModbusConnection().readDataAndConfirm(
-    address,
-    len,
-    inputFeedbackBit,
-    outputFeedbackBit,
-    delay
-  );
-export const writeRegisterFull = (add, val) =>
-  getModbusConnection().writeRegistersFull(add, val);
-// writeBitsWithRest(1415, 9, 1, 2000);
+export const writeBit = async (address, bitPosition, value) => {
+  const connection = getModbusConnection();
+  return connection.writeBit(address, bitPosition, value);
+};
+
+export const readRegister = async (address, len, conti = null, bit = null, isPrint = true) => {
+  const connection = getModbusConnection();
+  return connection.readRegister(address, len, conti, bit, isPrint);
+};
+
+export const writeRegister = async (address, value) => {
+  const connection = getModbusConnection();
+  return connection.writeRegister(address, value);
+};
+
+export const readRegisterAndProvideASCII = async (address, len) => {
+  const connection = getModbusConnection();
+  return connection.readRegisterAndProvideASCII(address, len);
+};
+
+export const readBits = async (address, bitPositions) => {
+  const connection = getModbusConnection();
+  return connection.readBits(address, bitPositions);
+};
+
+export const writeBits = async (address, bitValues) => {
+  const connection = getModbusConnection();
+  return connection.writeBits(address, bitValues);
+};
+
+export const writeBitsWithRest = async (address, bitPosition, value, delay, isPrint = true) => {
+  const connection = getModbusConnection();
+  return connection.writeBitWithReset(address, bitPosition, value, delay, isPrint);
+};
+
+export const readDataAndConfirm = async (address, len, inputFeedbackBit, outputFeedbackBit, delay) => {
+  const connection = getModbusConnection();
+  return connection.readDataAndConfirm(address, len, inputFeedbackBit, outputFeedbackBit, delay);
+};
+
+export const writeRegisterFull = async (add, val) => {
+  const connection = getModbusConnection();
+  return connection.writeRegistersFull(add, val);
+};
 
 async function trackBits2() {
   const register = 1400; // Define the register address
