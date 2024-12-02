@@ -33,67 +33,48 @@ import { scannerController } from "./services/scanCycles.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const REGISTER_MONITORING_CONFIG = {
-  register: 1490,
-  interval: 100, // ms
-  bits: {
-    0: {
-      eventName: "part-presence",
-      message: "Part not present.............",
-    },
-    1: {
-      eventName: "emergency-stop",
-      message: "Emergency button pressed.............",
-    },
-    2: {
-      eventName: "light-curtation",
-      message: "Light curtain error.............",
-    },
-    // 3: {
-    //   eventName: "emergency-stop-detected",
-    //   message: "Emergency stop signal detected",
-    // },
+// Define register sets to monitor
+const REGISTERS_TO_MONITOR = [
+  {
+    register: 1490,
+    bits: {
+      0: { eventName: "emergency-button", message: "Emergency push button pressed" },
+      1: { eventName: "safety-curtain", message: "Safety curtain error" },
+      2: { eventName: "servo-position", message: "Servo not home position" },
+      3: { eventName: "reject-bin", message: "Put the part in the rejection bin" }
+    }
   },
-};
-
-let registerMonitorInterval = null;
-
-async function monitorRegisters(io) {
-  const { register, interval, bits } = REGISTER_MONITORING_CONFIG;
-
-  // Clear any existing interval
-  if (registerMonitorInterval) {
-    clearInterval(registerMonitorInterval);
+  {
+    register: 1500,
+    bits: {
+      0: { eventName: "cycle-start", message: "Cycle started" },
+      1: { eventName: "cycle-complete", message: "Cycle completed" }
+    }
   }
+];
 
-  registerMonitorInterval = setInterval(async () => {
+// Single function to monitor one register
+async function monitorRegister(io, { register, bits }) {
+  while (true) {
     try {
       for (const [bit, config] of Object.entries(bits)) {
         const value = await readBit(register, parseInt(bit));
-        console.log({ register, value });
         if (value) {
           io.emit(config.eventName, {
             register,
             bit: parseInt(bit),
             value,
             message: config.message,
-            timestamp: new Date().toISOString(),
+            timestamp: new Date().toISOString()
           });
           logger.info(`${config.message} (Register ${register}.${bit})`);
         }
       }
     } catch (error) {
-      logger.error("Error monitoring registers:", error);
+      logger.error(`Error monitoring register ${register}:`, error);
     }
-  }, interval);
-
-  return () => {
-    if (registerMonitorInterval) {
-      clearInterval(registerMonitorInterval);
-      registerMonitorInterval = null;
-      logger.info("Register monitoring stopped");
-    }
-  };
+    await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+  }
 }
 
 const MODBUS_IP = process.env.MODBUS_IP;
@@ -591,39 +572,26 @@ const startServer = async () => {
         );
         cronService.startAllJobs();
 
-        // const shiftUtility = new ShiftUtility();
-        // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
-        // barcodeGenerator.initialize('main-data', 'records');
-        // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-        // comService = new BufferedComPortService({
-        //   path: config.serial_port,
-        //   baudRate: 9600,
-        //   logDir: "com_port_logs",
-        // });
-        // await comService.initSerialPort();
-        // await connect();
-        // Fetch part number and pass it to runContinuousScan
-        const { partNumber } = await fetchPartNumberAndData();
+         // Fetch part number and pass it to runContinuousScan
+         const { partNumber } = await fetchPartNumberAndData();
 
-        // Start both processes independently
-        // Start register monitoring as a separate process
-        // monitorRegisters(io).catch((error) => {
-        //   logger.error("Register monitoring error:", error);
-        // });
+         // Start all monitoring processes
+         const monitoringTasks = REGISTERS_TO_MONITOR.map(config => 
+          monitorRegister(io, config)
+        );
 
-        // Start scanner controller as a separate process
-        scannerController
-          .runContinuousScan(io, null, {
-            partNumber,
-          })
-          .catch((error) => {
-            logger.error("Scanner controller error:", error);
-          });
+        // Run everything in parallel
+        Promise.all([
+          ...monitoringTasks,
+          scannerController.runContinuousScan(io, null, { partNumber })
+        ]).catch(error => {
+          logger.error("Error in monitoring processes:", error);
+        });
+
       } catch (error) {
         console.log({ error });
         emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
-        logger.error("Failed to initialize Modbus connection:", error);
-        // await comService.closePort();
+        logger.error("Failed to initialize:", error);
       }
     });
   } catch (error) {
