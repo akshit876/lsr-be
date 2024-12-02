@@ -284,11 +284,6 @@ class ScannerController {
       let checkCount = 0;
       const CHECK_INTERVAL = 100;
       
-      // Track previous states to avoid duplicate emissions
-      const previousStates = {
-        1490: { 0: false, 1: false, 2: false, 3: false },
-        1500: { 0: false, 1: false }
-      };
 
       const cleanup = () => {
         if (timeoutId) {

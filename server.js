@@ -43,13 +43,6 @@ export const REGISTERS_TO_MONITOR = [
       2: { eventName: "servo-position", message: "Servo not home position" },
       3: { eventName: "reject-bin", message: "Put the part in the rejection bin" }
     }
-  },
-  {
-    register: 1500,
-    bits: {
-      0: { eventName: "cycle-start", message: "Cycle started" },
-      1: { eventName: "cycle-complete", message: "Cycle completed" }
-    }
   }
 ];
 
