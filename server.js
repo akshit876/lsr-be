@@ -34,7 +34,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Define register sets to monitor
-const REGISTERS_TO_MONITOR = [
+export const REGISTERS_TO_MONITOR = [
   {
     register: 1490,
     bits: {
@@ -73,7 +73,8 @@ async function monitorRegister(io, { register, bits }) {
     } catch (error) {
       logger.error(`Error monitoring register ${register}:`, error);
     }
-    await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+    const REGISTER_POLLING_INTERVAL = 100; // ms delay between register polls
+    await new Promise(resolve => setTimeout(resolve, REGISTER_POLLING_INTERVAL));
   }
 }
 

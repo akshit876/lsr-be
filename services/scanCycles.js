@@ -32,6 +32,7 @@ const BARCODE_RESET_MINUTE = 0;
 
 import { MongoClient } from "mongodb";
 import { tcpClient } from "./tcp.js";
+import { REGISTERS_TO_MONITOR } from "../server.js";
 
 const TCP_CONFIG = {
   PORT: 5024,
@@ -281,7 +282,13 @@ class ScannerController {
       let resetCheckInterval;
       let bitCheckInterval;
       let checkCount = 0;
-      const CHECK_INTERVAL = 10;
+      const CHECK_INTERVAL = 100;
+      
+      // Track previous states to avoid duplicate emissions
+      const previousStates = {
+        1490: { 0: false, 1: false, 2: false, 3: false },
+        1500: { 0: false, 1: false }
+      };
 
       const cleanup = () => {
         if (timeoutId) {
@@ -292,6 +299,32 @@ class ScannerController {
         }
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
+        }
+      };
+
+      // Helper function to check and emit register bits
+      const checkRegisterBits = async (registerConfig) => {
+        const { register, bits } = registerConfig;
+        for (const [bit, config] of Object.entries(bits)) {
+          try {
+            const bitValue = await readBit(register, parseInt(bit));
+            
+            // Emit event if bit is 1, regardless of previous state
+            if (bitValue) {
+              if (this.io) {
+                this.io.emit(config.eventName, {
+                  register,
+                  bit: parseInt(bit),
+                  value: bitValue,
+                  message: config.message,
+                  timestamp: new Date().toISOString()
+                });
+                logger.info(`${config.message} (Register ${register}.${bit})`);
+              }
+            }
+          } catch (error) {
+            logger.error(`Error checking register ${register} bit ${bit}:`, error);
+          }
         }
       };
 
@@ -310,15 +343,12 @@ class ScannerController {
             cleanup();
             logger.info("Reset signal (1600.0) detected");
             try {
-              // await sleep(1200);
-              // await this.resetBits();
               await writeBit(1500, 3, 1);
               logger.info("Reset bits completed, restarting cycle");
-              // await sleep(1200);
               resolve(true);
             } catch (error) {
               logger.error("Error during reset bits:", error);
-              resolve("timeout"); // Force timeout on reset error
+              resolve("timeout");
             }
           }
         } catch (error) {
@@ -333,6 +363,11 @@ class ScannerController {
           const bitValue = await readBit(register, bit);
           const currentValue = Number(bitValue);
           const expectedValue = Number(value);
+
+          // Check all monitored registers
+          for (const registerConfig of REGISTERS_TO_MONITOR) {
+            await checkRegisterBits(registerConfig);
+          }
 
           if (currentValue === expectedValue) {
             cleanup();
@@ -364,6 +399,11 @@ class ScannerController {
           readBit(1600, 0),
           readBit(register, bit),
         ]);
+
+        // Initial check of all monitored registers
+        for (const registerConfig of REGISTERS_TO_MONITOR) {
+          await checkRegisterBits(registerConfig);
+        }
 
         if (resetSignal) {
           cleanup();
