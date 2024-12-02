@@ -14,8 +14,10 @@ class ModbusConnection {
   constructor() {
     this.client = new ModbusRTU();
     this.isConnected = false;
-    this.reconnectInterval = 5000; // 5 seconds
+    this.reconnectInterval = 5000;
     this.socket = null;
+    this.connectionAttempts = 0;
+    this.maxAttempts = 5;
   }
 
   async connect() {
@@ -24,19 +26,31 @@ class ModbusConnection {
     }
 
     try {
+      this.connectionAttempts++;
       await this.client.connectTCP(MODBUS_IP, { port: MODBUS_PORT });
-      this.client.setID(1); // Set the Modbus slave ID (adjust as needed)
+      this.client.setID(1);
       this.isConnected = true;
+      this.connectionAttempts = 0;
       logger.info(`Connected to Modbus device at ${MODBUS_IP}:${MODBUS_PORT}`);
     } catch (error) {
-      console.log("connect", { error });
-      emitErrorEvent(
-        this.socket,
-        "MODBUS_CONNECT_ERROR",
-        `Error connecting to Modbus device: ${error.message}`
-      );
-      // this.scheduleReconnect();
+      logger.error("Modbus connect error:", error);
+      
+      if (this.connectionAttempts < this.maxAttempts) {
+        logger.info(`Retrying connection (attempt ${this.connectionAttempts}/${this.maxAttempts})...`);
+        await new Promise(resolve => setTimeout(resolve, this.reconnectInterval));
+        return this.connect();
+      } else {
+        this.connectionAttempts = 0;
+        throw new Error(`Failed to connect after ${this.maxAttempts} attempts: ${error.message}`);
+      }
     }
+  }
+
+  async ensureConnection() {
+    if (!this.isConnected) {
+      await this.connect();
+    }
+    return this.isConnected;
   }
 
   handleDisconnect() {
@@ -47,12 +61,6 @@ class ModbusConnection {
 
   scheduleReconnect() {
     setTimeout(() => this.connect(), this.reconnectInterval);
-  }
-
-  async ensureConnection() {
-    if (!this.isConnected) {
-      await this.connect();
-    }
   }
 
   async readRegister(address, len, conti = null, bit = null, isPrint = true) {
@@ -385,40 +393,56 @@ class ModbusConnection {
   }
 
   handleError(error) {
-    if (error.errno === "ETIMEDOUT" || error.errno === "ECONNRESET") {
-      logger.warn(`Connection error: ${error.errno}. Scheduling reconnect.`);
+    if (error.errno === "ETIMEDOUT" || error.errno === "ECONNRESET" || error.errno === "ECONNREFUSED") {
+      logger.warn(`Connection error: ${error.errno}. Attempting reconnect...`);
       this.isConnected = false;
-      // this.scheduleReconnect();
+      return this.connect(); // Attempt immediate reconnection
     }
+    throw error;
   }
 }
 
-const modbusConnection = new ModbusConnection();
+// Create separate instances for different contexts
+const createModbusConnection = () => new ModbusConnection();
 
-export const setSocket = (socket) => {
-  modbusConnection.socket = socket;
+// Export factory function instead of singleton
+export const getModbusConnection = (() => {
+  let instance = null;
+  
+  return () => {
+    if (!instance) {
+      instance = createModbusConnection();
+    }
+    return instance;
+  };
+})();
+
+// Modified exports to use the factory
+export const connect = async () => {
+  const connection = getModbusConnection();
+  return connection.connect();
 };
 
-export const connect = () => modbusConnection.connect();
+export const readBit = async (address, bitPosition, conti = false) => {
+  const connection = getModbusConnection();
+  return connection.readBit(address, bitPosition, conti);
+};
+
 export const readRegister = (
   address,
   len,
   conti = null,
   bit = null,
   isPrint = true
-) => modbusConnection.readRegister(address, len, conti, bit, isPrint);
+) => getModbusConnection().readRegister(address, len, conti, bit, isPrint);
 export const writeRegister = (address, value) =>
-  modbusConnection.writeRegister(address, value);
+  getModbusConnection().writeRegister(address, value);
 export const readRegisterAndProvideASCII = (address, len) =>
-  modbusConnection.readRegisterAndProvideASCII(address, len);
-export const readBit = (address, bitPosition, conti = false) =>
-  modbusConnection.readBit(address, bitPosition, conti);
-export const writeBit = (address, bitPosition, value) =>
-  modbusConnection.writeBit(address, bitPosition, value);
+  getModbusConnection().readRegisterAndProvideASCII(address, len);
 export const readBits = (address, bitPositions) =>
-  modbusConnection.readBits(address, bitPositions);
+  getModbusConnection().readBits(address, bitPositions);
 export const writeBits = (address, bitValues) =>
-  modbusConnection.writeBits(address, bitValues);
+  getModbusConnection().writeBits(address, bitValues);
 export const writeBitsWithRest = (
   address,
   bitPosition,
@@ -426,7 +450,7 @@ export const writeBitsWithRest = (
   delay,
   isPrint = true
 ) =>
-  modbusConnection.writeBitWithReset(
+  getModbusConnection().writeBitWithReset(
     address,
     bitPosition,
     value,
@@ -440,7 +464,7 @@ export const readDataAndConfirm = (
   outputFeedbackBit,
   delay
 ) =>
-  modbusConnection.readDataAndConfirm(
+  getModbusConnection().readDataAndConfirm(
     address,
     len,
     inputFeedbackBit,
@@ -448,7 +472,7 @@ export const readDataAndConfirm = (
     delay
   );
 export const writeRegisterFull = (add, val) =>
-  modbusConnection.writeRegistersFull(add, val);
+  getModbusConnection().writeRegistersFull(add, val);
 // writeBitsWithRest(1415, 9, 1, 2000);
 
 async function trackBits2() {

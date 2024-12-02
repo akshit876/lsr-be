@@ -22,10 +22,14 @@ const REGISTER_MONITORING_CONFIG = {
 };
 
 let intervalId = null;
+let isInitialized = false;
 
 async function initializeWorker() {
+  if (isInitialized) return;
+  
   try {
     await connect();
+    isInitialized = true;
     logger.info('Register worker: Modbus connection established');
 
     intervalId = setInterval(async () => {
@@ -48,10 +52,19 @@ async function initializeWorker() {
           }
         }
       } catch (error) {
-        parentPort.postMessage({
-          type: 'error',
-          data: error.message
-        });
+        logger.error('Register monitoring error:', error);
+        isInitialized = false;
+        clearInterval(intervalId);
+        
+        // Attempt to reinitialize after error
+        setTimeout(() => {
+          initializeWorker().catch(err => {
+            parentPort.postMessage({
+              type: 'error',
+              data: `Failed to reinitialize worker: ${err.message}`
+            });
+          });
+        }, 5000);
       }
     }, REGISTER_MONITORING_CONFIG.interval);
   } catch (error) {
