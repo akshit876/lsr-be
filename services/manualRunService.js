@@ -11,17 +11,16 @@ import { emitErrorEvent } from "./utils.js";
 const resetTime = 200;
 
 const MANUAL_RUN_ADDRESSES = {
-  markingStart: { address: 1414, bit: 0 },
-  scannerTrigger: { address: 1414, bit: 1 },
-  ocrTrigger: { address: 1414, bit: 2 },
-  workLight: { address: 1414, bit: 3 },
-  servohomeposition: { address: 1414, bit: 4 },
-  servoscannerposition: { address: 1414, bit: 5 },
-  servoocrposition: { address: 1414, bit: 6 },
-  servomarkposition: { address: 1414, bit: 7 },
-  jogFwd: { address: 1414, bit: 8 },
-  jogRev: { address: 1414, bit: 9 },
-  servoHome: { address: 1414, bit: 10 },
+  home: { address: 14020, bit: 0 },          // Position - 1 (Home)
+  scannerPosition: { address: 14020, bit: 1 }, // Position - 2 (Scanner)
+  markingPosition: { address: 14020, bit: 2 }, // Position - 3 (Marking)
+  position4: { address: 14020, bit: 3 },      // Position - 4
+  position5: { address: 14020, bit: 4 },      // Position - 5
+  jogFwd: { address: 14020, bit: 5 },         // Jog fwd
+  jogRev: { address: 14020, bit: 6 },         // Jog rev
+  scannerTrigger: { address: 14020, bit: 7 }, // Scanner Trigger
+  marking: { address: 14020, bit: 8 },        // Marking
+  lightOn: { address: 14020, bit: 9 },        // Light on
 };
 
 export async function manualRun(operation, socket) {
