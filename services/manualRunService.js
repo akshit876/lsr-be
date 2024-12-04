@@ -11,16 +11,16 @@ import { emitErrorEvent } from "./utils.js";
 const resetTime = 200;
 
 const MANUAL_RUN_ADDRESSES = {
-  home: { address: 14020, bit: 0 },          // Position - 1 (Home)
-  scannerPosition: { address: 14020, bit: 1 }, // Position - 2 (Scanner)
-  markingPosition: { address: 14020, bit: 2 }, // Position - 3 (Marking)
-  position4: { address: 14020, bit: 3 },      // Position - 4
-  position5: { address: 14020, bit: 4 },      // Position - 5
-  jogFwd: { address: 14020, bit: 5 },         // Jog fwd
-  jogRev: { address: 14020, bit: 6 },         // Jog rev
-  scannerTrigger: { address: 14020, bit: 7 }, // Scanner Trigger
-  marking: { address: 14020, bit: 8 },        // Marking
-  lightOn: { address: 14020, bit: 9 },        // Light on
+  position1Home: { address: 14020, bit: 0 },      // Position - 1 (Home)
+  position2Scanner: { address: 14020, bit: 1 },   // Position - 2 (Scanner)
+  position3Marking: { address: 14020, bit: 2 },   // Position - 3 (Marking)
+  position4: { address: 14020, bit: 3 },          // Position - 4
+  position5: { address: 14020, bit: 4 },          // Position - 5
+  jogFwd: { address: 14020, bit: 5 },            // Jog fwd
+  jogRev: { address: 14020, bit: 6 },            // Jog rev
+  scannerTrigger: { address: 14020, bit: 7 },    // Scanner Trigger
+  marking: { address: 14020, bit: 8 },           // Marking
+  lightOn: { address: 14020, bit: 9 },           // Light on
 };
 
 export async function manualRun(operation, socket) {
