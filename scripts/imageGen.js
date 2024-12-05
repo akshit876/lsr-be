@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-const inputImagePath = 'D:/cameraimage/base.jpg'; // Replace with your base image path
-const outputDir = 'D:/cameraimage/fake_dataset'; // Directory to save generated images
+const inputImagePath = 'D:\\cameraimage\\R08211210M02L20021224A0001==1.jpg'; // Base image path
+const outputDir = 'D:\\cameraimage\\fake_dataset'; // Directory to save generated images
 const totalImages = 1000000; // Number of images to generate
 
 // Ensure output directory exists
@@ -11,8 +11,18 @@ if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
 }
 
+// Generate a unique file name similar to the base path
+function generateFileName(index) {
+    // Simulate variations by incrementing or modifying numeric values
+    const prefix = 'R08211210M02L'; // Fixed part of the base path
+    const uniqueId = (20021224 + index).toString().padStart(8, '0'); // Generate unique 8-digit ID
+    const suffix = `A${(10001 + index).toString().padStart(5, '0')}==${index % 10}.jpg`; // Suffix variation
+    return `${prefix}${uniqueId}${suffix}`;
+}
+
 async function generateImage(index) {
-    const outputFilePath = path.join(outputDir, `image_${index}.jpg`);
+    const fileName = generateFileName(index);
+    const outputFilePath = path.join(outputDir, fileName);
 
     // Apply random transformations
     await sharp(inputImagePath)
