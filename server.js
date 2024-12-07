@@ -605,17 +605,25 @@ const startServer = async () => {
         // Fetch part number and pass it to runContinuousScan
         const { partNumber } = await fetchPartNumberAndData();
 
-        // Start both processes independently
-        // Start register monitoring as a separate process
-        monitorRegisters(io).catch(error => {
-          logger.error("Register monitoring error:", error);
-        });
+        // Start both processes in parallel using Promise.all
+        Promise.all([
+          // Process 1: Monitor registers
+          monitorRegisters(io).catch(error => {
+            logger.error("Register monitoring error:", error);
+            // Don't rethrow to prevent Promise.all from failing completely
+            return null;
+          }),
 
-        // Start scanner controller as a separate process
-        scannerController.runContinuousScan(io, comService, {
-          partNumber,
-        }).catch(error => {
-          logger.error("Scanner controller error:", error);
+          // Process 2: Run continuous scan
+          scannerController.runContinuousScan(io, comService, {
+            partNumber,
+          }).catch(error => {
+            logger.error("Scanner controller error:", error);
+            // Don't rethrow to prevent Promise.all from failing completely
+            return null;
+          })
+        ]).catch(error => {
+          logger.error("Error in parallel processes:", error);
         });
 
       } catch (error) {
