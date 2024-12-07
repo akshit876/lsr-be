@@ -1,6 +1,7 @@
 import { format, isAfter, isBefore, isSameDay } from "date-fns";
 import logger from "../logger.js";
 import MongoDBService from "./mongoDbService.js";
+import BarcodeParser from "./barcodeParser.js";
 
 const INITIAL_SERIAL_NUMBER = 1; // Default value
 
@@ -113,7 +114,7 @@ class SerialNumberGeneratorService {
     return serialNumber;
   }
 
-  async getNextDecSerialNumber2(currentShift) {
+  async getNextDecSerialNumber2(currentShift,fields) {
     const reset = this.checkAndResetSerialNumber();
     const now = new Date();
     const resetTime = new Date(
@@ -137,7 +138,8 @@ class SerialNumberGeneratorService {
     const lastDocument = await this.getLastDocumentFromMongoDB();
     
     if (lastDocument) {
-      const lastShift = lastDocument.Shift; // Get the shift from last document
+      const lastShift = BarcodeParser.parseField(lastDocument.Shift,fields,"Shift"); // Get the shift from last document
+      console.log({lastShift,currentShift});
       
       if (lastShift !== currentShift) {
         // Reset to initial number if shift has changed
