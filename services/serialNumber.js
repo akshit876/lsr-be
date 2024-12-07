@@ -95,6 +95,9 @@ class SerialNumberGeneratorService {
 
   async getLastDocumentFromMongoDB() {
     try {
+      // Connect to the specific database and collection
+      await MongoDBService.connect("main-data", "records");
+      
       const latestRecord = await MongoDBService.collection
         .find()
         .sort({ Timestamp: -1 })
