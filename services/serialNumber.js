@@ -97,7 +97,7 @@ class SerialNumberGeneratorService {
     try {
       // Connect to the specific database and collection
       await MongoDBService.connect("main-data", "records");
-      
+
       const latestRecord = await MongoDBService.collection
         .find()
         .sort({ Timestamp: -1 })
@@ -117,7 +117,7 @@ class SerialNumberGeneratorService {
     return serialNumber;
   }
 
-  async getNextDecSerialNumber2(currentShift,fields) {
+  async getNextDecSerialNumber2(currentShift, fields) {
     const reset = this.checkAndResetSerialNumber();
     const now = new Date();
     const resetTime = new Date(
@@ -139,16 +139,22 @@ class SerialNumberGeneratorService {
 
     // Regular flow - check for shift transition
     const lastDocument = await this.getLastDocumentFromMongoDB();
-    
+
     if (lastDocument) {
-      const lastShift = BarcodeParser.parseField(lastDocument.MarkingData,lastDocument.Shift,fields,"Shift"); // Get the shift from last document
-      console.log({lastShift,currentShift});
-      
+      const lastShift = BarcodeParser.parseField(
+        lastDocument.MarkingData,
+        fields,
+        "Shift"
+      ); // Get the shift from last document
+      console.log({ lastShift, currentShift });
+
       if (lastShift !== currentShift) {
         // Reset to initial number if shift has changed
         this.currentSerialNumber = this.initialSerialNumber;
         this.lastResetDate = now;
-        logger.info(`Serial number reset to ${this.initialSerialNumber} due to shift change from ${lastShift} to ${currentShift}`);
+        logger.info(
+          `Serial number reset to ${this.initialSerialNumber} due to shift change from ${lastShift} to ${currentShift}`
+        );
       } else if (!reset) {
         // If same shift and no reset occurred, continue from last number
         this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
