@@ -68,7 +68,7 @@ class BarcodeGenerator {
 
       // Get next serial number
       const serialString =
-        await this.serialNumberService.getNextDecSerialNumber2();
+        await this.serialNumberService.getNextDecSerialNumber2(shift);
 
       // Map values to fields from config
       const fields = configData.currentModelConfig.fields.map((field) => {

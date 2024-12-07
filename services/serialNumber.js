@@ -113,7 +113,7 @@ class SerialNumberGeneratorService {
     return serialNumber;
   }
 
-  async getNextDecSerialNumber2() {
+  async getNextDecSerialNumber2(currentShift) {
     const reset = this.checkAndResetSerialNumber();
     const now = new Date();
     const resetTime = new Date(
@@ -127,25 +127,28 @@ class SerialNumberGeneratorService {
     // Check if this is the first call after manual reset
     if (this.isManualReset || this.hasResetEventOccurred) {
       this.isManualReset = false;
-      this.hasResetEventOccurred = false; // Reset the flag after use
+      this.hasResetEventOccurred = false;
       const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
       this.currentSerialNumber++;
       return serialNumber;
     }
 
-    // Regular flow - only execute if no reset event has occurred
+    // Regular flow - check for shift transition
     const lastDocument = await this.getLastDocumentFromMongoDB();
-
-    if (
-      !reset &&
-      lastDocument &&
-      isAfter(new Date(lastDocument.Timestamp), resetTime)
-    ) {
-      this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
-      this.lastResetDate = new Date(lastDocument.Timestamp);
-      logger.info(
-        `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
-      );
+    
+    if (lastDocument) {
+      const lastShift = lastDocument.Shift; // Get the shift from last document
+      
+      if (lastShift !== currentShift) {
+        // Reset to initial number if shift has changed
+        this.currentSerialNumber = this.initialSerialNumber;
+        this.lastResetDate = now;
+        logger.info(`Serial number reset to ${this.initialSerialNumber} due to shift change from ${lastShift} to ${currentShift}`);
+      } else if (!reset) {
+        // If same shift and no reset occurred, continue from last number
+        this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
+        this.lastResetDate = new Date(lastDocument.Timestamp);
+      }
     }
 
     const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
