@@ -606,24 +606,44 @@ const startServer = async () => {
         const { partNumber } = await fetchPartNumberAndData();
 
         // Start both processes in parallel using Promise.all
-        Promise.all([
-          // Process 1: Monitor registers
-          monitorRegisters(io).catch(error => {
-            logger.error("Register monitoring error:", error);
-            // Don't rethrow to prevent Promise.all from failing completely
-            return null;
-          }),
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 5000; // 5 seconds
 
-          // Process 2: Run continuous scan
-          scannerController.runContinuousScan(io, comService, {
-            partNumber,
-          }).catch(error => {
-            logger.error("Scanner controller error:", error);
-            // Don't rethrow to prevent Promise.all from failing completely
-            return null;
-          })
-        ]).catch(error => {
-          logger.error("Error in parallel processes:", error);
+        async function startProcessWithRetry(processFunc, processName, retryCount = 0) {
+          try {
+            return await processFunc();
+          } catch (error) {
+            logger.error(`${processName} error:`, error);
+            
+            if (retryCount < MAX_RETRIES) {
+              logger.info(`Retrying ${processName} in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+              await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+              return startProcessWithRetry(processFunc, processName, retryCount + 1);
+            } else {
+              logger.error(`${processName} failed after ${MAX_RETRIES} attempts`);
+              throw error; // Finally throw the error after max retries
+            }
+          }
+        }
+
+        Promise.all([
+          // Process 1: Monitor registers with retry
+          startProcessWithRetry(
+            () => monitorRegisters(io),
+            "Register monitoring"
+          ),
+
+          // Process 2: Run continuous scan with retry
+          startProcessWithRetry(
+            () => scannerController.runContinuousScan(io, comService, { partNumber }),
+            "Scanner controller"
+          )
+        ]).then(() => {
+          logger.info("Both processes started successfully");
+        }).catch(error => {
+          logger.error("Critical error in parallel processes:", error);
+          // Optionally restart the entire server or take other recovery actions
+          process.exit(1); // Force restart if using a process manager
         });
 
       } catch (error) {
