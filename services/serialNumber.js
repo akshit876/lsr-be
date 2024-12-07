@@ -141,7 +141,7 @@ class SerialNumberGeneratorService {
     const lastDocument = await this.getLastDocumentFromMongoDB();
     
     if (lastDocument) {
-      const lastShift = BarcodeParser.parseField(lastDocument.Shift,fields,"Shift"); // Get the shift from last document
+      const lastShift = BarcodeParser.parseField(lastDocument.MarkingData,lastDocument.Shift,fields,"Shift"); // Get the shift from last document
       console.log({lastShift,currentShift});
       
       if (lastShift !== currentShift) {
