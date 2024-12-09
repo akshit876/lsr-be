@@ -850,7 +850,7 @@ class ScannerController {
       // Format the date and combine with serial number
       const currentDate = new Date();
       const formattedDate = this.formatDateForSerial(currentDate);
-      const serialWithDate = `${formattedDate}${serialNo}`;
+      const serialWithDate = `${formattedDate}XX${serialNo}`;
 
       // Write both files using the reusable function
       await Promise.all([
