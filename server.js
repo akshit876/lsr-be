@@ -38,10 +38,11 @@ export const REGISTERS_TO_MONITOR = [
   {
     register: 1490,
     bits: {
-      0: { eventName: "emergency-button", message: "Emergency push button pressed" },
-      1: { eventName: "safety-curtain", message: "Safety curtain error" },
-      2: { eventName: "servo-position", message: "Servo not home position" },
-      3: { eventName: "reject-bin", message: "Put the part in the rejection bin" }
+      0: { eventName: "part-present", message: "Part not present" },
+      1: { eventName: "emergency-button", message: "Emergency push button pressed" },
+      2: { eventName: "safety-curtain", message: "Safety curtain error" },
+      3: { eventName: "servo-position", message: "Servo not home position" },
+      4: { eventName: "reject-bin", message: "Put the part in the rejection bin" }
     }
   }
 ];
