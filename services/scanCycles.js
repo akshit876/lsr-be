@@ -882,25 +882,43 @@ class ScannerController {
     const secondScannerData = await this.fetchScannerData(comService, {
       isSecondScan: true,
     });
-    // const secondScannerData = await readRegisterAndProvideASCII(1470, 20);
-
-    // Extract the last character as grading
+    
+    // Check if scanner data is "NG"
+    if (secondScannerData.trim().toUpperCase() === "NG") {
+      const grading = "F";  // Set grading to F for NG cases
+      const isDataMatching = false;  // NG always means no match
+      
+      logger.info("� Second scan resulted in NG");
+      logger.info("🔄 Setting grade to F and marking as non-matching");
+  
+      await writeBit(1417, 1, 1);  // Write 1 to indicate failure
+  
+      await this.saveToMongoDB({
+        io: this.io,
+        serialNumber: barcodeData.serialNo,
+        markingData: barcodeData.text,
+        scannerData: secondScannerData,  // Use full NG value
+        result: false,
+        grading,
+      });
+  
+      return { success: false };
+    }
+  
+    // Normal case handling (non-NG)
     const grading = secondScannerData.slice(-1);
-
-    // Trim the last character from `secondScannerData`
     const trimmedSecondScannerData = secondScannerData.slice(0, -1);
-
-    // Use the trimmed data for comparison
+  
     const isDataMatching = await this.compareScannerDataWithCode(
       trimmedSecondScannerData
     );
     logger.info("🔄 Data matching without grade", isDataMatching);
-
+  
     const checkGrading = await this.checkGrading(secondScannerData);
     logger.info("🔄 Grade acceptance ", checkGrading);
-
+  
     await writeBit(1417, isDataMatching ? 0 : 1, 1);
-
+  
     await this.saveToMongoDB({
       io: this.io,
       serialNumber: barcodeData.serialNo,
@@ -909,7 +927,7 @@ class ScannerController {
       result: isDataMatching && checkGrading,
       grading,
     });
-
+  
     return { success: isDataMatching };
   }
 
