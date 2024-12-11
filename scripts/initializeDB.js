@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcryptjs";
 import fs from "fs/promises";
 import path from "path";
@@ -6,10 +6,35 @@ import process from "process";
 
 const MONGODB_URI = "mongodb://localhost:27017";
 
+function convertExtendedJSON(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(item => convertExtendedJSON(item));
+  }
+  
+  if (typeof obj === 'object' && obj !== null) {
+    const converted = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (key === '$oid') {
+        return new ObjectId(value);
+      }
+      if (key === '$date') {
+        return new Date(value);
+      }
+      converted[key] = convertExtendedJSON(value);
+    }
+    return converted;
+  }
+  
+  return obj;
+}
+
 async function importJsonData(db, collectionName, jsonFilePath) {
   try {
     const jsonContent = await fs.readFile(jsonFilePath, 'utf8');
-    const data = JSON.parse(jsonContent);
+    const rawData = JSON.parse(jsonContent);
+    
+    // Convert Extended JSON format to MongoDB native types
+    const data = convertExtendedJSON(rawData);
     
     if (data.length > 0) {
       await db.collection(collectionName).insertMany(data);
@@ -19,6 +44,8 @@ async function importJsonData(db, collectionName, jsonFilePath) {
     if (error.code !== 11000) { // Ignore duplicate key errors
       console.error(`Error importing ${collectionName} data:`, error);
       throw error;
+    } else {
+      console.log(`Skipped duplicate entries in ${collectionName}`);
     }
   }
 }
