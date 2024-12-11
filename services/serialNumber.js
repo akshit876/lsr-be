@@ -184,14 +184,14 @@ class SerialNumberGeneratorService {
       this.resetMinute
     );
 
-    console.log({
-      now: format(now, "yyyy-MM-dd HH:mm:ss"),
-      resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
-      lastResetDate: format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss"),
-      isAfterResetTime: isAfter(now, resetTime),
-      isSameDayAsLastReset: isSameDay(now, this.lastResetDate),
-      isLastResetBeforeResetTime: isBefore(this.lastResetDate, resetTime),
-    });
+    // console.log({
+    //   now: format(now, "yyyy-MM-dd HH:mm:ss"),
+    //   resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
+    //   lastResetDate: format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss"),
+    //   isAfterResetTime: isAfter(now, resetTime),
+    //   isSameDayAsLastReset: isSameDay(now, this.lastResetDate),
+    //   isLastResetBeforeResetTime: isBefore(this.lastResetDate, resetTime),
+    // });
 
     if (
       isAfter(now, resetTime) &&

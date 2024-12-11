@@ -4,7 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import process from "process";
 
-const MONGODB_URI = "mongodb://localhost:27017";
+const MONGODB_URI = "mongodb://127.0.0.1:27017";
 
 function convertExtendedJSON(obj) {
   if (Array.isArray(obj)) {

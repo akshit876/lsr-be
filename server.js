@@ -184,7 +184,7 @@ export async function fetchPartNumberAndData() {
   try {
     // Connect to the MongoDB if not already connected
 
-    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+    const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
     const client = new MongoClient(uri);
     await client.connect();
     const db = client.db("main-data");
@@ -628,10 +628,10 @@ const startServer = async () => {
 
         Promise.all([
           // Process 1: Monitor registers with retry
-          startProcessWithRetry(
-            () => monitorRegisters(io),
-            "Register monitoring"
-          ),
+          // startProcessWithRetry(
+          //   () => monitorRegisters(io),
+          //   "Register monitoring"
+          // ),
 
           // Process 2: Run continuous scan with retry
           startProcessWithRetry(
