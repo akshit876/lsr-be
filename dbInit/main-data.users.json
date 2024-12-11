@@ -1,0 +1,49 @@
+[{
+  "_id": {
+    "$oid": "66f781fc0384d7a318929e30"
+  },
+  "username": "asaS",
+  "email": "213213@ASD",
+  "password": "$2b$12$IibRSaz14eU1krurL5qM7.gbSBXtFwFbCX1L3elkPhmwfP4Fd3Z6y"
+},
+{
+  "_id": {
+    "$oid": "66f7830d1f113f4aba2b0aca"
+  },
+  "username": "rwer",
+  "email": "rewr@sdfsq",
+  "password": "$2b$12$2flXzoaBfo2ftaiRXaxox.A6W4L5epZqqZ3LPZ4HwksVRaHfgbJBW"
+},
+{
+  "_id": {
+    "$oid": "66faf415d3ee123bf6ecb0b8"
+  },
+  "username": "ertert",
+  "email": "ads@fddf",
+  "password": "$2b$12$US2hOx1Hzai0xi.ptpfgceTlX2Gt6KSc5jf3ykTYAFP8AgFPlPMhy"
+},
+{
+  "_id": {
+    "$oid": "674391a7a36ff7354d058c61"
+  },
+  "name": "Super Admin",
+  "email": "super",
+  "password": "$2a$10$QOI5FOPt02zCsdWEk6d2b.mvwuUJY.hvsDpF/7BSjG96os3uvf3bK",
+  "role": "admin",
+  "isVerified": true,
+  "createdAt": {
+    "$date": "2024-11-24T20:50:47.935Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-24T20:50:47.935Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6746d943793eaa8eefd6bfec"
+  },
+  "email": "opr",
+  "password": "$2b$10$Zyf3B3UDasqyWjtgOel88OKaqWrVMo.z6YNGGaAMzO/FFmnvV8t1u",
+  "role": "operator",
+  "__v": 0
+}]

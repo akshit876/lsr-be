@@ -1,0 +1,13 @@
+[{
+  "_id": {
+    "$oid": "6746d99e793eaa8eefd6c004"
+  },
+  "initialValue": "1",
+  "currentValue": "0",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "resetTime": "06:00",
+  "createdAt": "2024-11-27T08:34:38.619Z",
+  "updatedAt": "2024-11-27T08:34:45.590Z",
+  "updatedBy": "super"
+}]

@@ -1,0 +1,559 @@
+[{
+  "_id": {
+    "$oid": "6746e663045204c7add6460b"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:29:07.000Z"
+  },
+  "SerialNumber": "0006",
+  "MarkingData": "2711240006B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e676045204c7add6460c"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:29:26.000Z"
+  },
+  "SerialNumber": "0007",
+  "MarkingData": "2711240007B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e68b045204c7add6460d"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:29:47.000Z"
+  },
+  "SerialNumber": "0008",
+  "MarkingData": "2711240008B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e6d68b0080982c48a4e6"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:31:02.000Z"
+  },
+  "SerialNumber": "0009",
+  "MarkingData": "2711240009B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e6ef8b0080982c48a4e7"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:31:27.000Z"
+  },
+  "SerialNumber": "0010",
+  "MarkingData": "2711240010B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e7018b0080982c48a4e8"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:31:45.000Z"
+  },
+  "SerialNumber": "0011",
+  "MarkingData": "2711240011B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e7a58b0080982c48a4e9"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:34:29.000Z"
+  },
+  "SerialNumber": "0012",
+  "MarkingData": "2711240012B2",
+  "ScannerData": "2711240012B2",
+  "Result": "OK",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e82f8b0080982c48a4ea"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:36:47.000Z"
+  },
+  "SerialNumber": "0013",
+  "MarkingData": "2711240013B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e9238b0080982c48a4eb"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:40:51.000Z"
+  },
+  "SerialNumber": "0014",
+  "MarkingData": "2711240014B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "6746e9498b0080982c48a4ec"
+  },
+  "Timestamp": {
+    "$date": "2024-11-27T09:41:29.000Z"
+  },
+  "SerialNumber": "0015",
+  "MarkingData": "2711240015B2",
+  "ScannerData": "2711240015B2",
+  "Result": "OK",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "674eea34750f15995e7b7e2c"
+  },
+  "Timestamp": {
+    "$date": "2024-12-03T11:23:32.000Z"
+  },
+  "SerialNumber": "0001",
+  "MarkingData": "0312240001B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "675028d448069b8c13317bca"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:03:00.000Z"
+  },
+  "SerialNumber": "0001",
+  "MarkingData": "0412240001B2",
+  "ScannerData": "0412240001B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "6750292248069b8c13317bcb"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:04:18.000Z"
+  },
+  "SerialNumber": "0002",
+  "MarkingData": "0412240002B2",
+  "ScannerData": "0412240002B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "6750294948069b8c13317bcc"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:04:57.000Z"
+  },
+  "SerialNumber": "0003",
+  "MarkingData": "0412240003B2",
+  "ScannerData": "0412240003B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "675029d9617fd8907ca1bde5"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:07:21.000Z"
+  },
+  "SerialNumber": "0004",
+  "MarkingData": "0412240004B2",
+  "ScannerData": "0412240004B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502b82617fd8907ca1bde6"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:14:26.000Z"
+  },
+  "SerialNumber": "0005",
+  "MarkingData": "0412240005B2",
+  "ScannerData": "0412240005B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502ba5617fd8907ca1bde7"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:15:01.000Z"
+  },
+  "SerialNumber": "0006",
+  "MarkingData": "0412240006B2",
+  "ScannerData": "0412240006B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502bce617fd8907ca1bde8"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:15:42.000Z"
+  },
+  "SerialNumber": "0007",
+  "MarkingData": "0412240007B2",
+  "ScannerData": "0412240007B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502be5617fd8907ca1bde9"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:16:05.000Z"
+  },
+  "SerialNumber": "0008",
+  "MarkingData": "0412240008B2",
+  "ScannerData": "0412240008B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502bfe617fd8907ca1bdea"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:16:30.000Z"
+  },
+  "SerialNumber": "0009",
+  "MarkingData": "0412240009B2",
+  "ScannerData": "0412240009B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502c16617fd8907ca1bdeb"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:16:54.000Z"
+  },
+  "SerialNumber": "0010",
+  "MarkingData": "0412240010B2",
+  "ScannerData": "0412240010B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502c39617fd8907ca1bdec"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:17:29.000Z"
+  },
+  "SerialNumber": "0011",
+  "MarkingData": "0412240011B2",
+  "ScannerData": "0412240011B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502c7b617fd8907ca1bded"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:18:35.000Z"
+  },
+  "SerialNumber": "0012",
+  "MarkingData": "0412240012B2",
+  "ScannerData": "0412240012B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502c9c617fd8907ca1bdee"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:19:08.000Z"
+  },
+  "SerialNumber": "0013",
+  "MarkingData": "0412240013B2",
+  "ScannerData": "0412240013B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502cb6617fd8907ca1bdef"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:19:34.000Z"
+  },
+  "SerialNumber": "0014",
+  "MarkingData": "0412240014B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502cd7617fd8907ca1bdf0"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:20:07.000Z"
+  },
+  "SerialNumber": "0015",
+  "MarkingData": "0412240015B2",
+  "ScannerData": "0412240015B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502cf3617fd8907ca1bdf1"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:20:35.000Z"
+  },
+  "SerialNumber": "0016",
+  "MarkingData": "0412240016B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502d16617fd8907ca1bdf2"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:21:10.000Z"
+  },
+  "SerialNumber": "0017",
+  "MarkingData": "0412240017B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502d36617fd8907ca1bdf3"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:21:42.000Z"
+  },
+  "SerialNumber": "0018",
+  "MarkingData": "0412240018B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502d56617fd8907ca1bdf4"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:22:14.000Z"
+  },
+  "SerialNumber": "0019",
+  "MarkingData": "0412240019B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67502d74617fd8907ca1bdf5"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T10:22:44.000Z"
+  },
+  "SerialNumber": "0020",
+  "MarkingData": "0412240020B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "6750398252240a7e9aa6f220"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:14:10.000Z"
+  },
+  "SerialNumber": "0021",
+  "MarkingData": "0412240021B2",
+  "ScannerData": "0412240021B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503a4a392e0d00f4708079"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:17:30.000Z"
+  },
+  "SerialNumber": "0022",
+  "MarkingData": "0412240022B2",
+  "ScannerData": "0412240022B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503a85392e0d00f470807a"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:18:29.000Z"
+  },
+  "SerialNumber": "0023",
+  "MarkingData": "0412240023B2",
+  "ScannerData": "0412240023B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503b2a5e9743952374ecad"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:21:14.000Z"
+  },
+  "SerialNumber": "0024",
+  "MarkingData": "0412240024B2",
+  "ScannerData": "0412240024B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503b445e9743952374ecae"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:21:40.000Z"
+  },
+  "SerialNumber": "0025",
+  "MarkingData": "0412240025B2",
+  "ScannerData": "0412240025B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503b715e9743952374ecaf"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:22:25.000Z"
+  },
+  "SerialNumber": "0026",
+  "MarkingData": "0412240026B2",
+  "ScannerData": "0412240026B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503d2b5e9743952374ecb0"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:29:47.000Z"
+  },
+  "SerialNumber": "0027",
+  "MarkingData": "0412240027B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503d695e9743952374ecb1"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:30:49.000Z"
+  },
+  "SerialNumber": "0028",
+  "MarkingData": "0412240028B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503dba5e9743952374ecb2"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:32:10.000Z"
+  },
+  "SerialNumber": "0029",
+  "MarkingData": "0412240029B2",
+  "ScannerData": "0412240029B2",
+  "Result": "OK",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "67503e015e9743952374ecb3"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T11:33:21.000Z"
+  },
+  "SerialNumber": "0030",
+  "MarkingData": "0412240030B2",
+  "ScannerData": "NG",
+  "Result": "NG",
+  "User": "opr"
+},
+{
+  "_id": {
+    "$oid": "675051f65e9743952374ecb4"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T12:58:30.000Z"
+  },
+  "SerialNumber": "0031",
+  "MarkingData": "0412240031B2",
+  "ScannerData": "0412240031B2",
+  "Result": "OK",
+  "User": "super"
+},
+{
+  "_id": {
+    "$oid": "675053c75e9743952374ecb5"
+  },
+  "Timestamp": {
+    "$date": "2024-12-04T13:06:15.000Z"
+  },
+  "SerialNumber": "0032",
+  "MarkingData": "0412240032B2",
+  "ScannerData": "0412240032B2",
+  "Result": "OK",
+  "User": "super"
+}]

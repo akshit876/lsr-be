@@ -1,0 +1,144 @@
+[{
+  "_id": {
+    "$oid": "6746e48de2843e2b77d49336"
+  },
+  "fields": [
+    {
+      "fieldName": "Model Number",
+      "order": 999,
+      "isChecked": false,
+      "value": "CASE-2",
+      "isRequired": true,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d49337"
+      }
+    },
+    {
+      "fieldName": "Year",
+      "order": 3,
+      "isChecked": true,
+      "value": "24",
+      "isRequired": false,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d49338"
+      }
+    },
+    {
+      "fieldName": "Month",
+      "order": 2,
+      "isChecked": true,
+      "value": "11",
+      "isRequired": false,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d49339"
+      }
+    },
+    {
+      "fieldName": "Date",
+      "order": 1,
+      "isChecked": true,
+      "value": "27",
+      "isRequired": false,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d4933a"
+      }
+    },
+    {
+      "fieldName": "PART NO",
+      "order": 6,
+      "isChecked": true,
+      "value": "2",
+      "isRequired": true,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d4933b"
+      }
+    },
+    {
+      "fieldName": "SUPPLIER CODE",
+      "order": 1000,
+      "isChecked": false,
+      "value": "",
+      "isRequired": true,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d4933c"
+      }
+    },
+    {
+      "fieldName": "MACHINE NO",
+      "order": 1001,
+      "isChecked": false,
+      "value": "",
+      "isRequired": true,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d4933d"
+      }
+    },
+    {
+      "fieldName": "Julian Date",
+      "order": 1002,
+      "isChecked": false,
+      "value": "332",
+      "isRequired": false,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d4933e"
+      }
+    },
+    {
+      "fieldName": "Serial Number",
+      "order": 4,
+      "isChecked": true,
+      "value": "0001",
+      "isRequired": true,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d4933f"
+      }
+    },
+    {
+      "fieldName": "COMPANY CODE",
+      "order": 1003,
+      "isChecked": false,
+      "value": "",
+      "isRequired": true,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d49340"
+      }
+    },
+    {
+      "fieldName": "FOR STORE",
+      "order": 1004,
+      "isChecked": false,
+      "value": "",
+      "isRequired": false,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d49341"
+      }
+    },
+    {
+      "fieldName": "STORE",
+      "order": 1005,
+      "isChecked": false,
+      "value": "",
+      "isRequired": false,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d49342"
+      }
+    },
+    {
+      "fieldName": "Shift",
+      "order": 5,
+      "isChecked": true,
+      "value": "B",
+      "isRequired": true,
+      "_id": {
+        "$oid": "6746e48de2843e2b77d49343"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2024-11-27T09:21:17.403Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-27T09:21:17.403Z"
+  },
+  "__v": 0
+}]
