@@ -28,6 +28,26 @@ const TIMEOUT = 100 * 1000;
 const BARCODE_RESET_HOUR = 6;
 const BARCODE_RESET_MINUTE = 0;
 
+
+const REGISTER_MONITORING_CONFIG = {
+  register: 1700,
+  interval: 100, // ms
+  bits: {
+    0: {
+      eventName: "part-presence",
+      message: "Part not present.............",
+    },
+    1: {
+      eventName: "emergency-stop",
+      message: "Emergency button pressed.............",
+    },
+    2: {
+      eventName: "light-curtation",
+      message: "Light curtain error.............",
+    },
+  },
+};
+
 class ScannerController {
   static instance = null;
 
@@ -50,6 +70,8 @@ class ScannerController {
     this.isRunning = false;
     this.cycleCount = 0;
     this.isPulseOn = false;
+    this.safetyMonitorActive = false;
+    this.lastSafetyStates = new Map();
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
@@ -203,6 +225,9 @@ class ScannerController {
       logger.info("🔄 Performing final bit reset...");
       await this.resetBits();
 
+      this.safetyMonitorActive = false;
+      this.lastSafetyStates.clear();
+
       logger.success("Cleanup completed successfully");
     } catch (error) {
       logger.separator.hash();
@@ -215,17 +240,21 @@ class ScannerController {
     logger.info(`🧹 Waiting for bit ${register}.${bit} to become ${value}`);
     logger.info("-----------------------------------------------------------------------------------------------------------");
 
-    while (true) { // Add continuous loop
+    // Start safety monitoring if not already running
+    if (!this.safetyMonitorActive) {
+        this.startSafetyMonitoring();
+    }
+
+    while (true) {
         try {
             const result = await this.singleCheckAttempt(register, bit, value, timeout);
             if (result !== "timeout") {
                 return result;
             }
-            // If timeout occurred, continue the loop
             logger.info(`Retrying check for bit ${register}.${bit}`);
         } catch (error) {
             logger.error(`Error in bit check: ${error.message}`);
-            await sleep(1000); // Add small delay before retry
+            await sleep(1000);
         }
     }
 }
@@ -909,6 +938,48 @@ class ScannerController {
   resetCycleCount() {
     this.cycleCount = 0;
     logger.info("Cycle count reset to 0");
+  }
+
+  startSafetyMonitoring() {
+    if (this.safetyMonitorActive) return;
+    
+    this.safetyMonitorActive = true;
+    this.monitorSafety().catch(error => {
+        logger.error('Safety monitoring error:', error);
+        this.safetyMonitorActive = false;
+    });
+  }
+
+  async monitorSafety() {
+    while (this.safetyMonitorActive) {
+        try {
+            await new Promise(resolve => setImmediate(resolve));
+            
+            const registerValue = await readRegister(REGISTER_MONITORING_CONFIG.register, 1);
+            
+            for (const [bit, config] of Object.entries(REGISTER_MONITORING_CONFIG.bits)) {
+                const bitValue = (registerValue[0] >> bit) & 1;
+                
+                // Emit only when bit is active (1)
+                if (bitValue === 1) {
+                    logger.warn(`Safety condition detected: ${config.message}`);
+                    
+                    if (this.io) {
+                        this.io.emit(config.eventName, {
+                            timestamp: new Date(),
+                            message: config.message
+                        });
+                    }
+                }
+            }
+            
+            await sleep(REGISTER_MONITORING_CONFIG.interval);
+            
+        } catch (error) {
+            logger.error('Error in safety monitoring cycle:', error);
+            await sleep(1000);
+        }
+    }
   }
 }
 
