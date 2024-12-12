@@ -917,7 +917,7 @@ class ScannerController {
     const checkGrading = await this.checkGrading(secondScannerData);
     logger.info("🔄 Grade acceptance ", checkGrading);
   
-    await writeBit(1417, isDataMatching ? 0 : 1, 1);
+    await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
   
     await this.saveToMongoDB({
       io: this.io,
