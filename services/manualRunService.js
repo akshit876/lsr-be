@@ -19,7 +19,7 @@ const MANUAL_RUN_ADDRESSES = {
   jogFwd: { address: 1418, bit: 8 },            // Jog fwd
   jogRev: { address: 1418, bit: 9 },            // Jog rev
   scannerTrigger: { address: 1414, bit: 1 },    // Scanner Trigger
-  marking: { address: 1414, bit: 0 },           // Marking
+  markOn: { address: 1414, bit: 0 },           // Marking
   lightOn: { address: 1414, bit: 3 },           // Light on
 };
 
