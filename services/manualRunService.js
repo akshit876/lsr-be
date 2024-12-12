@@ -16,11 +16,11 @@ const MANUAL_RUN_ADDRESSES = {
   position3Marking: { address: 1420, bit: 2 },   // Position - 3 (Marking)
   position4: { address: 1420, bit: 3 },          // Position - 4
   position5: { address: 1420, bit: 4 },          // Position - 5
-  jogFwd: { address: 1420, bit: 5 },            // Jog fwd
-  jogRev: { address: 1420, bit: 6 },            // Jog rev
-  scannerTrigger: { address: 1420, bit: 7 },    // Scanner Trigger
-  marking: { address: 1420, bit: 8 },           // Marking
-  lightOn: { address: 1420, bit: 9 },           // Light on
+  jogFwd: { address: 1418, bit: 8 },            // Jog fwd
+  jogRev: { address: 1418, bit: 9 },            // Jog rev
+  scannerTrigger: { address: 1414, bit: 1 },    // Scanner Trigger
+  marking: { address: 1414, bit: 0 },           // Marking
+  lightOn: { address: 1414, bit: 3 },           // Light on
 };
 
 export async function manualRun(operation, socket) {
