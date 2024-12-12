@@ -359,7 +359,7 @@ io.on("connection", (socket) => {
   socket.on("scanner_trigger", async () => {
     try {
       logger.info("Received scanner trigger request");
-      await writeBit(1481, 0, 1);
+      await writeBit(1414, 1, 1);
 
       // Clear any existing timeout
       if (scannerTimeoutId) {
@@ -369,7 +369,7 @@ io.on("connection", (socket) => {
       // Set new timeout to clear the bit after 300ms
       scannerTimeoutId = setTimeout(async () => {
         try {
-          await writeBit(1481, 0, 0);
+          await writeBit(1414, 1, 0);
           logger.info("Scanner trigger bit cleared after timeout");
           scannerTimeoutId = null;
         } catch (error) {
@@ -394,7 +394,7 @@ io.on("connection", (socket) => {
   socket.on("mark_on", async () => {
     try {
       logger.info("Received mark on request");
-      await writeBit(1480, 0, 1);
+      await writeBit(1414, 0, 1);
 
       // Clear any existing timeout
       if (markTimeoutId) {
@@ -404,7 +404,7 @@ io.on("connection", (socket) => {
       // Set new timeout to clear the bit after 300ms
       markTimeoutId = setTimeout(async () => {
         try {
-          await writeBit(1480, 0, 0);
+          await writeBit(1414, 0, 0);
           logger.info("Mark on bit cleared after timeout");
           markTimeoutId = null;
         } catch (error) {
@@ -429,7 +429,7 @@ io.on("connection", (socket) => {
   socket.on("light_on", async () => {
     try {
       logger.info("Received LIGHT on request");
-      await writeBit(1482, 0, 1);
+      await writeBit(1414, 3, 1);
 
       // Clear any existing timeout
       if (lightTimeoutId) {
@@ -439,7 +439,7 @@ io.on("connection", (socket) => {
       // Set new timeout to clear the bit after 200ms
       lightTimeoutId = setTimeout(async () => {
         try {
-          await writeBit(1482, 0, 0);
+          await writeBit(1414, 3, 0);
           logger.info("LIGHT bit cleared after timeout");
           lightTimeoutId = null;
         } catch (error) {
