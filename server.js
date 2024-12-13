@@ -33,28 +33,42 @@ import { scannerController } from "./services/scanCycles.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const REGISTER_MONITORING_CONFIG = {
-  register: 1490,
-  interval: 100, // ms
-  bits: {
-    0: {
-      eventName: "part-presence",
-      message: "Part not present.............",
-    },
-    1: {
-      eventName: "emergency-stop",
-      message: "Emergency button pressed.............",
-    },
-    2: {
-      eventName: "light-curtation",
-      message: "Light curtain error.............",
-    },
-    // 3: {
-    //   eventName: "emergency-stop-detected",
-    //   message: "Emergency stop signal detected",
-    // },
-  },
-};
+// const REGISTER_MONITORING_CONFIG = {
+//   register: 1490,
+//   interval: 100, // ms
+//   bits: {
+//     0: {
+//       eventName: "part-presence",
+//       message: "Part not present.............",
+//     },
+//     1: {
+//       eventName: "emergency-stop",
+//       message: "Emergency button pressed.............",
+//     },
+//     2: {
+//       eventName: "light-curtation",
+//       message: "Light curtain error.............",
+//     },
+//     // 3: {
+//     //   eventName: "emergency-stop-detected",
+//     //   message: "Emergency stop signal detected",
+//     // },
+//   },
+// };
+
+export const REGISTERS_TO_MONITOR = [
+  {
+    register: 1490,
+    interval: 100,
+    bits: {
+      0: { eventName: "part-presence", message: "Part not present" },
+      1: { eventName: "emergency-stop", message: "Emergency button pressed" },
+      2: { eventName: "light-curtation", message: "Light curtain error" },
+      // 3: { eventName: "servo-position", message: "Servo not home position" },
+      // 4: { eventName: "reject-bin", message: "Put the part in the rejection bin" }
+    }
+  }
+];
 
 let registerMonitorInterval = null;
 
