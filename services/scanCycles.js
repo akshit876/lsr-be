@@ -242,9 +242,9 @@ class ScannerController {
     logger.info("-----------------------------------------------------------------------------------------------------------");
 
     // Start safety monitoring if not already running
-    if (!this.safetyMonitorActive) {
-        this.startSafetyMonitoring();
-    }
+    // if (!this.safetyMonitorActive) {
+    //     this.startSafetyMonitoring();
+    // }
 
     while (true) {
         try {
