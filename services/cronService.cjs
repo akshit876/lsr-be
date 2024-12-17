@@ -88,4 +88,4 @@ class CronService {
 }
 
 // export default new CronService();
-module.exports = CronService;
+module.exports = new CronService();

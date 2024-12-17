@@ -575,7 +575,7 @@ class ScannerController {
 
   setupResetMonitor() {
     if (!this.resetMonitor) {
-      this.resetMonitor = new Worker("./services/resetMonitor.js");
+      this.resetMonitor = new Worker("./services/resetMonitor.cjs");
       // Increase max listeners if needed
       this.resetMonitor.setMaxListeners(20);
     }
