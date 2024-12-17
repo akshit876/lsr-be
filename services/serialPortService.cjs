@@ -1,32 +1,36 @@
-import { SerialPort } from "serialport";
-import { ReadlineParser } from "@serialport/parser-readline";
-import fs from "fs";
-import path, { dirname } from "path";
-// import robot from "robotjs";
-import logger from "../logger.js";
-import {
-  updateBuffer,
-  // processFirstScan,
-  processSecondScan,
-  clearCodeFile,
-} from "./scanUtils.js";
-import { MockSerialPort } from "./mockSerialPort.js";
-import { fileURLToPath } from "url";
-import {
-  handlePortClose,
-  handlePortDisconnect,
-  handlePortDrain,
-  handlePortError,
-  handlePortFlush,
-  handlePortOpen,
-} from "./portUtils.js";
-import {
+// import fs from "fs";
+// import path, { dirname } from "path";
+// // import robot from "robotjs";
+// import { fileURLToPath } from "url";
+// import logger from "../logger.js";
+// import { getData } from "./lowDbService.js";
+// import {
+//   readRegister,
+//   readRegisterAndProvideASCII
+// } from "./modbus.js";
+// import {
+//   clearCodeFile,
+//   // processFirstScan,
+//   processSecondScan
+// } from "./scanUtils.js";
+// import { emitErrorEvent } from "./utils.js";
+
+const fs = require("fs");
+const path = require("path");
+// const robot = require("robotjs");
+const { fileURLToPath } = require("url");
+const logger = require("../logger.cjs");
+const { getData } = require("./lowDbService.js");
+const {
   readRegister,
-  readRegisterAndProvideASCII,
-  writeBit,
-} from "./modbus.js";
-import { getData } from "./lowDbService.js";
-import { emitErrorEvent } from "./utils.js";
+  readRegisterAndProvideASCII
+} = require("./modbus.cjs");
+const {
+  clearCodeFile,
+  // processFirstScan,
+  processSecondScan
+} = require("./scanUtils.js");
+const { emitErrorEvent } = require("./utils.cjs");
 // Import the error utility
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,7 +50,7 @@ const codeFormat = () => {
   return `${dd}${mm}${yy}${increment}`;
 };
 
-export async function waitForBitToBecomeOne(register, bit) {
+async function waitForBitToBecomeOne(register, bit) {
   // Log once at the beginning, indicating that we are waiting for the bit to become 1
   console.log(`Waiting for bit ${bit} on register ${register} to become 1...`);
 
@@ -96,7 +100,7 @@ export async function waitForBitToBecomeOne(register, bit) {
  * @param {*} part
  */
 
-export async function handleFirstScan(io, part) {
+ async function handleFirstScan(io, part) {
   // firstScanData = processFirstScan(part);
   firstScanData = 1;
   console.log("firstScanData", firstScanData);
@@ -146,7 +150,7 @@ export async function handleFirstScan(io, part) {
   }
 }
 
-export async function handleSecondScan(io, part) {
+ async function handleSecondScan(io, part) {
   try {
     processSecondScan(part, firstScanData);
   } catch (error) {
@@ -159,7 +163,7 @@ export async function handleSecondScan(io, part) {
   }
 }
 
-export function watchCodeFile() {
+ function watchCodeFile() {
   const filePath = path.join(__dirname, "../data/code.txt");
 
   fs.watch(filePath, (eventType) => {
@@ -172,3 +176,10 @@ export function watchCodeFile() {
     }
   });
 }
+
+module.exports = {
+  waitForBitToBecomeOne,
+  handleFirstScan,
+  handleSecondScan,
+  watchCodeFile,
+};

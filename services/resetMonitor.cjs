@@ -1,6 +1,9 @@
-import { parentPort } from "worker_threads";
-import { connect, readBit } from "./modbus.js";
-import logger from "../logger.js";
+// import { parentPort } from "worker_threads";
+// import { connect, readBit } from "./modbus.js";
+// import logger from "../logger.js";
+const { parentPort } = require("worker_threads");
+const { connect, readBit } = require("./modbus.cjs");
+const logger = require("../logger.cjs");
 
 const CHECK_INTERVAL = 10; // Check every 100ms
 

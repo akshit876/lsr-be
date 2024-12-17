@@ -69,4 +69,5 @@ class BarcodeParser {
   }
 }
 
-export default BarcodeParser; 
+// export default BarcodeParser; 
+module.exports = BarcodeParser;

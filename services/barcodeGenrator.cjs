@@ -1,8 +1,13 @@
-import { format } from "date-fns";
-import SerialNumberGeneratorService from "./serialNumber.js";
-import logger from "../logger.js";
-import mongoDbService from "./mongoDbService.js";
-import { fetchPartNumberAndData } from "../server.js";
+// import { format } from "date-fns";
+// import SerialNumberGeneratorService from "./serialNumber.js";
+// import logger from "../logger.js";
+// import mongoDbService from "./mongoDbService.js";
+// import { fetchPartNumberAndData } from "../server.js";
+const { format } = require("date-fns");
+const SerialNumberGeneratorService = require("./serialNumber.cjs");
+const logger = require("../logger.cjs");
+const mongoDbService = require("./mongoDbService.cjs");
+const { fetchPartNumberAndData } = require("../server.cjs");
 
 // async function fetchPartNumberAndData(mongoDbService) {
 //   try {
@@ -142,4 +147,5 @@ class BarcodeGenerator {
 // const specificDate = new Date("2023-05-15T14:30:00");
 // console.log(barcodeGenerator.generateBarcodeData(specificDate));
 
-export default BarcodeGenerator;
+// export default BarcodeGenerator;
+module.exports = BarcodeGenerator;

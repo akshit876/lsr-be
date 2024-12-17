@@ -1,29 +1,48 @@
 /* eslint-disable no-useless-catch */
-import { fileURLToPath } from "url";
-import path, { dirname } from "path";
-import logger from "../logger.js";
-import mongoDbService from "./mongoDbService.js";
-import {
+// import { fileURLToPath } from "url";
+// import path, { dirname } from "path";
+// import logger from "../logger.js";
+// import mongoDbService from "./mongoDbService.js";
+// import {
+//   readBit,
+//   readRegister,
+//   writeBit,
+//   writeBitsWithRest,
+//   writeRegister,
+// } from "./modbus.js";
+// import ShiftUtility from "./ShiftUtility.js";
+// import BarcodeGenerator from "./barcodeGenrator.js";
+// import { promisify } from "util";
+// import fs from "fs";
+// import { format } from "date-fns";
+// import { Worker } from "worker_threads";
+// import serialNumberService from "./serialNumber.js";
+// import { REGISTERS_TO_MONITOR } from "../server.js";
+const { fileURLToPath } = require("url");
+const path = require("path");
+const logger = require("../logger.cjs");
+const mongoDbService = require("./mongoDbService.cjs");
+const {
   readBit,
   readRegister,
   writeBit,
   writeBitsWithRest,
   writeRegister,
-} from "./modbus.js";
-import ShiftUtility from "./ShiftUtility.js";
-import BarcodeGenerator from "./barcodeGenrator.js";
-import { promisify } from "util";
-import fs from "fs";
-import { format } from "date-fns";
-import { Worker } from "worker_threads";
-import serialNumberService from "./serialNumber.js";
-import { REGISTERS_TO_MONITOR } from "../server.js";
+} = require("./modbus.cjs");
+const ShiftUtility = require("./ShiftUtility.cjs");
+const BarcodeGenerator = require("./barcodeGenrator.cjs");
+const { promisify } = require("util");
+const fs = require("fs");
+const { format } = require("date-fns");
+const { Worker } = require("worker_threads");
+const serialNumberService = require("./serialNumber.cjs");
+const { REGISTERS_TO_MONITOR } = require("../server.cjs");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// const __filename = __filename;
+// const __dirname = dirname(__filename);
 
 const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
-export const sleep = promisify(setTimeout);
+const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 const BARCODE_RESET_HOUR = 6;
@@ -1017,5 +1036,8 @@ class ScannerController {
 }
 
 // Export singleton instance
-export const scannerController = new ScannerController();
+// export const scannerController = new ScannerController();
+// logger.success("Scanner controller module loaded");
+
+module.exports = { scannerController: new ScannerController() };
 logger.success("Scanner controller module loaded");

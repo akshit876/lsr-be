@@ -6,7 +6,7 @@ export default [
     languageOptions: {
       globals: globals.browser,
       ecmaVersion: "latest",
-      sourceType: "module",
+      // sourceType: "module",
     },
     plugins: {
       js: pluginJs, // Define plugins as an object with namespace keys

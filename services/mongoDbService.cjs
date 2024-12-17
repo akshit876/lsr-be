@@ -1,7 +1,10 @@
-import { MongoClient } from "mongodb";
-import logger from "../logger.js";
-import config from "../config/config.js";
+// import { MongoClient } from "mongodb";
+// import logger from "../logger.js";
+// import config from "../config/config.js";
 // import logger from "./logger.js";
+const { MongoClient } = require("mongodb");
+const logger = require("../logger.cjs");
+const config = require("../config/config.cjs");
 
 class MongoDBService {
   constructor() {
@@ -211,4 +214,5 @@ class MongoDBService {
   }
 }
 
-export default new MongoDBService();
+// export default new MongoDBService();
+module.exports = new MongoDBService();

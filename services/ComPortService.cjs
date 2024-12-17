@@ -1,11 +1,18 @@
 /* eslint-disable consistent-return */
-import { SerialPort } from "serialport";
-import winston from "winston";
-import "winston-daily-rotate-file";
-import path from "path";
-import async from "async";
-import EventEmitter from "events";
-import { sleep } from "./testCycle.js";
+// import { SerialPort } from "serialport";
+// import winston from "winston";
+// import "winston-daily-rotate-file";
+// import path from "path";
+// import async from "async";
+// import EventEmitter from "events";
+// import { sleep } from "./testCycle.js";
+const { SerialPort } = require("serialport");
+const winston = require("winston");
+require("winston-daily-rotate-file");
+const path = require("path");
+const async = require("async");
+const EventEmitter = require("events");
+const { sleep } = require("./testCycle.js");
 
 class BufferedComPortService extends EventEmitter {
   constructor(options = {}) {
@@ -140,4 +147,5 @@ class BufferedComPortService extends EventEmitter {
   }
 }
 
-export default BufferedComPortService;
+// export default BufferedComPortService;
+module.exports = BufferedComPortService;

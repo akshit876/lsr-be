@@ -1,9 +1,13 @@
-import dotenv from "dotenv";
-import { fileURLToPath } from "url";
-import path, { dirname } from "path";
+// import dotenv from "dotenv";
+// import { fileURLToPath } from "url";
+// import path, { dirname } from "path";
+const dotenv = require("dotenv");
+const { fileURLToPath } = require("url");
+const path = require("path");
+const { dirname } = path;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// const __filename = __filename;
+// const __dirname = dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config({ path: path.join(__dirname, "../.env") });
@@ -42,4 +46,5 @@ const config = {
   serial_port: process.env.SERIAL_PORT || "COM5",
 };
 
-export default config;
+// export default config;
+module.exports = config;

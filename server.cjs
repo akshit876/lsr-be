@@ -1,37 +1,47 @@
-import { createServer } from "http";
-import fs from "fs";
-import morgan from "morgan";
-import { Server } from "socket.io";
-import logger from "./logger.js";
-import {
-  handleFirstScan,
-  handleSecondScan,
-  watchCodeFile,
-} from "./services/serialPortService.js";
-import { MockSerialPort } from "./services/mockSerialPort.js";
-import { fileURLToPath } from "url";
-import path, { dirname } from "path";
-import { getCurrentDate } from "./services/scanUtils.js";
-import {
+// import { createServer } from "http";
+// import { MongoClient } from "mongodb";
+// import morgan from "morgan";
+// import { dirname } from "path";
+// import { Server } from "socket.io";
+// import { fileURLToPath } from "url";
+// import logger from "./logger.js";
+// import BufferedComPortService from "./services/ComPortService.js";
+// import cronService from "./services/cronService.js";
+// import { manualRun } from "./services/manualRunService.js";
+// import {
+//   connect,
+//   readBit,
+//   readRegister,
+//   writeBit,
+//   writeRegister,
+// } from "./services/modbus.js";
+// import mongoDbService from "./services/mongoDbService.js";
+// import { scannerController } from "./services/scanCycles.js";
+// import serialNumberService from "./services/serialNumber.js";
+
+const { createServer } = require("http");
+const { MongoClient } = require("mongodb");
+const morgan = require("morgan");
+const { dirname } = require("path");
+const { Server } = require("socket.io");
+const { fileURLToPath } = require("url");
+const logger = require("./logger.cjs");
+const BufferedComPortService = require("./services/ComPortService.cjs");
+const cronService = require("./services/cronService.cjs");
+const { manualRun } = require("./services/manualRunService.cjs");
+const {
   connect,
   readBit,
   readRegister,
   writeBit,
   writeRegister,
-} from "./services/modbus.js";
-import { manualRun } from "./services/manualRunService.js";
-import mongoDbService from "./services/mongoDbService.js";
-import { runContinuousScan } from "./services/testCycle.js";
-import cronService from "./services/cronService.js";
-import ShiftUtility from "./services/ShiftUtility.js";
-import BufferedComPortService from "./services/ComPortService.js";
-import BarcodeGenerator from "./services/barcodeGenrator.js";
-import { MongoClient } from "mongodb";
-import serialNumberService from "./services/serialNumber.js";
-import { scannerController } from "./services/scanCycles.js";
+} = require("./services/modbus.cjs");
+const mongoDbService = require("./services/mongoDbService.cjs");
+const { scannerController } = require("./services/scanCycles.cjs");
+const serialNumberService = require("./services/serialNumber.cjs");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// const __filename = __filename;
+// const __dirname = dirname(__filename);
 
 // const REGISTER_MONITORING_CONFIG = {
 //   register: 1490,
@@ -56,7 +66,7 @@ const __dirname = dirname(__filename);
 //   },
 // };
 
-export const REGISTERS_TO_MONITOR = [
+ const REGISTERS_TO_MONITOR = [
   {
     register: 1490,
     interval: 100,
@@ -110,15 +120,23 @@ async function monitorRegisters(io) {
   };
 }
 
+module.exports = {
+  REGISTERS_TO_MONITOR,
+  fetchPartNumberAndData,
+};
+
 const MODBUS_IP = process.env.MODBUS_IP;
 const MODBUS_PORT = parseInt(process.env.MODBUS_PORT, 10);
 
 const BARCODE_RESET_HOUR = 6;
 const BARCODE_RESET_MINUTE = 0;
 
-import { exec } from "child_process";
-import util from "util";
-import config from "./config/config.js";
+// import { exec } from "child_process";
+// import util from "util";
+// import config from "./config/config.js";
+const exec = require("child_process").exec;
+const util = require("util");
+const config = require("./config/config.cjs");
 const execAsync = util.promisify(exec);
 
 // Function to kill process using port 3002
@@ -193,8 +211,7 @@ const server = createServer((req, res) => {
     }
   });
 });
-
-export async function fetchPartNumberAndData() {
+ async function fetchPartNumberAndData() {
   try {
     // Connect to the MongoDB if not already connected
 
