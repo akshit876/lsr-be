@@ -26,7 +26,7 @@ const { dirname } = require("path");
 const { Server } = require("socket.io");
 const { fileURLToPath } = require("url");
 const logger = require("./logger.cjs");
-const BufferedComPortService = require("./services/ComPortService.cjs");
+// const BufferedComPortService = require("./services/ComPortService.cjs");
 const cronService = require("./services/cronService.cjs");
 const { manualRun } = require("./services/manualRunService.cjs");
 const {
@@ -66,7 +66,7 @@ const serialNumberService = require("./services/serialNumber.cjs");
 //   },
 // };
 
- const REGISTERS_TO_MONITOR = [
+const REGISTERS_TO_MONITOR = [
   {
     register: 1490,
     interval: 100,
@@ -76,8 +76,8 @@ const serialNumberService = require("./services/serialNumber.cjs");
       2: { eventName: "light-curtation", message: "Light curtain error" },
       // 3: { eventName: "servo-position", message: "Servo not home position" },
       // 4: { eventName: "reject-bin", message: "Put the part in the rejection bin" }
-    }
-  }
+    },
+  },
 ];
 
 let registerMonitorInterval = null;
@@ -120,10 +120,10 @@ async function monitorRegisters(io) {
   };
 }
 
-module.exports = {
-  REGISTERS_TO_MONITOR,
-  fetchPartNumberAndData,
-};
+// module.exports = {
+//   REGISTERS_TO_MONITOR,
+//   fetchPartNumberAndData,
+// };
 
 const MODBUS_IP = process.env.MODBUS_IP;
 const MODBUS_PORT = parseInt(process.env.MODBUS_PORT, 10);
@@ -211,7 +211,7 @@ const server = createServer((req, res) => {
     }
   });
 });
- async function fetchPartNumberAndData() {
+async function fetchPartNumberAndData() {
   try {
     // Connect to the MongoDB if not already connected
 
@@ -626,12 +626,12 @@ const startServer = async () => {
         // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
         // barcodeGenerator.initialize('main-data', 'records');
         // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-        comService = new BufferedComPortService({
-          path: config.serial_port,
-          baudRate: 9600,
-          logDir: "com_port_logs",
-        });
-        await comService.initSerialPort();
+        // comService = new BufferedComPortService({
+        //   path: config.serial_port,
+        //   baudRate: 9600,
+        //   logDir: "com_port_logs",
+        // });
+        // await comService.initSerialPort();
         // await connect();
         // Fetch part number and pass it to runContinuousScan
         const { partNumber } = await fetchPartNumberAndData();
@@ -640,18 +640,30 @@ const startServer = async () => {
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 5000; // 5 seconds
 
-        async function startProcessWithRetry(processFunc, processName, retryCount = 0) {
+        async function startProcessWithRetry(
+          processFunc,
+          processName,
+          retryCount = 0
+        ) {
           try {
             return await processFunc();
           } catch (error) {
             logger.error(`${processName} error:`, error);
-            
+
             if (retryCount < MAX_RETRIES) {
-              logger.info(`Retrying ${processName} in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
-              await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-              return startProcessWithRetry(processFunc, processName, retryCount + 1);
+              logger.info(
+                `Retrying ${processName} in ${RETRY_DELAY / 1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+              );
+              await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+              return startProcessWithRetry(
+                processFunc,
+                processName,
+                retryCount + 1
+              );
             } else {
-              logger.error(`${processName} failed after ${MAX_RETRIES} attempts`);
+              logger.error(
+                `${processName} failed after ${MAX_RETRIES} attempts`
+              );
               throw error; // Finally throw the error after max retries
             }
           }
@@ -666,17 +678,21 @@ const startServer = async () => {
 
           // Process 2: Run continuous scan with retry
           startProcessWithRetry(
-            () => scannerController.runContinuousScan(io, comService, { partNumber }),
+            () =>
+              scannerController.runContinuousScan(io, comService, {
+                partNumber,
+              }),
             "Scanner controller"
-          )
-        ]).then(() => {
-          logger.info("Both processes started successfully");
-        }).catch(error => {
-          logger.error("Critical error in parallel processes:", error);
-          // Optionally restart the entire server or take other recovery actions
-          process.exit(1); // Force restart if using a process manager
-        });
-
+          ),
+        ])
+          .then(() => {
+            logger.info("Both processes started successfully");
+          })
+          .catch((error) => {
+            logger.error("Critical error in parallel processes:", error);
+            // Optionally restart the entire server or take other recovery actions
+            process.exit(1); // Force restart if using a process manager
+          });
       } catch (error) {
         console.log({ error });
         emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));

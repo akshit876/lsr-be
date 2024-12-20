@@ -7,8 +7,36 @@ const { format } = require("date-fns");
 const SerialNumberGeneratorService = require("./serialNumber.cjs");
 const logger = require("../logger.cjs");
 const mongoDbService = require("./mongoDbService.cjs");
-const { fetchPartNumberAndData } = require("../server.cjs");
+// const { fetchPartNumberAndData } = require("../server.cjs");
 
+async function fetchPartNumberAndData() {
+  try {
+    // Connect to the MongoDB if not already connected
+
+    const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
+    const client = new MongoClient(uri);
+    await client.connect();
+    const db = client.db("main-data");
+    // console.log({ db });
+    const collection = db.collection("config");
+    logger.info("Connected successfully to MongoDB database: main-data");
+
+    // Fetch part number from the 'configs' collection
+    const configData = await collection.findOne({});
+    // console.log({ configData });
+    const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
+
+    // Fetch records from 'main-data' collection (or any other collection as needed)
+    // const mainDataRecords = await mongoDbService.collection.find({}).toArray();
+
+    logger.info(`Fetched part number: ${partNumber} and main data records`);
+
+    return { partNumber, configData };
+  } catch (error) {
+    logger.error("Error fetching part number or data:", error);
+    throw error;
+  }
+}
 // async function fetchPartNumberAndData(mongoDbService) {
 //   try {
 //     // Connect to the MongoDB if not already connected

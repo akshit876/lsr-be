@@ -36,10 +36,24 @@ const fs = require("fs");
 const { format } = require("date-fns");
 const { Worker } = require("worker_threads");
 const serialNumberService = require("./serialNumber.cjs");
-const { REGISTERS_TO_MONITOR } = require("../server.cjs");
+// const { REGISTERS_TO_MONITOR } = require("../server.cjs");
 
 // const __filename = __filename;
 // const __dirname = dirname(__filename);
+
+const REGISTERS_TO_MONITOR = [
+  {
+    register: 1490,
+    interval: 100,
+    bits: {
+      0: { eventName: "part-presence", message: "Part not present" },
+      1: { eventName: "emergency-stop", message: "Emergency button pressed" },
+      2: { eventName: "light-curtation", message: "Light curtain error" },
+      // 3: { eventName: "servo-position", message: "Servo not home position" },
+      // 4: { eventName: "reject-bin", message: "Put the part in the rejection bin" }
+    }
+  }
+];
 
 const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
 const sleep = promisify(setTimeout);
