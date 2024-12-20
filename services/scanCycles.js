@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import serialNumberService from "./serialNumber.js";
 import { REGISTERS_TO_MONITOR } from "../server.js";
+import { tcpClient } from "./tcp.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,6 +30,10 @@ const TIMEOUT = 100 * 1000;
 const BARCODE_RESET_HOUR = 6;
 const BARCODE_RESET_MINUTE = 0;
 
+const TCP_CONFIG = {
+  PORT: 3000,
+  HOST: "192.168.3.12",
+};
 
 const REGISTER_MONITORING_CONFIG = {
   register: 1700,
@@ -105,6 +110,9 @@ class ScannerController {
         BARCODE_RESET_MINUTE
       );
       logger.success("Barcode generator initialized");
+      await tcpClient.connect({ port: TCP_CONFIG.PORT, host: TCP_CONFIG.HOST });
+      logger.success("TCP Scanner client connected.......");
+
 
       this.isInitialized = true;
       logger.success("Scanner controller initialization complete");
@@ -819,59 +827,62 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      const scannerDataPromise = new Promise((resolve, reject) => {
-        // Remove any existing listeners first
-        this.comService.removeAllListeners("dataGot");
+      // const scannerDataPromise = new Promise((resolve, reject) => {
+      //   // Remove any existing listeners first
+      //   this.comService.removeAllListeners("dataGot");
 
-        const dataHandler = (data) => {
-          logger.success(
-            `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-          );
+      //   const dataHandler = (data) => {
+      //     logger.success(
+      //       `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
+      //     );
 
-          if (this.io) {
-            this.io.emit("scanner_read", {
-              timestamp: new Date(),
-              scannerType: scannerLabel,
-              data: data,
-            });
-          }
+      //     if (this.io) {
+      //       this.io.emit("scanner_read", {
+      //         timestamp: new Date(),
+      //         scannerType: scannerLabel,
+      //         data: data,
+      //       });
+      //     }
 
-          clearTimeout(timeoutId);
-          this.isScanning = false; // Reset the scanning flag
-          resolve(data);
-          this.comService.off("dataGot", dataHandler);
-        };
+      //     clearTimeout(timeoutId);
+      //     this.isScanning = false; // Reset the scanning flag
+      //     resolve(data);
+      //     this.comService.off("dataGot", dataHandler);
+      //   };
 
-        logger.info("👂 Adding event listener for scanner data");
-        this.comService.on("dataGot", dataHandler);
+      //   logger.info("👂 Adding event listener for scanner data");
+      //   this.comService.on("dataGot", dataHandler);
 
-        const timeoutId = setTimeout(() => {
-          logger.error(
-            `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
-          );
-          this.comService.off("dataGot", dataHandler);
-          this.isScanning = false; // Reset the scanning flag
-          reject(new Error(`${scannerLabel} scanner data timeout`));
-        }, timeout);
+      //   const timeoutId = setTimeout(() => {
+      //     logger.error(
+      //       `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
+      //     );
+      //     this.comService.off("dataGot", dataHandler);
+      //     this.isScanning = false; // Reset the scanning flag
+      //     reject(new Error(`${scannerLabel} scanner data timeout`));
+      //   }, timeout);
 
-        // Only trigger scanner if not already scanning
-        logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        writeBit(register, bit, 1)
-          .then(() =>
-            logger.success(`${scannerLabel} scanner triggered successfully`)
-          )
-          .catch((err) => {
-            logger.error(
-              `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-              err
-            );
-            clearTimeout(timeoutId);
-            this.isScanning = false; // Reset the scanning flag
-            reject(err);
-          });
-      });
+      //   // Only trigger scanner if not already scanning
+      //   logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
+      await writeBit(register, bit, 1)
+        // .then(() =>
+        //   logger.success(`${scannerLabel} scanner triggered successfully`)
+        // )
+      //     .catch((err) => {
+      //       logger.error(
+      //         `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
+      //         err
+      //       );
+      //       clearTimeout(timeoutId);
+      //       this.isScanning = false; // Reset the scanning flag
+      //       reject(err);
+      //     });
+      // });
 
-      const result = await scannerDataPromise;
+      // const result = await scannerDataPromise;
+
+      const result = await tcpClient.readData();
+      console.log({ result });
       return result;
     } catch (error) {
       logger.separator.hash();
