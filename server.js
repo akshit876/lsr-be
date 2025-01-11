@@ -39,12 +39,18 @@ export const REGISTERS_TO_MONITOR = [
     register: 1490,
     bits: {
       0: { eventName: "part-present", message: "Part not present" },
-      1: { eventName: "emergency-button", message: "Emergency push button pressed" },
+      1: {
+        eventName: "emergency-button",
+        message: "Emergency push button pressed",
+      },
       2: { eventName: "safety-curtain", message: "Safety curtain error" },
       3: { eventName: "servo-position", message: "Servo not home position" },
-      4: { eventName: "reject-bin", message: "Put the part in the rejection bin" }
-    }
-  }
+      4: {
+        eventName: "reject-bin",
+        message: "Put the part in the rejection bin",
+      },
+    },
+  },
 ];
 
 // Single function to monitor one register
@@ -59,7 +65,7 @@ async function monitorRegister(io, { register, bits }) {
             bit: parseInt(bit),
             value,
             message: config.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
           logger.info(`${config.message} (Register ${register}.${bit})`);
         }
@@ -68,7 +74,9 @@ async function monitorRegister(io, { register, bits }) {
       logger.error(`Error monitoring register ${register}:`, error);
     }
     const REGISTER_POLLING_INTERVAL = 100; // ms delay between register polls
-    await new Promise(resolve => setTimeout(resolve, REGISTER_POLLING_INTERVAL));
+    await new Promise((resolve) =>
+      setTimeout(resolve, REGISTER_POLLING_INTERVAL)
+    );
   }
 }
 
@@ -561,28 +569,27 @@ const startServer = async () => {
         logger.info("Modbus connection initialized");
 
         cronService.scheduleJob(
-          "monthlyExport",
-          "1 0 1 * *",
-          cronService.generateMonthlyCsv.bind(cronService)
+          "dailyExport",
+          "0 6 * * *", // Runs at 6:00 AM every day
+          cronService.generateDailyCsv.bind(cronService)
         );
         cronService.startAllJobs();
 
-         // Fetch part number and pass it to runContinuousScan
-         const { partNumber } = await fetchPartNumberAndData();
+        // Fetch part number and pass it to runContinuousScan
+        const { partNumber } = await fetchPartNumberAndData();
 
-         // Start all monitoring processes
-         const monitoringTasks = REGISTERS_TO_MONITOR.map(config => 
+        // Start all monitoring processes
+        const monitoringTasks = REGISTERS_TO_MONITOR.map((config) =>
           monitorRegister(io, config)
         );
 
         // Run everything in parallel
         Promise.all([
           ...monitoringTasks,
-          scannerController.runContinuousScan(io, null, { partNumber })
-        ]).catch(error => {
+          scannerController.runContinuousScan(io, null, { partNumber }),
+        ]).catch((error) => {
           logger.error("Error in monitoring processes:", error);
         });
-
       } catch (error) {
         console.log({ error });
         emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
