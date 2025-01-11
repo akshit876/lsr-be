@@ -161,33 +161,42 @@ class SerialNumberGeneratorService {
   }
 
   checkAndResetSerialNumber() {
-    const now = new Date();
-    const resetTime = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      this.resetHour,
-      this.resetMinute
-    );
+    // const now = new Date();
+    // const resetTime = new Date(
+    //   now.getFullYear(),
+    //   now.getMonth(),
+    //   now.getDate(),
+    //   this.resetHour,
+    //   this.resetMinute
+    // );
 
-    console.log({
-      now: format(now, "yyyy-MM-dd HH:mm:ss"),
-      resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
-      lastResetDate: format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss"),
-      isAfterResetTime: isAfter(now, resetTime),
-      isSameDayAsLastReset: isSameDay(now, this.lastResetDate),
-      isLastResetBeforeResetTime: isBefore(this.lastResetDate, resetTime),
-    });
+    // // console.log({
+    // //   now: format(now, "yyyy-MM-dd HH:mm:ss"),
+    // //   resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
+    // //   lastResetDate: format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss"),
+    // //   isAfterResetTime: isAfter(now, resetTime),
+    // //   isSameDayAsLastReset: isSameDay(now, this.lastResetDate),
+    // //   isLastResetBeforeResetTime: isBefore(this.lastResetDate, resetTime),
+    // // });
 
-    if (
-      isAfter(now, resetTime) &&
-      (!isSameDay(now, this.lastResetDate) ||
-        isBefore(this.lastResetDate, resetTime))
-    ) {
-      this.currentSerialNumber = this.initialSerialNumber; // Use tracked initial value
-      this.lastResetDate = now;
+    // if (
+    //   isAfter(now, resetTime) &&
+    //   (!isSameDay(now, this.lastResetDate) ||
+    //     isBefore(this.lastResetDate, resetTime))
+    // ) {
+    //   this.currentSerialNumber = this.initialSerialNumber; // Use tracked initial value
+    //   this.lastResetDate = now;
+    //   logger.info(
+    //     `Serial number reset to ${this.initialSerialNumber.toString().padStart(4, "0")} at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+    //   );
+    //   return true;
+    // }
+    // return false;
+    if (this.currentSerialNumber >= 9999) {
+      this.currentSerialNumber = this.initialSerialNumber;
+      this.lastResetDate = new Date();
       logger.info(
-        `Serial number reset to ${this.initialSerialNumber.toString().padStart(4, "0")} at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+        `Serial number reset to ${this.initialSerialNumber.toString().padStart(4, "0")} after reaching 9999`
       );
       return true;
     }
