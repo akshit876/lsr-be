@@ -148,7 +148,7 @@ class MongoDBService {
       const data = await this.collection
         .find({})
         .sort({ Timestamp: -1 })
-        .limit(100)
+        .limit(700)
         .toArray();
 
       if (data.length === 0) {
@@ -157,7 +157,7 @@ class MongoDBService {
         return;
       }
 
-      // Transform the data 
+      // Transform the data
       const transformedData = data.map((item) => ({
         Timestamp: item?.Timestamp,
         SerialNumber: item?.SerialNumber,
