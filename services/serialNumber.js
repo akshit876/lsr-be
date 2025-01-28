@@ -1,9 +1,10 @@
 import { format, isAfter, isBefore, isSameDay } from "date-fns";
 import logger from "../logger.js";
 import MongoDBService from "./mongoDbService.js";
-import path from "path";
-import { __dirname } from "./scanCycles.js";
+import path, { dirname } from "path";
+// import { __dirname } from "./scanCycles.js";
 import fs from "fs";
+import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
 const INITIAL_SERIAL_NUMBER = 1; // Default value

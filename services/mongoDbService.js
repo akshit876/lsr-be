@@ -176,7 +176,7 @@ class MongoDBService {
         }
 
         return {
-          Id: idCounter++,
+          Id: item?.currentId,
           Timestamp: item?.Timestamp,
           SerialNumber: item?.SerialNumber,
           MarkingData: item?.MarkingData,

@@ -87,6 +87,8 @@ class ScannerController {
     this.isRunning = false;
     this.cycleCount = 0;
     this.isPulseOn = false;
+    this.currentDayId = 1;
+    this.lastResetDate = this.getLastResetTime();
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
@@ -481,6 +483,9 @@ class ScannerController {
       // Fetch user details from the usersessionlogs collection
       const userDetails = await mongoDbService.getUserDetails();
 
+      // Get the current day ID
+      const currentId = await this.getCurrentDayId();
+
       const data = {
         Timestamp: new Date(timestamp),
         SerialNumber: serialNumber,
@@ -489,10 +494,11 @@ class ScannerController {
         Result: result ? "OK" : "NG",
         User: userDetails?.email || "Unknown",
         Grade: grading?.toUpperCase(),
+        CurrentId: currentId, // Add the current ID field
       };
 
       await mongoDbService.insertRecord(data, "main-data", "records");
-      logger.info("Data saved to MongoDB");
+      logger.info(`Data saved to MongoDB with CurrentId: ${currentId}`);
 
       if (io) {
         mongoDbService.sendMongoDbDataToClient(io, "main-data", "records");
@@ -891,7 +897,7 @@ class ScannerController {
       const grading = "F"; // Set grading to F for NG cases
       const isDataMatching = false; // NG always means no match
 
-      logger.info("� Second scan resulted in NG");
+      logger.info("🔄 Second scan resulted in NG");
       logger.info("🔄 Setting grade to F and marking as non-matching");
 
       await writeBit(1417, 1, 1); // Write 1 to indicate failure
@@ -1167,6 +1173,33 @@ class ScannerController {
   resetCycleCount() {
     this.cycleCount = 0;
     logger.info("Cycle count reset to 0");
+  }
+
+  getLastResetTime() {
+    const now = new Date();
+    const resetTime = new Date(now);
+    resetTime.setHours(6, 0, 0, 0);
+
+    // If current time is before 6 AM, set reset time to previous day
+    if (now < resetTime) {
+      resetTime.setDate(resetTime.getDate() - 1);
+    }
+
+    return resetTime;
+  }
+
+  async getCurrentDayId() {
+    const now = new Date();
+    const nextResetTime = new Date(this.lastResetDate);
+    nextResetTime.setDate(nextResetTime.getDate() + 1);
+
+    // Check if we need to reset the counter
+    if (now >= nextResetTime) {
+      this.currentDayId = 1;
+      this.lastResetDate = this.getLastResetTime();
+    }
+
+    return this.currentDayId++;
   }
 }
 
