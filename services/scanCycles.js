@@ -2,6 +2,7 @@
 import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
+import BarcodeGenerator from "./barcodeGenrator.js";
 import mongoDbService from "./mongoDbService.js";
 import {
   readBit,
@@ -12,7 +13,7 @@ import {
   writeRegister,
 } from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
-import BarcodeGenerator from "./barcodeGenrator.js";
+
 import { promisify } from "util";
 import fs from "fs";
 import { format } from "date-fns";
