@@ -20,7 +20,7 @@ import { Worker } from "worker_threads";
 import serialNumberService from "./serialNumber.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+export const __dirname = dirname(__filename);
 
 const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
 const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
@@ -662,7 +662,7 @@ class ScannerController {
       // Step 2: Generate and Write Barcode
       const barcodeData = await this.generateAndWriteBarcode(partNumber);
       if (!barcodeData) {
-        this.barcodeGenerator.decSerialNo();
+        // this.barcodeGenerator.decSerialNo();
         return;
       }
 
@@ -677,7 +677,7 @@ class ScannerController {
         logger.warn(
           "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
         );
-        this.barcodeGenerator.decSerialNo();
+        // this.barcodeGenerator.decSerialNo();
         await sleep(1000);
         return;
       }

@@ -157,18 +157,37 @@ class MongoDBService {
         return;
       }
 
+      // Get current time and today's 6 AM
+      const now = new Date();
+      const todaySixAM = new Date(now);
+      todaySixAM.setHours(6, 0, 0, 0);
+
+      // If current time is before 6 AM, use previous day's 6 AM
+      if (now < todaySixAM) {
+        todaySixAM.setDate(todaySixAM.getDate() - 1);
+      }
+
+      let idCounter = 1;
       // Transform the data
-      const transformedData = data.map((item) => ({
-        Timestamp: item?.Timestamp,
-        SerialNumber: item?.SerialNumber,
-        MarkingData: item?.MarkingData,
-        ScannerData: item?.ScannerData,
-        Shift: item?.Shift,
-        Result: item?.Result,
-        User: item?.User,
-        Grade: item?.Grade,
-        Date: item?.Date,
-      }));
+      const transformedData = data.map((item) => {
+        // Reset counter if timestamp is before 6 AM of the reference day
+        if (item?.Timestamp < todaySixAM) {
+          idCounter = 1;
+        }
+
+        return {
+          Id: idCounter++,
+          Timestamp: item?.Timestamp,
+          SerialNumber: item?.SerialNumber,
+          MarkingData: item?.MarkingData,
+          ScannerData: item?.ScannerData,
+          Shift: item?.Shift,
+          Result: item?.Result,
+          User: item?.User,
+          Grade: item?.Grade,
+          Date: item?.Date,
+        };
+      });
 
       // Send the data to the client
       socket.emit("csv-data", { data: transformedData });

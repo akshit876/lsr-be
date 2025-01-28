@@ -51,6 +51,15 @@ export const REGISTERS_TO_MONITOR = [
       },
     },
   },
+  {
+    register: 1600,
+    bits: {
+      9: {
+        eventName: "ftp",
+        message: "Image not getting saved , please run ftp server",
+      },
+    },
+  },
 ];
 
 // Single function to monitor one register
