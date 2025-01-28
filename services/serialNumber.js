@@ -162,19 +162,19 @@ class SerialNumberGeneratorService {
       );
     }
     this.currentSerialNumber++;
-    return this.currentSerialNumber;
+    return this.currentSerialNumber.toString().padStart(4, '0'); // Format the return value with leading zeros
   }
 
   incrementSerialNumber() {
     this.currentSerialNumber++;
-    return this.currentSerialNumber;
+    return this.currentSerialNumber.toString().padStart(4, '0'); // Format the return value with leading zeros
   }
 
   decSerialNumber() {
     // this.checkAndResetSerialNumber();
     // const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");r
     this.currentSerialNumber--;
-    return this.currentSerialNumber;
+    return this.currentSerialNumber.toString().padStart(4, '0'); // Format the return value with leading zeros
   }
 
   checkAndResetSerialNumber() {
