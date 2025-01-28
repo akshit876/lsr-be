@@ -283,7 +283,6 @@ class ScannerController {
       let bitCheckInterval;
       let checkCount = 0;
       const CHECK_INTERVAL = 100;
-      
 
       const cleanup = () => {
         if (timeoutId) {
@@ -303,7 +302,7 @@ class ScannerController {
         for (const [bit, config] of Object.entries(bits)) {
           try {
             const bitValue = await readBit(register, parseInt(bit));
-            
+
             // Emit event if bit is 1, regardless of previous state
             if (bitValue) {
               if (this.io) {
@@ -312,13 +311,16 @@ class ScannerController {
                   bit: parseInt(bit),
                   value: bitValue,
                   message: config.message,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
                 });
                 logger.info(`${config.message} (Register ${register}.${bit})`);
               }
             }
           } catch (error) {
-            logger.error(`Error checking register ${register} bit ${bit}:`, error);
+            logger.error(
+              `Error checking register ${register} bit ${bit}:`,
+              error
+            );
           }
         }
       };
@@ -709,49 +711,49 @@ class ScannerController {
     this.setupResetMonitor();
   }
 
-  async  checkGrading(scannerResult) {
+  async checkGrading(scannerResult) {
     try {
       const lastChar = scannerResult.slice(-1).toUpperCase();
       const gradeConfigs = await fetchGradeConfig();
-  
+
       if (!gradeConfigs || !gradeConfigs.length) {
         logger.error("Grading data is not valid or could not be retrieved.");
         return false;
       }
-  
+
       const gradeEntry = gradeConfigs?.[0];
-  
+
       if (!gradeEntry) {
         logger.error(`No grading rule found for character: ${lastChar}`);
         return false;
       }
-  
+
       // Generate acceptable grades dynamically
       const allGrades = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
       const gradeIndex = allGrades.indexOf(gradeEntry.grade);
-  
+
       if (gradeIndex === -1) {
         logger.error(`Invalid grade format: ${gradeEntry.grade}`);
         return false;
       }
-  
+
       // Get all grades from A up to the current grade level
       const allowedGrades = allGrades.slice(0, gradeIndex + 1);
       const isValid = allowedGrades.includes(lastChar);
-  
+
       if (!isValid) {
         logger.error(
           `Grade "${lastChar}" is not acceptable for grade: "${gradeEntry.grade}". Acceptable grades are: ${allowedGrades.join(", ")}`
         );
       }
-  
+
       return isValid;
     } catch (error) {
       logger.error("Error in checkGrading:", error);
       return false;
     }
   }
-  
+
   async handleFirstScan(comService) {
     logger.info("Starting first scan handler");
 
@@ -882,43 +884,43 @@ class ScannerController {
     const secondScannerData = await this.fetchScannerData(comService, {
       isSecondScan: true,
     });
-    
+
     // Check if scanner data is "NG"
     if (secondScannerData.trim().toUpperCase() === "NG") {
-      const grading = "F";  // Set grading to F for NG cases
-      const isDataMatching = false;  // NG always means no match
-      
+      const grading = "F"; // Set grading to F for NG cases
+      const isDataMatching = false; // NG always means no match
+
       logger.info("� Second scan resulted in NG");
       logger.info("🔄 Setting grade to F and marking as non-matching");
-  
-      await writeBit(1417, 1, 1);  // Write 1 to indicate failure
-  
+
+      await writeBit(1417, 1, 1); // Write 1 to indicate failure
+
       await this.saveToMongoDB({
         io: this.io,
         serialNumber: barcodeData.serialNo,
         markingData: barcodeData.text,
-        scannerData: secondScannerData,  // Use full NG value
+        scannerData: secondScannerData, // Use full NG value
         result: false,
         grading,
       });
-  
+
       return { success: false };
     }
-  
+
     // Normal case handling (non-NG)
     const grading = secondScannerData.slice(-1);
     const trimmedSecondScannerData = secondScannerData.slice(0, -1);
-  
+
     const isDataMatching = await this.compareScannerDataWithCode(
       trimmedSecondScannerData
     );
     logger.info("🔄 Data matching without grade", isDataMatching);
-  
+
     const checkGrading = await this.checkGrading(secondScannerData);
     logger.info("🔄 Grade acceptance ", checkGrading);
-  
+
     await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
-  
+
     await this.saveToMongoDB({
       io: this.io,
       serialNumber: barcodeData.serialNo,
@@ -927,7 +929,7 @@ class ScannerController {
       result: isDataMatching && checkGrading,
       grading,
     });
-  
+
     return { success: isDataMatching };
   }
 
@@ -1057,6 +1059,13 @@ class ScannerController {
         isFirst: isSecondScan == false,
         isSecond: isSecondScan,
       });
+      if (this.io) {
+        this.io.emit("scanner_read", {
+          timestamp: new Date(),
+          scannerType: scannerLabel,
+          data: result,
+        });
+      }
       console.log({ result });
       return result;
     } catch (error) {
