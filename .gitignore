@@ -78,3 +78,7 @@ build/
 # IDE files
 .vscode/
 .idea/
+
+# Specific text files
+code.txt
+text.txt
