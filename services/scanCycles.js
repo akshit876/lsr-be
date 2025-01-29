@@ -1024,7 +1024,6 @@ class ScannerController {
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
 
-    // Add a flag to prevent multiple triggers
     if (this.isScanning) {
       logger.warn("Scanner already in progress, skipping new trigger");
       return null;
@@ -1036,12 +1035,16 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      await writeBit(register, bit, 1);
+      await this.writeBit(register, bit, 1);
+
+      // Ensure scanner connection before getting data
+      await this.ensureScannerConnection();
 
       const result = await tcpClient.getDataTwiceAndConcat({
-        isFirst: isSecondScan == false,
+        isFirst: !isSecondScan,
         isSecond: isSecondScan,
       });
+
       if (this.io) {
         this.io.emit("scanner_read", {
           timestamp: new Date(),
@@ -1049,13 +1052,16 @@ class ScannerController {
           data: result,
         });
       }
-      console.log({ result });
       return result;
     } catch (error) {
-      this.handlePLCError(error);
+      if (error.message.includes("Scanner connection")) {
+        logger.error("Scanner connection error:", error);
+      } else {
+        this.handlePLCError(error);
+      }
       throw error;
     } finally {
-      this.isScanning = false; // Always reset the scanning flag
+      this.isScanning = false;
     }
   }
 
@@ -1174,7 +1180,6 @@ class ScannerController {
     return this.currentDayId++;
   }
 
-  // Replace ensurePLCConnection with this simpler version
   async ensurePLCConnection() {
     try {
       // Use Modbus service's built-in connection management
@@ -1186,7 +1191,19 @@ class ScannerController {
     }
   }
 
-  // Update handlePLCError to use Modbus error handling
+  async ensureScannerConnection() {
+    try {
+      await tcpClient.connect({
+        port: TCP_CONFIG.PORT,
+        host: TCP_CONFIG.HOST,
+      });
+      logger.info("Scanner TCP connection established");
+    } catch (error) {
+      logger.error("Scanner TCP connection failed:", error);
+      throw new Error("Scanner connection unavailable");
+    }
+  }
+
   async handlePLCError(error) {
     if (
       !this.lastErrorMessage ||
@@ -1209,7 +1226,6 @@ class ScannerController {
     }
   }
 
-  // Update all PLC communication methods to use Modbus service directly
   async writeBit(register, bit, value) {
     try {
       await modbusService.writeBit(register, bit, value);
