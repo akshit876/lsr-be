@@ -1282,25 +1282,65 @@ class ScannerController {
     }
   }
 
-  // Modify existing methods that interact with PLC to use connection check
+  // Add these methods to handle all PLC operations with connection checks
 
   async writeBit(register, bit, value) {
     await this.ensurePLCConnection();
     try {
-      return await writeBit(register, bit, value);
+        return await writeBit(register, bit, value);
     } catch (error) {
-      this.handlePLCError(error);
-      throw error;
+        this.handlePLCError(error);
+        throw error;
     }
   }
 
   async readBit(register, bit) {
     await this.ensurePLCConnection();
     try {
-      return await readBit(register, bit);
+        return await readBit(register, bit);
     } catch (error) {
-      this.handlePLCError(error);
-      throw error;
+        this.handlePLCError(error);
+        throw error;
+    }
+  }
+
+  async readRegister(register, length) {
+    await this.ensurePLCConnection();
+    try {
+        return await readRegister(register, length);
+    } catch (error) {
+        this.handlePLCError(error);
+        throw error;
+    }
+  }
+
+  async writeRegister(register, value) {
+    await this.ensurePLCConnection();
+    try {
+        return await writeRegister(register, value);
+    } catch (error) {
+        this.handlePLCError(error);
+        throw error;
+    }
+  }
+
+  async readRegisterAndProvideASCII(register, length) {
+    await this.ensurePLCConnection();
+    try {
+        return await readRegisterAndProvideASCII(register, length);
+    } catch (error) {
+        this.handlePLCError(error);
+        throw error;
+    }
+  }
+
+  async writeBitsWithRest(register, bit, value, restTime, shouldLog = true) {
+    await this.ensurePLCConnection();
+    try {
+        return await writeBitsWithRest(register, bit, value, restTime, shouldLog);
+    } catch (error) {
+        this.handlePLCError(error);
+        throw error;
     }
   }
 }
