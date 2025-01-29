@@ -489,7 +489,7 @@ class ScannerController {
         SerialNumber: serialNumber,
         MarkingData: markingData,
         ScannerData: scannerData,
-        Result: result ? "OK" : "NG",
+        Result: result ? result == "N/A" ? "N/A" : "OK" : "NG",
         User: userDetails?.email || "Unknown",
         Grade: grading?.toUpperCase(),
         CurrentId: currentId,

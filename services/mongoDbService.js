@@ -223,13 +223,13 @@ class MongoDBService {
             dayWindowTotalCounts.get(windowStart.getTime()) || 0;
           const position = await this.collection.countDocuments({
             Timestamp: {
-              $gt: itemTimestamp,
-              $lt: new Date(windowStart.getTime() + 24 * 60 * 60 * 1000),
+              $gte: windowStart,
+              $lt: itemTimestamp,
             },
           });
 
           return {
-            Id: totalCount - position,
+            Id: position + 1,
             Timestamp: item?.Timestamp,
             SerialNumber: item?.SerialNumber,
             MarkingData: item?.MarkingData,
@@ -280,6 +280,20 @@ class MongoDBService {
       };
     } catch (error) {
       logger.error("Error fetching user details:", error);
+      throw error;
+    }
+  }
+
+  async updateLastRecord(query, update, dbName, collectionName) {
+    try {
+      const collection = this.db.collection(collectionName);
+      const result = await collection.findOneAndUpdate(query, update, {
+        sort: { Timestamp: -1 }, // Sort by timestamp to get most recent
+        returnDocument: "after", // Return the updated document
+      });
+      return result;
+    } catch (error) {
+      logger.error("Error updating record:", error);
       throw error;
     }
   }
