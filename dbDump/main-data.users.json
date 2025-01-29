@@ -1,25 +1,27 @@
 [{
   "_id": {
-    "$oid": "6732ebf3ecb0ee83c76209b5"
+    "$oid": "67193add388914884000be4c"
   },
-  "name": "Super Admin",
   "email": "super",
-  "password": "$2a$10$TcuHJ/FdcQ6W/jB//etlAOko6WKzh/V.xnZoP03VHZzkDZb4kso.q",
+  "password": "$2b$10$NHavXsNpMd9IBVvNOqWWiOpp0vfbyJlEX.ILxW5Zc.V62h1us15AK",
   "role": "admin",
-  "isVerified": true,
-  "createdAt": {
-    "$date": "2024-11-12T05:47:31.933Z"
-  },
-  "updatedAt": {
-    "$date": "2024-11-12T05:47:31.933Z"
-  }
+  "__v": 0
 },
 {
   "_id": {
-    "$oid": "6732f1df696336bdb07a7500"
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "password": "$2b$10$NW6zW5tZlTGEJ9vE2PsZzOvXYlNCSKqrf.Mn0bAYnMfkqQtbnX.xy",
+  "role": "admin",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
   },
   "email": "opr",
-  "password": "$2b$10$aKxyQjzwP14AEqtb8O8Wb.xWqOHujXLMM9dc4zTkD5aHyCcByRI56",
+  "password": "$2b$10$XmI97C/U6nLexHm0WmFP3.Usr1xNtcvyngjazrHvbf820/CSRSXZu",
   "role": "operator",
   "__v": 0
 }]

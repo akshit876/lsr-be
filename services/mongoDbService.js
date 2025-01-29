@@ -144,19 +144,6 @@ class MongoDBService {
         logger.info("Ensuring connection to main-data.records collection");
       }
 
-      // Fetch data from MongoDB, sorted in descending order by Timestamp
-      const data = await this.collection
-        .find({})
-        .sort({ Timestamp: -1 })
-        .limit(700)
-        .toArray();
-
-      if (data.length === 0) {
-        logger.info("No data found in MongoDB collection.");
-        socket.emit("mongodb-data", { data: [] });
-        return;
-      }
-
       // Get current time and today's 6 AM
       const now = new Date();
       const todaySixAM = new Date(now);
@@ -167,16 +154,78 @@ class MongoDBService {
         todaySixAM.setDate(todaySixAM.getDate() - 1);
       }
 
-      let idCounter = 1;
-      // Transform the data
+      // First, get the total counts for each day window
+      const dayWindowCounts = await this.collection.aggregate([
+        {
+          $addFields: {
+            dayWindow: {
+              $let: {
+                vars: {
+                  timestamp: "$Timestamp",
+                  sixAM: {
+                    $dateFromParts: {
+                      year: { $year: "$Timestamp" },
+                      month: { $month: "$Timestamp" },
+                      day: { $dayOfMonth: "$Timestamp" },
+                      hour: 6
+                    }
+                  }
+                },
+                in: {
+                  $cond: {
+                    if: { $lt: ["$Timestamp", "$$sixAM"] },
+                    then: {
+                      $subtract: ["$$sixAM", { $multiply: [24 * 60 * 60 * 1000, 1] }]
+                    },
+                    else: "$$sixAM"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: "$dayWindow",
+            count: { $sum: 1 }
+          }
+        }
+      ]).toArray();
+
+      // Create a map of day windows to their total counts
+      const dayWindowTotalCounts = new Map(
+        dayWindowCounts.map(({ _id, count }) => [_id.getTime(), count])
+      );
+
+      // Now fetch the limited data
+      const data = await this.collection
+        .find({})
+        .sort({ Timestamp: -1 })
+        .limit(700)
+        .toArray();
+
+      // Transform the data with correct IDs
       const transformedData = data.map((item) => {
-        // Reset counter if timestamp is before 6 AM of the reference day
-        if (item?.Timestamp < todaySixAM) {
-          idCounter = 1;
+        const itemTimestamp = new Date(item?.Timestamp);
+        let windowStart = new Date(itemTimestamp);
+        windowStart.setHours(6, 0, 0, 0);
+        if (itemTimestamp < windowStart) {
+          windowStart.setDate(windowStart.getDate() - 1);
         }
 
+        // Get total count for this day window
+        const totalCount = dayWindowTotalCounts.get(windowStart.getTime()) || 0;
+        
+        // Calculate position from the end of the day
+        const position = await this.collection.countDocuments({
+          Timestamp: {
+            $gt: itemTimestamp,
+            $lt: new Date(windowStart.getTime() + 24 * 60 * 60 * 1000) // next day
+          }
+        });
+
         return {
-          Id: item?.CurrentId ?? "",
+          Id: totalCount - position, // This will give the correct sequential ID
           Timestamp: item?.Timestamp,
           SerialNumber: item?.SerialNumber,
           MarkingData: item?.MarkingData,

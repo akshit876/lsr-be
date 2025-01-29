@@ -1,0 +1,6442 @@
+[{
+  "_id": {
+    "$oid": "672cc7de3cf28659617aea25"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-07T13:59:58.773Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-07T13:59:58.777Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-07T13:59:58.777Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "672cc9203cf28659617aea62"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-07T14:05:20.797Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-07T14:05:20.800Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-07T14:05:49.465Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-07T14:05:49.463Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "672cd3a73cf28659617aeaa2"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-07T14:50:15.381Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-07T14:50:15.385Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-07T14:50:15.385Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6731775392c315afd79d1d0c"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-11T03:17:39.635Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-11T03:17:39.639Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T05:09:45.451Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-11T05:09:45.450Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "673191b3429cc16566a91d35"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-11T05:10:11.360Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-11T05:10:11.363Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T05:46:26.713Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-11T05:46:26.712Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67319a3e429cc16566a91d90"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-11T05:46:38.476Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-11T05:46:38.477Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T06:22:02.173Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-11T06:22:02.172Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6731a293429cc16566a91fba"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-11T06:22:11.282Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-11T06:22:11.284Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T07:26:53.855Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-11T07:26:53.852Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6731b1d1429cc16566a92014"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-11T07:27:13.168Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-11T07:27:13.170Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T07:27:13.170Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6731d65d73f5a4f31dc23b34"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-11T10:03:09.285Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-11T10:03:09.289Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T10:03:35.183Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-11T10:03:35.183Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6731d68773f5a4f31dc23bdf"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-11T10:03:51.505Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-11T10:03:51.505Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T10:11:38.766Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-11T10:11:38.766Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6731d86373f5a4f31dc23cf1"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-11T10:11:47.908Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-11T10:11:47.910Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T10:23:49.218Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-11T10:23:49.217Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6731db4573f5a4f31dc23d9b"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-11T10:24:05.092Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-11T10:24:05.094Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-11T10:24:05.094Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673db2ff7a738810609d0186"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-20T09:59:27.778Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-20T09:59:27.785Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-20T09:59:27.785Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673db96663ea17ed0cec5bbc"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-20T10:26:46.369Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-20T10:26:46.375Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-20T10:26:46.375Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673dc1d054426a72a591b57d"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-20T11:02:40.917Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-20T11:02:40.923Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-20T11:27:06.920Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-20T11:27:06.919Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "673dc79b54426a72a591b697"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-20T11:27:23.741Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-20T11:27:23.742Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-20T11:27:23.742Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673dc98175295cebe7eb00cb"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-20T11:35:29.144Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-20T11:35:29.150Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-20T11:35:29.150Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673dcb190bf7acbd60938ea6"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-20T11:42:17.125Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-20T11:42:17.132Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-20T11:42:17.132Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673dd086a8b4b8d3155038b5"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-20T12:05:26.855Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-20T12:05:26.862Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-20T12:05:26.862Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ea2755d9b52d222c3ee8e"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T03:01:09.699Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T03:01:09.705Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T03:01:09.705Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ea623804257b8ea15db7a"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T03:16:51.526Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T03:16:51.534Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T03:16:51.534Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ea7a292baad2ed0e7f79c"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T03:23:14.788Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T03:23:14.794Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T03:23:14.794Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ec1dfe616a5530b846c90"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T05:15:11.770Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T05:15:11.775Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T05:15:11.775Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ec5d2aed9cb75f5687fa8"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T05:32:02.549Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T05:32:02.555Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T05:32:02.555Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ecb30b11cd9716cbe35a8"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T05:54:56.233Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T05:54:56.238Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T05:54:56.238Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ecb7f0952c9d09af4a74d"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T05:56:15.329Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T05:56:15.335Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T05:56:15.335Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ecddf1a4f1c744d61848c"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T06:06:23.451Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T06:06:23.457Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T06:06:23.457Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ecf1a0b8a64797cfcfb84"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T06:11:38.322Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T06:11:38.328Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T06:11:38.328Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ed0409ea32e9244c86cc0"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T06:16:32.147Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T06:16:32.152Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T06:16:32.152Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ed44facac34de67ce1db8"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T06:33:51.138Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T06:33:51.145Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T06:33:51.145Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ed6cb55a608b1688a3b11"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T06:44:27.083Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T06:44:27.089Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T06:44:27.089Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ed919cb336d35dba23d0c"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T06:54:17.640Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T06:54:17.645Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T06:54:17.645Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673eddde29bf9de593e8545a"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T07:14:38.133Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T07:14:38.138Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T07:14:38.138Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ee0cc1f1ee21ad923cecb"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T07:27:08.543Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T07:27:08.548Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T07:27:08.548Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ee3646e65fb50b1c0bbae"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T07:38:12.187Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T07:38:12.193Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T07:38:12.193Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ee49028bbfec803516e80"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T07:43:12.785Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T07:43:12.791Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T07:43:12.791Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ee7266bee369a294475e3"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T07:54:14.085Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T07:54:14.093Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T07:54:14.093Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ee94950fcccf86f6028b1"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T08:03:21.502Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T08:03:21.509Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T08:03:21.509Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673eeb56fe8b942ea97bb8aa"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T08:12:06.299Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T08:12:06.305Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T08:12:06.305Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673eec434425acca1ecec0f8"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T08:16:03.691Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T08:16:03.698Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T08:16:03.698Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673eef935c828eb2b0bead36"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T08:30:11.077Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-21T08:30:11.081Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T04:15:47.247Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-21T04:15:47.246Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "673eb3fb5c828eb2b0beaf14"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-21T04:15:55.466Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T04:15:55.466Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T04:15:55.466Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673efcd206137eb161ad0ed2"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-21T09:26:42.205Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T09:26:42.212Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T09:26:42.212Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673f0167ae004ccb26c8ac87"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-21T09:46:15.259Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T09:46:15.265Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T09:46:15.265Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673f239915c43eaaf6c81924"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-21T12:12:09.387Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T12:12:09.393Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T12:12:09.393Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673f2ccc05bf3e55bee52ce6"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-21T12:51:24.199Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T12:51:24.206Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T12:51:24.206Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673f2f06537c4cf8f4b08ab3"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-21T13:00:54.608Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T13:00:54.615Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T13:00:54.615Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673f3b86f52c005bfc859a6a"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-21T13:54:14.888Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T13:54:14.894Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T13:54:14.894Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673f417277eb98d56e93eb14"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-21T14:19:30.861Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T14:19:30.868Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T14:19:30.868Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673f42a242b96440c5ef4490"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-21T14:24:34.757Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-21T14:24:34.762Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-21T14:24:34.762Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "673ffe89f771ff68208f0e84"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-22T03:46:17.339Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-22T03:46:17.347Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-22T03:46:17.347Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674008794ddfcb27d7d04ea8"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-22T04:28:41.000Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-22T04:28:41.007Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-22T04:28:41.007Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674048166a61092228838d94"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-22T09:00:06.514Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-22T09:00:06.520Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-22T09:00:06.520Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6740585074549ea82b7ef9ae"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-22T10:09:20.125Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-22T10:09:20.131Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-22T10:09:20.131Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6740666c57f4cc1e0b241afd"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-22T11:09:32.056Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-22T11:09:32.063Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-22T11:09:32.063Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6740686ed2a6b2f3ebfc7379"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-22T11:18:06.160Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-22T11:18:06.168Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-22T11:18:06.168Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67414fa95fdecac27bfc50f2"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-23T03:44:41.284Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-23T03:44:41.290Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-23T03:44:41.290Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67477e6fe8dcf053e87f12cf"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-27T20:17:51.768Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-27T20:17:51.777Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-27T20:17:51.777Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6749a8d90316f28b776d4903"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-29T11:43:21.043Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-29T11:43:21.047Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-29T11:45:27.580Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-29T11:45:27.579Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6749a97d9d9d05022a7b3a85"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-29T11:46:05.152Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-29T11:46:05.157Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-29T11:46:05.157Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674a6409a9a40fb2abb63c40"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-30T01:02:01.933Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-30T01:02:01.939Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-30T06:00:59.817Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-30T06:00:59.817Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "674aaa42a9a40fb2abb63ca7"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-30T06:01:38.934Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-30T06:01:38.934Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-30T06:01:38.934Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674ad8d41a32b83984eab338"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-11-30T09:20:20.151Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-11-30T09:20:20.156Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-30T09:21:48.220Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-11-30T09:21:48.219Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "674ad9351a32b83984eab34f"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-11-30T09:21:57.766Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-11-30T09:21:57.767Z"
+  },
+  "updatedAt": {
+    "$date": "2024-11-30T09:21:57.767Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674d9a1ac83fe18d4b962a02"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-02T11:29:30.813Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-02T11:29:30.822Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-02T11:29:30.822Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674da38a02516018b06f8a92"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-02T12:09:46.619Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-02T12:09:46.625Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-02T12:09:46.625Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674df3c2a7613ad14a162bdf"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-02T17:52:02.479Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-02T17:52:02.486Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-02T17:52:02.486Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674e9dec42b11317e0835317"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-03T05:58:04.775Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-03T05:58:04.781Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-03T05:58:04.781Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674ebb7151bd774e029dcc8b"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-03T08:04:01.207Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-03T08:04:01.213Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-03T08:04:01.213Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674edea9f5760a4d97288a2f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-03T10:34:17.772Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-03T10:34:17.777Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-03T10:34:17.777Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674fde9baccc2f32bd0a98a3"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-04T04:46:19.191Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-04T04:46:19.197Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-04T04:46:19.197Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "674fe5943df8463e69bf7630"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-04T05:16:04.153Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-04T05:16:04.159Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-04T05:16:04.159Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6750109abda5ee9b4f1fda5d"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-04T08:19:38.841Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-04T08:19:38.849Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-04T08:19:38.849Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675011b7d7c0ce274a90c3e7"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-04T08:24:23.751Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-04T08:24:23.757Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-04T08:24:23.757Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6750265e746cf52bbc73d87d"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-04T09:52:30.568Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-04T09:52:30.574Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-04T09:52:30.574Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6751af4fe5dd542f555a9d19"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-05T13:49:03.131Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-05T13:49:03.135Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-05T13:49:03.135Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6751c5c28c38f46b64d45bee"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-05T15:24:50.512Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-05T15:24:50.518Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-05T15:24:50.518Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67527a1041abac6688842769"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-06T04:14:08.307Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-06T04:14:08.313Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-06T04:14:08.313Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67542e90abaa8fdcb5cebdf0"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-07T11:16:32.743Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-07T11:16:32.749Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-07T11:16:32.749Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67568cd3879216aba0e9a33a"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-09T06:23:15.142Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-12-09T06:23:15.147Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T06:25:16.321Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-12-09T06:25:16.320Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67568e6b879216aba0e9a361"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T06:30:03.062Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-12-09T06:30:03.063Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T06:33:31.201Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-12-09T06:33:31.200Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67568f46879216aba0e9a378"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T06:33:42.278Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-09T06:33:42.279Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T06:33:42.279Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675692244dccc45d97e049c7"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T06:45:56.064Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-09T06:45:56.069Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T06:45:56.069Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6756a1f7cf5fcbe69cdf579b"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T07:53:27.546Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-09T07:53:27.553Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T07:53:27.553Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6756a3a0311eb5e54dba6c87"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T08:00:32.803Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-09T08:00:32.809Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T08:00:32.809Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6756a4d650ddd3467c678b8a"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T08:05:42.532Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-09T08:05:42.538Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T08:05:42.538Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6756a512638ed5f467f11034"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T08:06:42.885Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-09T08:06:42.890Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T08:06:42.890Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6756aeb0e8031b94ca47c46a"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T08:47:44.883Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-09T08:47:44.888Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T08:47:44.888Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6756c00ca5aa62f9625ea598"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-09T10:01:48.283Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-09T10:01:48.289Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-09T10:01:48.289Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675833abbb7fde5939605cfa"
+  },
+  "userId": {
+    "$oid": "6719c22b6d1fe0d0c5c773b0"
+  },
+  "email": "Admin",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-10T12:27:23.234Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-10T12:27:23.240Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-10T12:27:23.240Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ab23111f22c773eb34428"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T09:51:45.348Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T09:51:45.353Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T09:51:45.353Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ab3a060d4d0f6ae7cf748"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T09:57:52.188Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T09:57:52.193Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T09:57:52.193Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ab4b78c036d5d7c578c3a"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T10:02:31.658Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T10:02:31.664Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T10:02:31.664Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ab5d61cf08202330f76d4"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T10:07:18.075Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T10:07:18.080Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T10:07:18.080Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675abab215397b40d01093fb"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T10:28:02.635Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T10:28:02.641Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T10:28:02.641Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675abef718a8c20f8356a6a4"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T10:46:15.281Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T10:46:15.285Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T10:46:15.285Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ac2fb46736dc8fc829265"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T11:03:23.921Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T11:03:23.927Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T11:03:23.927Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ac3d45bd3d772577cc2ec"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-12T11:07:00.162Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-12-12T11:07:00.168Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T11:07:11.922Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-12-12T11:07:11.922Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "675ac4195bd3d772577cc308"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T11:08:09.576Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T11:08:09.576Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T11:08:09.576Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ac67714b1497344b10abf"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T11:18:15.181Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T11:18:15.187Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T11:18:15.187Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675aca2b8bbba0d7337014bc"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T11:34:03.781Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T11:34:03.788Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T11:34:03.788Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ad6a9808597d0b4477866"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T12:27:21.305Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T12:27:21.310Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T12:27:21.310Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675ae2b91858ef02da8b1e49"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T13:18:49.998Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T13:18:50.003Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T13:18:50.003Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675afd78e47802e8717876de"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-12T15:12:56.579Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-12T15:12:56.584Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-12T15:12:56.584Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675bb7c15eea2acf51b06e30"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-13T04:27:45.235Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-13T04:27:45.240Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-13T04:27:45.240Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675bb8f61fbb03436932841c"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-13T04:32:54.611Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-12-13T04:32:54.617Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-13T06:43:34.003Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-12-13T06:43:34.002Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "675bd7b01fbb034369328444"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-13T06:44:00.711Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-13T06:44:00.712Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-13T06:44:00.712Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675c0f672f19d98060712f74"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-13T10:41:43.056Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-13T10:41:43.063Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-13T10:41:43.063Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "675c128a2f19d98060712f7d"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-13T10:55:06.918Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-13T10:55:06.918Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-13T10:55:06.918Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6763a0d36e37bd6b3f27a75d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-19T04:28:03.696Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-19T04:28:03.701Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-19T04:28:03.701Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "676699c880191d48ff160a39"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2024-12-21T10:34:48.762Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2024-12-21T10:34:48.766Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-21T10:35:53.033Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2024-12-21T10:35:53.033Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67669a1380191d48ff160a60"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2024-12-21T10:36:03.820Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2024-12-21T10:36:03.821Z"
+  },
+  "updatedAt": {
+    "$date": "2024-12-21T10:36:03.821Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677e0a32410bc7fbc982789b"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-08T05:16:34.665Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-08T05:16:34.671Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-08T05:16:34.671Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677e4faaa032b377ac377b5c"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-08T10:12:58.688Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-08T10:12:58.692Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-08T10:12:58.692Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677e68069c89f35d40469ec8"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-08T11:56:54.003Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-08T11:56:54.008Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-08T12:16:23.125Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-08T12:16:23.125Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "677e6cb59c89f35d40469ee1"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-08T12:16:53.824Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-08T12:16:53.824Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-08T12:16:53.824Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677e7b3b11ae2f467f23047e"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-08T13:18:51.593Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-08T13:18:51.598Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-08T13:18:51.598Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677e7f36c9a3ac6ac37e4f7b"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-08T13:35:50.710Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-08T13:35:50.715Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-08T13:42:57.900Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-08T13:42:57.900Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "677e81b26ac1d0539f3198bc"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-08T13:46:26.637Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-08T13:46:26.642Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-08T13:46:26.642Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f49b66668cab511313eb3"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T03:59:50.466Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-09T03:59:50.470Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T04:53:41.278Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-09T04:53:41.278Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "677f56606668cab511313eca"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-09T04:53:52.706Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T04:53:52.706Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T04:53:52.706Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f5f4a865662be1a9796b3"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-09T05:31:54.832Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T05:31:54.838Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T05:31:54.838Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f6b819eac1281fd54d578"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T06:24:01.321Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T06:24:01.326Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T06:24:01.326Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f6e2c80ff48550602cbdb"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T06:35:24.091Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T06:35:24.097Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T06:35:24.097Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f6fe9a3916161de8b8693"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T06:42:49.114Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-09T06:42:49.120Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T06:44:24.003Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-09T06:44:24.002Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "677f7051a3916161de8b86aa"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-09T06:44:33.958Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T06:44:33.958Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T06:44:33.958Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f73c59861ebece97d66b3"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T06:59:17.628Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T06:59:17.634Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T06:59:17.634Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f74b51d3c819e2989eebe"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-09T07:03:17.645Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T07:03:17.652Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T07:03:17.652Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f74eae43b38a41fdd8f5d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T07:04:10.734Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T07:04:10.740Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T07:04:10.740Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f76317429906130170b49"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T07:09:37.755Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T07:09:37.759Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T07:09:37.759Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f7777ec8d41a40052ac00"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T07:15:03.056Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-09T07:15:03.062Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T07:37:58.908Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-09T07:37:58.908Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "677f7ce4ec8d41a40052ac17"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-09T07:38:12.461Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T07:38:12.462Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T07:38:12.462Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f8c9cd49914c6ec5debe8"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T08:45:16.239Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T08:45:16.245Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T08:45:16.245Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "677f8d9f7bf776934cc75bc0"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-09T08:49:35.891Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-09T08:49:35.896Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-09T08:49:35.896Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678096f1f64522f03295ebf2"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-10T03:41:37.831Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-10T03:41:37.837Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-10T03:41:37.837Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6780c8888368d25605db95e3"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-10T07:13:12.648Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-10T07:13:12.653Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-10T07:13:12.653Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6780cb560e5378b65121e634"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-10T07:25:10.466Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-10T07:25:10.470Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-10T07:25:10.470Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6780e0d647470dffd2f5ce0f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-10T08:56:54.398Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-10T08:56:54.404Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-10T08:56:54.404Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6780f926c1f58e5942a996c8"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-10T10:40:38.132Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-10T10:40:38.138Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-10T12:18:53.691Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-10T12:18:53.691Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6781104dc1f58e5942a996e0"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-10T12:19:25.519Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-10T12:19:25.519Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-10T12:19:25.519Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6781481d40e707d6d38834a5"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-10T16:17:33.104Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-10T16:17:33.110Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-10T16:17:33.110Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67814c92485012e5536ee23d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-10T16:36:34.161Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-10T16:36:34.167Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-10T16:36:34.167Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6781c8898e5022105faae76b"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T01:25:29.119Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-11T01:25:29.126Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T04:02:43.251Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-11T04:02:43.250Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6781ed7873375aaaaf62894c"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T04:03:04.819Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-11T04:03:04.825Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T04:08:56.944Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-11T04:08:56.944Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6781eee773375aaaaf6289c1"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T04:09:11.595Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-11T04:09:11.596Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T04:09:51.272Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-11T04:09:51.272Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6781ef1c73375aaaaf628a33"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T04:10:04.216Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T04:10:04.217Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T04:10:04.217Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67820736dee0e3fc02aee7ea"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T05:52:54.608Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T05:52:54.614Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T05:52:54.614Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678212e881204e226d900ee4"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T06:42:48.152Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T06:42:48.155Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T06:42:48.155Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67821bcf6793facdc62f6197"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T07:20:47.699Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T07:20:47.705Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T07:20:47.705Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67822108f3438906c6880d47"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T07:43:04.117Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T07:43:04.122Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T07:43:04.122Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678225eb84474ee69abe69b2"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T08:03:55.295Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T08:03:55.299Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T08:03:55.299Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6782492de5239f42dec0d049"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T10:34:21.216Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T10:34:21.220Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T10:34:21.220Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67824c8de5239f42dec0d05f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T10:48:45.548Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T10:48:45.549Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T10:48:45.549Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6782530de5239f42dec0d076"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-11T11:16:29.790Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-11T11:16:29.791Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-11T11:16:29.791Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6784c7c45cb25d0b8a123d8d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-13T07:59:00.019Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-13T07:59:00.024Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-13T07:59:00.024Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6784f2b502a39d313ff500ee"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-13T11:02:13.364Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-13T11:02:13.369Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-13T11:02:13.369Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678514f67614d9741f71ff40"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-13T13:28:22.902Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-13T13:28:22.907Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-13T13:28:22.907Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67851b47745b83aaec549df5"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-13T13:55:19.521Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-13T13:55:19.527Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-13T13:55:19.527Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6785e3784b4e8939790ebe72"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-14T04:09:28.519Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-14T04:09:28.525Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-14T12:31:34.461Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-14T12:31:34.460Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6788a5ddd97396d0554fd317"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-16T06:23:25.136Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-16T06:23:25.141Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-16T06:23:25.141Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6788a7e16a904b4bbdba811e"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-16T06:32:01.060Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-16T06:32:01.065Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-16T06:32:01.065Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6789aea3b76c59d9619bd389"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T01:13:07.286Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T01:13:07.292Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T01:13:07.292Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6789b0356238763fed8d15c0"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T01:19:49.481Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T01:19:49.487Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T01:19:49.487Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6789cf2f233a8ecc9c7bb626"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T03:31:59.433Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T03:31:59.438Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T03:31:59.438Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6789e4f6d318b95667cd283d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T05:04:54.412Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T05:04:54.418Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T05:04:54.418Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6789e90d13a1fd6c3f8a7197"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T05:22:21.880Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T05:22:21.885Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T05:22:21.885Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6789ea721c40c877af6b4358"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T05:28:18.051Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T05:28:18.056Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T05:28:18.056Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678a0d1d1aff7becc49fa76f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T07:56:13.284Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T07:56:13.290Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T07:56:13.290Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678a50db1bd163c745340172"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T12:45:15.761Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T12:45:15.765Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T12:45:15.765Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678aa8f08f78703b4e8e9044"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T19:01:04.849Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T19:01:04.854Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T19:01:04.854Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678aaa0af0dce4f5284606eb"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T19:05:46.263Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T19:05:46.269Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T19:05:46.269Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678aab3ee7bce4ea8f79df07"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T19:10:54.667Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T19:10:54.672Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T19:10:54.672Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678aaccabc63a8b970bf3433"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-17T19:17:30.526Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-17T19:17:30.531Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-17T19:17:30.531Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678af6a01f4a19ea20635c04"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T00:32:32.762Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T00:32:32.767Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T00:32:32.767Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678af812153ad27a95fcb27d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T00:38:42.768Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T00:38:42.773Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T00:38:42.773Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b121b3aefb8edb9ca2c72"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T02:29:47.942Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T02:29:47.947Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T02:29:47.947Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b13486f3ca8b58d312de2"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T02:34:48.772Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T02:34:48.778Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T02:34:48.778Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b45300cc126d4fcd8c1db"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T06:07:44.416Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T06:07:44.422Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T06:07:44.422Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b5225851de3239d09437f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T07:03:01.911Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T07:03:01.916Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T07:03:01.916Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b61809ce0457206b75da2"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T08:08:32.362Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T08:08:32.366Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T08:08:32.366Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b628c3e444e733efc1500"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T08:13:00.338Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T08:13:00.344Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T08:13:00.344Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b637f915f701f53efae16"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T08:17:03.350Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T08:17:03.355Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T08:17:03.355Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b63eb26843775bd1d8fdb"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T08:18:51.126Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T08:18:51.131Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T08:18:51.131Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b64f6297c15814636a5d9"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T08:23:18.501Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T08:23:18.505Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T08:23:18.505Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b6559b3f44e7b20bb418e"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T08:24:57.523Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T08:24:57.529Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T08:24:57.529Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678b6be26f80e4f34b11923b"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-18T08:52:50.976Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-18T08:52:50.982Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-18T08:52:50.982Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678ce860d1deaacbc3d4f2b1"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-19T11:56:16.616Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-19T11:56:16.622Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-19T11:56:16.622Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678ce8d3d1deaacbc3d4f2b9"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-19T11:58:11.165Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-19T11:58:11.166Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-19T11:58:11.166Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678ce9e15f4c3a8bbeaa02ca"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-19T12:02:41.178Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-19T12:02:41.183Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-20T05:38:22.824Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-20T05:38:22.823Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "678de1585f4c3a8bbeaa02e3"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-20T05:38:32.257Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-20T05:38:32.262Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-20T05:38:32.262Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "678de2d59234a72b439604bc"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-20T05:44:53.762Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-20T05:44:53.767Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-21T04:16:16.064Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-21T04:16:16.063Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "678f1f9d9234a72b439604d5"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-21T04:16:29.682Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-21T04:16:29.687Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-21T04:17:39.878Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-21T04:17:39.878Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "678f1ff49234a72b439604ed"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-21T04:17:56.362Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-21T04:17:56.363Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-21T04:17:56.363Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679099cfb81c8394cdc4666e"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-22T07:10:07.069Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-22T07:10:07.075Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-22T07:10:07.075Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67909dc37da77d29dbda167d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-22T07:26:59.983Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-22T07:26:59.987Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-22T07:46:35.672Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-22T07:46:35.671Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6790a2647da77d29dbda1694"
+  },
+  "userId": {
+    "$oid": "67193add388914884000be4c"
+  },
+  "email": "super",
+  "role": "admin",
+  "loginTime": {
+    "$date": "2025-01-22T07:46:44.410Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-22T07:46:44.414Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-22T07:50:54.623Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-22T07:50:54.623Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6790a36a7da77d29dbda16ad"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-22T07:51:06.081Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-22T07:51:06.082Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-22T07:51:06.082Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6790a9a3216498296a208e09"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-22T08:17:39.518Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-22T08:17:39.524Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-22T08:56:14.073Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-22T08:56:14.072Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6790b2c36a87790f82793ded"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-22T08:56:35.240Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-22T08:56:35.246Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-22T08:58:17.888Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-22T08:58:17.887Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6790b3406a87790f82793e14"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-22T08:58:40.554Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-22T08:58:40.555Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-22T11:35:54.894Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-22T11:35:54.893Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6790d8b59880d718bfd26549"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-22T11:38:29.388Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-22T11:38:29.393Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-22T11:38:29.393Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6792be424fdd9c23d7a52cd1"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-23T22:10:10.425Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-23T22:10:10.430Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-23T22:10:10.430Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6792d31b027982b0410b45b2"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-23T23:39:07.546Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-23T23:39:07.552Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-23T23:39:07.552Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6792da546704b6a67a150038"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T00:09:56.499Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T00:09:56.505Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T05:16:53.884Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T05:16:53.882Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6793225e6704b6a67a150050"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T05:17:18.118Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T05:17:18.122Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T05:17:54.792Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T05:17:54.792Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67932340eb4b51b1b24a5590"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T05:21:04.877Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T05:21:04.882Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T05:27:21.278Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T05:27:21.278Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67932585caaf99da146b1f7a"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T05:30:45.158Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T05:30:45.164Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T05:33:14.093Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T05:33:14.093Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6793274e651d5cf354f28bfc"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T05:38:22.810Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T05:38:22.814Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T05:40:53.501Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T05:40:53.500Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6793292cfa5668bfea4cd69b"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T05:46:20.932Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T05:46:20.938Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T05:52:02.610Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T05:52:02.610Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67932bf46ab7842c668cf189"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T05:58:12.837Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T05:58:12.842Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T06:06:42.125Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T06:06:42.125Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67932e266ab7842c668cf1a0"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T06:07:34.764Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T06:07:34.765Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T07:42:48.677Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T07:42:48.676Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "679344945c44248a0eda337f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T07:43:16.911Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T07:43:16.914Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T07:47:25.888Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T07:47:25.888Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "679345a85c44248a0eda33a6"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T07:47:52.561Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T07:47:52.562Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T08:01:10.000Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T08:01:10.000Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "679348d95c44248a0eda33ce"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T08:01:29.788Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T08:01:29.789Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T08:02:15.593Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T08:02:15.593Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6793493ec1826f79d3e3c2ca"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T08:03:10.210Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T08:03:10.215Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T08:04:29.018Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T08:04:29.017Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6793499cc1826f79d3e3c2ff"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T08:04:44.550Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T08:04:44.551Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T08:36:18.293Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T08:36:18.291Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67935118c1826f79d3e3c335"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T08:36:40.302Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-24T08:36:40.304Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T08:36:40.304Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679351cc1c643cfb7286dabf"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T08:39:40.907Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-24T08:39:40.912Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T08:39:40.912Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679353fd2bc25ed73886bf7d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T08:49:01.374Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T08:49:01.379Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T08:50:20.197Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T08:50:20.197Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67935dc02816b977bf6f1bae"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T09:30:40.773Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-24T09:30:40.779Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T09:30:40.779Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67935eb74667f040a50ec9ad"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T09:34:47.347Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-24T09:34:47.351Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T09:34:47.351Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67936266eece969799806405"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T09:50:30.895Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-24T09:50:30.901Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T09:50:30.901Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679363d8d3ba0891664907b1"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T09:56:40.798Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T09:56:40.805Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T10:08:31.745Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-24T10:08:31.745Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "679366acd3ba0891664907c8"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T10:08:44.047Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-24T10:08:44.048Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T10:08:44.048Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67936c9fce11e7bebc713177"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T10:34:07.200Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-24T10:34:07.206Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T10:34:07.206Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6793e3b6dc1b783a8a5efd9d"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T19:02:14.305Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-24T19:02:14.312Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-24T19:02:14.312Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6793f516ffafc1ca0f43536f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-24T20:16:22.094Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-24T20:16:22.099Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T02:08:43.673Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-25T02:08:43.672Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "679447b8ffafc1ca0f435386"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T02:08:56.977Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-25T02:08:56.980Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T06:42:02.534Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-25T06:42:02.533Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "679487cbffafc1ca0f43539e"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T06:42:19.648Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T06:42:19.652Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T06:42:19.652Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679488e54fed3a816547b0ca"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T06:47:01.514Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T06:47:01.520Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T06:47:01.520Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6794892fa2145e232c03f8d6"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T06:48:15.004Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-25T06:48:15.010Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T08:13:25.560Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-25T08:13:25.559Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67949d31a2145e232c03f8ed"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T08:13:37.847Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T08:13:37.851Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T08:13:37.851Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6794e256c473c63ad2d3551f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T13:08:38.122Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T13:08:38.127Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T13:08:38.127Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679501b9eae01fb637c094c7"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T15:22:33.806Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T15:22:33.810Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T15:22:33.810Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679503f1495f130cfc20b5db"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T15:32:01.718Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T15:32:01.724Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T15:32:01.724Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679505741b2a1b50b38ea2ec"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T15:38:28.083Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T15:38:28.088Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T15:38:28.088Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679506cd34d4c7b867ca08f1"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T15:44:13.870Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T15:44:13.875Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T15:44:13.875Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67950f0d02824eb6b29fccb2"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T16:19:25.187Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T16:19:25.192Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T16:19:25.192Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679511ce247700ac53e1ebf3"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T16:31:10.709Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-25T16:31:10.714Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T16:33:01.672Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-25T16:33:01.671Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67951256247700ac53e1ec19"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T16:33:26.629Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T16:33:26.630Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T16:33:26.630Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679512fef4699727c1ea53bf"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T16:36:14.341Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T16:36:14.347Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T16:36:14.347Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6795162bc7e6aa2efb63e396"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T16:49:47.391Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T16:49:47.396Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T16:49:47.396Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67951baa2fec37a9f0e7fc35"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T17:13:14.139Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T17:13:14.144Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T17:13:14.144Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67951f9b05c101088aa58797"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T17:30:03.757Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T17:30:03.763Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T17:30:03.763Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679520fd3619e472d0617f35"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T17:35:57.133Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T17:35:57.138Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T17:35:57.138Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6795221d450347ae7b00b186"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T17:40:45.033Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T17:40:45.037Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T17:40:45.037Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679551ba1b721722a72a0e68"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-25T21:03:54.704Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-25T21:03:54.710Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-25T21:03:54.710Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6795806696b0db582b134134"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-26T00:23:02.599Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-26T00:23:02.604Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-26T00:23:02.604Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679581fe0bfea02ee85bd9c5"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-26T00:29:50.768Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-26T00:29:50.774Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-26T00:29:50.774Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6795833f7f1b46dd5e0e523f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-26T00:35:11.374Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-26T00:35:11.379Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-26T00:35:11.379Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6796e5358100ae3b82b98df7"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T01:45:25.379Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-27T01:45:25.385Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T01:48:44.647Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-27T01:48:44.646Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6796e9400930cbf544793b68"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T02:02:40.589Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-27T02:02:40.594Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T08:46:56.829Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-27T08:46:56.828Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "679748100930cbf544793b7f"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T08:47:12.219Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-27T08:47:12.223Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T08:48:17.938Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-27T08:48:17.938Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6797486d04df3d548623ce51"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T08:48:45.201Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-27T08:48:45.205Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T08:55:15.453Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-27T08:55:15.452Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67974a1704df3d548623ce77"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T08:55:51.716Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-27T08:55:51.716Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T08:55:51.716Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67974aec33813db2e35222ad"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T08:59:24.648Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-27T08:59:24.653Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T09:02:25.233Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-27T09:02:25.232Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67974bb633813db2e35222d3"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T09:02:46.893Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-27T09:02:46.894Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T09:03:14.720Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-27T09:03:14.720Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "67974d2b3c475c5a2e215c17"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T09:08:59.865Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-27T09:08:59.871Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T09:08:59.871Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67974e7cc6d6f711520ae5b7"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T09:14:36.295Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "completed",
+  "createdAt": {
+    "$date": "2025-01-27T09:14:36.301Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T09:28:17.722Z"
+  },
+  "__v": 0,
+  "logoutTime": {
+    "$date": "2025-01-27T09:28:17.721Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "679751ec3a650fd6232b7ff5"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T09:29:16.115Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-27T09:29:16.119Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T09:29:16.119Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67976c44548b998adaa6d958"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T11:21:40.350Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-27T11:21:40.355Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T11:21:40.355Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679776f1038231e48020627a"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T12:07:13.752Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-27T12:07:13.757Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T12:07:13.757Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6797c0f75b8de1b9f0a13e7a"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T17:23:03.520Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-27T17:23:03.526Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T17:23:03.526Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6798015c2db8992e7d04d0b3"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T21:57:48.282Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-27T21:57:48.287Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T21:57:48.287Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "67981d82b50a2810beca354c"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-27T23:57:54.924Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-27T23:57:54.929Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-27T23:57:54.929Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6798c31b61ff6453da2e08f2"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-28T11:44:27.891Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-28T11:44:27.896Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-28T11:44:27.896Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6798d5d019067f171cd38281"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-28T13:04:16.854Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-28T13:04:16.858Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-28T13:04:16.858Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6798eb0b122be64e5db29fc1"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-28T14:34:51.080Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-28T14:34:51.084Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-28T14:34:51.084Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6798f9537739e5c73f37ef60"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-28T15:35:47.094Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-28T15:35:47.097Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-28T15:35:47.097Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6798fb1ca7f579e76b8250a7"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-28T15:43:24.879Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-28T15:43:24.883Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-28T15:43:24.883Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "679905e3b9d17636aacebf7c"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-28T16:29:23.748Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-28T16:29:23.754Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-28T16:29:23.754Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6799c44f518bbbbb7842a764"
+  },
+  "userId": {
+    "$oid": "671a2f707e79cc7d9d4a63b0"
+  },
+  "email": "opr",
+  "role": "operator",
+  "loginTime": {
+    "$date": "2025-01-29T06:01:51.326Z"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+  "ipAddress": "::1",
+  "status": "active",
+  "createdAt": {
+    "$date": "2025-01-29T06:01:51.331Z"
+  },
+  "updatedAt": {
+    "$date": "2025-01-29T06:01:51.331Z"
+  },
+  "__v": 0
+}]

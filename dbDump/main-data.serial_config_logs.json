@@ -1,0 +1,335 @@
+[{
+  "_id": {
+    "$oid": "672c3c32ea80defbc5a04b36"
+  },
+  "initialValue": "97",
+  "currentValue": "0",
+  "resetValue": "0",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-07T04:04:02.474Z",
+  "updatedBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "672c4b7cdb140083a542145b"
+  },
+  "type": "reset",
+  "previousValue": "0",
+  "newValue": "0",
+  "resetAt": "2024-11-07T05:09:16.616Z",
+  "resetBy": "super"
+},
+{
+  "_id": {
+    "$oid": "672c4e6adb140083a542153f"
+  },
+  "type": "reset",
+  "previousValue": "0",
+  "newValue": "0",
+  "resetAt": "2024-11-07T05:21:46.558Z",
+  "resetBy": "super"
+},
+{
+  "_id": {
+    "$oid": "672c5141db140083a542154a"
+  },
+  "type": "reset",
+  "previousValue": "0",
+  "newValue": "0",
+  "resetAt": "2024-11-07T05:33:53.883Z",
+  "resetBy": "super"
+},
+{
+  "_id": {
+    "$oid": "672c52f3db140083a5421557"
+  },
+  "type": "reset",
+  "previousValue": "0",
+  "newValue": "0",
+  "resetAt": "2024-11-07T05:41:07.315Z",
+  "resetBy": "super"
+},
+{
+  "_id": {
+    "$oid": "672c53f0db140083a5421608"
+  },
+  "type": "reset",
+  "previousValue": "0",
+  "newValue": "0",
+  "resetAt": "2024-11-07T05:45:20.833Z",
+  "resetBy": "super"
+},
+{
+  "_id": {
+    "$oid": "672c859fdb140083a542244c"
+  },
+  "type": "reset",
+  "previousValue": "0",
+  "newValue": "0",
+  "resetAt": "2024-11-07T09:17:19.324Z",
+  "resetBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "672c950adb140083a5422454"
+  },
+  "initialValue": "1",
+  "currentValue": "0",
+  "resetValue": "0",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-07T10:23:06.072Z",
+  "updatedBy": "Admin"
+},
+{
+  "_id": "672c950a2e91f379696e6dc1",
+  "currentValue": "0",
+  "initialValue": "11",
+  "resetInterval": "daily",
+  "resetValue": "0",
+  "updatedAt": "2024-11-07T10:36:13.011Z",
+  "updatedBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "672c98d7db140083a5422469"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "11",
+  "currentValue": "0",
+  "resetValue": "0",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-07T10:39:19.624Z",
+  "updatedBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "672c98e0db140083a542246f"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "0",
+  "resetValue": "0",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-07T10:39:28.768Z",
+  "updatedBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "672fc41d5ba6f0e791ac10ae"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "0002",
+  "resetValue": "0",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-09T20:20:45.049Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "672fc6445ba6f0e791ac10b4"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "0002",
+  "resetValue": "0",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-09T20:29:56.803Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "672fc65e5ba6f0e791ac10ba"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "0002",
+  "resetValue": "0",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-09T20:30:22.600Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "672fc6695ba6f0e791ac10c0"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "0002",
+  "resetValue": "0",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-09T20:30:33.823Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "67317d4e92c315afd79d1d18"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "",
+  "resetValue": "1",
+  "resetInterval": null,
+  "updatedAt": "2024-11-11T03:43:10.232Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "67318f2f429cc16566a91b7f"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-11T04:59:27.820Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "67319be5429cc16566a91e2c"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-11T05:53:41.762Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "67319c0a429cc16566a91e31"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-11T05:54:18.971Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "67319c0e429cc16566a91e36"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-11T05:54:22.247Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "67319c11429cc16566a91e3b"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-11T05:54:25.653Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "6731b1da429cc16566a92078"
+  },
+  "type": "reset",
+  "previousValue": "",
+  "newValue": "1",
+  "resetAt": "2024-11-11T07:27:22.860Z",
+  "resetBy": "super"
+},
+{
+  "_id": {
+    "$oid": "6731d6b973f5a4f31dc23beb"
+  },
+  "type": "reset",
+  "previousValue": "1",
+  "newValue": "1",
+  "resetAt": "2024-11-11T10:04:41.727Z",
+  "resetBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "6731d6d273f5a4f31dc23bf4"
+  },
+  "type": "reset",
+  "previousValue": "1",
+  "newValue": "1",
+  "resetAt": "2024-11-11T10:05:06.902Z",
+  "resetBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "6731d6e173f5a4f31dc23bf9"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "1",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-11T10:05:21.002Z",
+  "updatedBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "673db3637a738810609d026c"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "1",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-20T10:01:07.166Z",
+  "updatedBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "673db3667a738810609d0271"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "1",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-20T10:01:10.464Z",
+  "updatedBy": "Admin"
+},
+{
+  "_id": {
+    "$oid": "673ef9125c828eb2b0bead40"
+  },
+  "type": "reset",
+  "previousValue": "1",
+  "newValue": "1",
+  "resetAt": "2024-11-21T09:10:42.355Z",
+  "resetBy": "super"
+},
+{
+  "_id": {
+    "$oid": "673ef9165c828eb2b0bead45"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "1",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-21T09:10:46.869Z",
+  "updatedBy": "super"
+},
+{
+  "_id": {
+    "$oid": "673ef9175c828eb2b0bead4a"
+  },
+  "configId": "672c950a2e91f379696e6dc1",
+  "initialValue": "1",
+  "currentValue": "1",
+  "resetValue": "1",
+  "resetInterval": "daily",
+  "updatedAt": "2024-11-21T09:10:47.851Z",
+  "updatedBy": "super"
+}]

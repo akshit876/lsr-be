@@ -1,44 +1,45 @@
 [{
   "_id": {
-    "$oid": "6732f166290f449fa4faa2fa"
+    "$oid": "673187545d79b5d503903c05"
+  },
+  "__v": 0,
+  "createdAt": {
+    "$date": "2024-11-11T04:25:56.660Z"
   },
   "shifts": [
     {
       "shiftId": "1",
       "name": "A",
       "startTime": "06:00",
-      "endTime": "14:00",
-      "duration": 8,
+      "endTime": "14:30",
+      "duration": 8.5,
       "_id": {
-        "$oid": "6732f224696336bdb07a752f"
+        "$oid": "673f786a5c828eb2b0beae47"
       }
     },
     {
       "shiftId": "2",
       "name": "B",
-      "startTime": "14:00",
-      "endTime": "22:00",
-      "duration": 8,
+      "startTime": "14:30",
+      "endTime": "23:00",
+      "duration": 8.5,
       "_id": {
-        "$oid": "6732f224696336bdb07a7530"
+        "$oid": "673f786a5c828eb2b0beae48"
       }
     },
     {
       "shiftId": "3",
       "name": "C",
-      "startTime": "22:00",
+      "startTime": "23:00",
       "endTime": "06:00",
-      "duration": 8,
+      "duration": 7,
       "_id": {
-        "$oid": "6732f224696336bdb07a7531"
+        "$oid": "673f786a5c828eb2b0beae49"
       }
     }
   ],
   "totalHours": 24,
-  "createdAt": {
-    "$date": "2024-11-12T06:10:46.937Z"
-  },
   "updatedAt": {
-    "$date": "2024-11-12T06:13:56.787Z"
+    "$date": "2024-11-21T18:14:02.465Z"
   }
 }]

@@ -1,29 +1,144 @@
 [{
   "_id": {
-    "$oid": "6732f166290f449fa4faa2f9"
+    "$oid": "674aaa12a9a40fb2abb63c71"
   },
   "fields": [
     {
       "fieldName": "Model Number",
       "order": 999,
       "isChecked": false,
-      "value": "Sample",
-      "maxLength": 20,
-      "isRequired": true
+      "value": "CYLINDER BLOCK 2W SUZUKI",
+      "isRequired": true,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c72"
+      }
     },
     {
-      "fieldName": "SHIFT",
-      "order": 12,
+      "fieldName": "Year",
+      "order": 6,
       "isChecked": true,
+      "value": "24",
+      "isRequired": false,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c73"
+      }
+    },
+    {
+      "fieldName": "Month",
+      "order": 5,
+      "isChecked": true,
+      "value": "11",
+      "isRequired": false,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c74"
+      }
+    },
+    {
+      "fieldName": "Date",
+      "order": 4,
+      "isChecked": true,
+      "value": "30",
+      "isRequired": false,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c75"
+      }
+    },
+    {
+      "fieldName": "PART NO",
+      "order": 3,
+      "isChecked": true,
+      "value": "11210M02L20",
+      "isRequired": true,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c76"
+      }
+    },
+    {
+      "fieldName": "SUPPLIER CODE",
+      "order": 1,
+      "isChecked": true,
+      "value": "R082",
+      "isRequired": true,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c77"
+      }
+    },
+    {
+      "fieldName": "MACHINE NO",
+      "order": 1000,
+      "isChecked": false,
       "value": "",
-      "maxLength": 1,
-      "isRequired": true
+      "isRequired": true,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c78"
+      }
+    },
+    {
+      "fieldName": "Julian Date",
+      "order": 1001,
+      "isChecked": false,
+      "value": "335",
+      "isRequired": false,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c79"
+      }
+    },
+    {
+      "fieldName": "Serial Number",
+      "order": 8,
+      "isChecked": true,
+      "value": "0001",
+      "isRequired": true,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c7a"
+      }
+    },
+    {
+      "fieldName": "COMPANY CODE",
+      "order": 1002,
+      "isChecked": false,
+      "value": "",
+      "isRequired": true,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c7b"
+      }
+    },
+    {
+      "fieldName": "FOR STORE",
+      "order": 2,
+      "isChecked": true,
+      "value": "XX",
+      "isRequired": false,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c7c"
+      }
+    },
+    {
+      "fieldName": "STORE",
+      "order": 1003,
+      "isChecked": false,
+      "value": "",
+      "isRequired": false,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c7d"
+      }
+    },
+    {
+      "fieldName": "Shift",
+      "order": 7,
+      "isChecked": true,
+      "value": "A",
+      "isRequired": true,
+      "_id": {
+        "$oid": "674aaa12a9a40fb2abb63c7e"
+      }
     }
   ],
   "createdAt": {
-    "$date": "2024-11-12T06:10:46.932Z"
+    "$date": "2024-11-30T06:00:50.305Z"
   },
   "updatedAt": {
-    "$date": "2024-11-12T06:10:46.932Z"
-  }
+    "$date": "2024-12-09T06:37:02.465Z"
+  },
+  "__v": 0
 }]

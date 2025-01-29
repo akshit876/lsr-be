@@ -475,15 +475,13 @@ class ScannerController {
     scannerData,
     grading,
     result,
+    isUpdate = false,
   }) {
     const now = new Date();
     const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
 
     try {
-      // Fetch user details from the usersessionlogs collection
       const userDetails = await mongoDbService.getUserDetails();
-
-      // Get the current day ID
       const currentId = await this.getCurrentDayId();
 
       const data = {
@@ -494,11 +492,23 @@ class ScannerController {
         Result: result ? "OK" : "NG",
         User: userDetails?.email || "Unknown",
         Grade: grading?.toUpperCase(),
-        CurrentId: currentId, // Add the current ID field
+        CurrentId: currentId,
       };
 
-      await mongoDbService.insertRecord(data, "main-data", "records");
-      logger.info(`Data saved to MongoDB with CurrentId: ${currentId}`);
+      if (isUpdate) {
+        // Find and update the most recent record for this serial number
+        await mongoDbService.updateLastRecord(
+          { SerialNumber: serialNumber },
+          { $set: data },
+          "main-data",
+          "records"
+        );
+        logger.info(`Updated MongoDB record for SerialNumber: ${serialNumber}`);
+      } else {
+        // Insert new record
+        await mongoDbService.insertRecord(data, "main-data", "records");
+        logger.info(`Data saved to MongoDB with CurrentId: ${currentId}`);
+      }
 
       if (io) {
         mongoDbService.sendMongoDbDataToClient(io, "main-data", "records");
@@ -880,6 +890,20 @@ class ScannerController {
       }
 
       const isVerified = await this.verifyAndRetryWrite(text, 2);
+
+      // Add MongoDB write after file verification
+      if (isVerified) {
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: serialNo,
+          markingData: text,
+          scannerData: "N/A", // No scanner data at this point
+          result: "N/A", // File write was successful
+          grading: "N/A", // No grading at this point
+          isUpdate: false,
+        });
+      }
+
       return isVerified ? { text, serialNo } : null;
     } catch (error) {
       logger.error("❌ Error in file writing process:", error);
@@ -906,9 +930,10 @@ class ScannerController {
         io: this.io,
         serialNumber: barcodeData.serialNo,
         markingData: barcodeData.text,
-        scannerData: secondScannerData, // Use full NG value
+        scannerData: secondScannerData,
         result: false,
         grading,
+        isUpdate: true,
       });
 
       return { success: false };
@@ -935,6 +960,7 @@ class ScannerController {
       scannerData: secondScannerData,
       result: isDataMatching && checkGrading,
       grading,
+      isUpdate: true,
     });
 
     return { success: isDataMatching };
