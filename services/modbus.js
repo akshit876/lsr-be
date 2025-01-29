@@ -16,6 +16,8 @@ class ModbusConnection {
     this.isConnected = false;
     this.reconnectInterval = 5000; // 5 seconds
     this.socket = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 0; // 0 means infinite attempts
   }
 
   async connect() {
@@ -25,33 +27,57 @@ class ModbusConnection {
 
     try {
       await this.client.connectTCP(MODBUS_IP, { port: MODBUS_PORT });
-      this.client.setID(1); // Set the Modbus slave ID (adjust as needed)
+      this.client.setID(1);
       this.isConnected = true;
+      this.reconnectAttempts = 0; // Reset attempts on successful connection
       logger.info(`Connected to Modbus device at ${MODBUS_IP}:${MODBUS_PORT}`);
     } catch (error) {
-      console.log("connect", { error });
-      emitErrorEvent(
-        this.socket,
-        "MODBUS_CONNECT_ERROR",
-        `Error connecting to Modbus device: ${error.message}`
+      this.reconnectAttempts++;
+      logger.error(
+        `Connection attempt ${this.reconnectAttempts} failed: ${error.message}`
       );
-      // this.scheduleReconnect();
+      this.handleDisconnect();
     }
   }
 
   handleDisconnect() {
-    logger.warn("Modbus connection closed. Attempting to reconnect...");
+    if (this.isConnected) {
+      logger.warn("Modbus connection lost. Attempting to reconnect...");
+    }
     this.isConnected = false;
     this.scheduleReconnect();
   }
 
   scheduleReconnect() {
-    setTimeout(() => this.connect(), this.reconnectInterval);
+    if (
+      this.maxReconnectAttempts === 0 ||
+      this.reconnectAttempts < this.maxReconnectAttempts
+    ) {
+      logger.info(
+        `Scheduling reconnection attempt in ${this.reconnectInterval / 1000} seconds...`
+      );
+      setTimeout(() => this.connect(), this.reconnectInterval);
+    }
+  }
+
+  handleError(error) {
+    if (
+      error.errno === "ETIMEDOUT" ||
+      error.errno === "ECONNRESET" ||
+      error.message.includes("Port Not Open")
+    ) {
+      logger.warn(`Connection error: ${error.message}. Scheduling reconnect.`);
+      this.isConnected = false;
+      this.handleDisconnect();
+    }
   }
 
   async ensureConnection() {
     if (!this.isConnected) {
       await this.connect();
+      if (!this.isConnected) {
+        throw new Error("Unable to establish Modbus connection");
+      }
     }
   }
 
@@ -381,14 +407,6 @@ class ModbusConnection {
       );
       this.handleError(error);
       throw error;
-    }
-  }
-
-  handleError(error) {
-    if (error.errno === "ETIMEDOUT" || error.errno === "ECONNRESET") {
-      logger.warn(`Connection error: ${error.errno}. Scheduling reconnect.`);
-      this.isConnected = false;
-      this.scheduleReconnect();
     }
   }
 }

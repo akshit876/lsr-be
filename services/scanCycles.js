@@ -19,6 +19,7 @@ import fs from "fs";
 import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import serialNumberService from "./serialNumber.js";
+import * as modbusService from "./modbus.js";
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -124,16 +125,9 @@ class ScannerController {
       );
       logger.success("Barcode generator initialized");
 
-      // Add TCP connection with retry logic and status tracking
-      await this.connectToPLCWithRetry();
-
-      if (this.io) {
-        this.io.emit("plc_status", {
-          connected: true,
-          timestamp: new Date(),
-          message: "PLC connected successfully",
-        });
-      }
+      // Initialize Modbus connection
+      logger.info("🔌 Initializing Modbus connection...");
+      await modbusService.connect();
 
       this.isInitialized = true;
       logger.success("Scanner controller initialization complete");
@@ -1180,167 +1174,99 @@ class ScannerController {
     return this.currentDayId++;
   }
 
-  // Add method to check PLC connection before operations
+  // Replace ensurePLCConnection with this simpler version
   async ensurePLCConnection() {
-    if (!this.plcConnected && !this.reconnectionAttemptInProgress) {
-      logger.warn("PLC connection lost, attempting to reconnect...");
-      await this.connectToPLCWithRetry();
-    }
-    if (!this.plcConnected) {
+    try {
+      // Use Modbus service's built-in connection management
+      await modbusService.connect();
+      this.plcConnected = true;
+    } catch (error) {
+      this.plcConnected = false;
       throw new Error("PLC connection unavailable");
     }
   }
 
-  async connectToPLCWithRetry(maxRetries = 5, retryDelay = 5000) {
-    if (this.reconnectionAttemptInProgress) {
-      logger.warn("Reconnection attempt already in progress");
-      return;
-    }
-
-    this.reconnectionAttemptInProgress = true;
-    try {
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          logger.info(
-            `Attempting to connect to PLC (Attempt ${attempt}/${maxRetries})`
-          );
-          await tcpClient.connect({
-            port: TCP_CONFIG.PORT,
-            host: TCP_CONFIG.HOST,
-          });
-          logger.success("TCP Scanner client connected successfully");
-          this.plcConnected = true;
-
-          // Set up connection monitoring
-          this.setupPLCConnectionMonitoring();
-          return;
-        } catch (error) {
-          logger.error(
-            `Failed to connect to PLC (Attempt ${attempt}/${maxRetries}):`,
-            error
-          );
-
-          if (attempt === maxRetries) {
-            logger.error(
-              "Maximum retry attempts reached. Unable to connect to PLC."
-            );
-            throw new Error(
-              "Failed to establish PLC connection after maximum retries"
-            );
-          }
-
-          logger.info(
-            `Waiting ${retryDelay / 1000} seconds before next retry...`
-          );
-          await sleep(retryDelay);
-        }
-      }
-    } finally {
-      this.reconnectionAttemptInProgress = false;
-    }
-  }
-
-  setupPLCConnectionMonitoring() {
-    // Monitor TCP client connection status through error handling in operations
-    // Remove the event listener approach since tcpClient doesn't support it
-    this.plcConnected = true;
-  }
-
+  // Update handlePLCError to use Modbus error handling
   async handlePLCError(error) {
-    logger.error("PLC connection error:", error);
-    this.plcConnected = false;
-
-    // Check if error is connection-related
     if (
-      error.code === "ECONNREFUSED" ||
-      error.code === "ECONNRESET" ||
-      error.code === "ETIMEDOUT"
+      !this.lastErrorMessage ||
+      this.lastErrorMessage !== error.message ||
+      Date.now() - this.lastErrorTime > 5000
     ) {
-      await this.handlePLCDisconnection();
+      logger.error("PLC communication error:", error);
+      this.lastErrorMessage = error.message;
+      this.lastErrorTime = Date.now();
     }
-  }
-
-  async handlePLCDisconnection() {
-    if (!this.plcConnected) return; // Prevent multiple handlers
 
     this.plcConnected = false;
-    logger.warn("PLC connection lost");
 
     if (this.io) {
       this.io.emit("plc_status", {
         connected: false,
         timestamp: new Date(),
-        message: "PLC connection lost",
+        message: "PLC communication error",
       });
-    }
-
-    // Attempt to reconnect
-    try {
-      await this.connectToPLCWithRetry();
-    } catch (error) {
-      logger.error("Failed to reconnect to PLC:", error);
     }
   }
 
-  // Add these methods to handle all PLC operations with connection checks
-
+  // Update all PLC communication methods to use Modbus service directly
   async writeBit(register, bit, value) {
-    await this.ensurePLCConnection();
     try {
-        return await writeBit(register, bit, value);
+      await modbusService.writeBit(register, bit, value);
     } catch (error) {
-        this.handlePLCError(error);
-        throw error;
+      await this.handlePLCError(error);
+      throw error;
     }
   }
 
   async readBit(register, bit) {
-    await this.ensurePLCConnection();
     try {
-        return await readBit(register, bit);
+      return await modbusService.readBit(register, bit);
     } catch (error) {
-        this.handlePLCError(error);
-        throw error;
+      await this.handlePLCError(error);
+      throw error;
     }
   }
 
   async readRegister(register, length) {
-    await this.ensurePLCConnection();
     try {
-        return await readRegister(register, length);
+      return await modbusService.readRegister(register, length);
     } catch (error) {
-        this.handlePLCError(error);
-        throw error;
+      await this.handlePLCError(error);
+      throw error;
     }
   }
 
   async writeRegister(register, value) {
-    await this.ensurePLCConnection();
     try {
-        return await writeRegister(register, value);
+      await modbusService.writeRegister(register, value);
     } catch (error) {
-        this.handlePLCError(error);
-        throw error;
+      await this.handlePLCError(error);
+      throw error;
     }
   }
 
   async readRegisterAndProvideASCII(register, length) {
-    await this.ensurePLCConnection();
     try {
-        return await readRegisterAndProvideASCII(register, length);
+      return await modbusService.readRegisterAndProvideASCII(register, length);
     } catch (error) {
-        this.handlePLCError(error);
-        throw error;
+      await this.handlePLCError(error);
+      throw error;
     }
   }
 
   async writeBitsWithRest(register, bit, value, restTime, shouldLog = true) {
-    await this.ensurePLCConnection();
     try {
-        return await writeBitsWithRest(register, bit, value, restTime, shouldLog);
+      await modbusService.writeBitsWithRest(
+        register,
+        bit,
+        value,
+        restTime,
+        shouldLog
+      );
     } catch (error) {
-        this.handlePLCError(error);
-        throw error;
+      await this.handlePLCError(error);
+      throw error;
     }
   }
 }
