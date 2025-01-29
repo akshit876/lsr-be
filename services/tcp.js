@@ -1,93 +1,169 @@
 import net from "net";
+import logger from "../logger.js";
 
 class TCPClient {
   constructor() {
-    if (TCPClient.instance) {
-      return TCPClient.instance;
-    }
-
-    this.client = null; // Holds the single instance of the client
-    TCPClient.instance = this;
+    this.client = null;
+    this.isConnected = false;
+    this.reconnectInterval = 5000; // 5 seconds
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 0; // 0 means infinite attempts
+    this.connectionConfig = null;
+    this.pendingConnection = null;
   }
 
-  connect({ port, host }) {
-    if (this.client) {
-      console.log("Reusing existing TCP connection...");
-      return Promise.resolve(this.client); // Return the existing connection
+  async connect(config) {
+    // Save config for reconnection attempts
+    this.connectionConfig = config;
+
+    // If already connecting, return the pending connection
+    if (this.pendingConnection) {
+      return this.pendingConnection;
     }
 
-    console.log(`Establishing new TCP connection to ${host}:${port}...`);
+    // If already connected, return immediately
+    if (this.isConnected && this.client) {
+      return Promise.resolve();
+    }
+
+    // Create new connection promise
+    this.pendingConnection = new Promise((resolve, reject) => {
+      try {
+        logger.info(
+          `Attempting to connect to scanner at ${config.host}:${config.port}`
+        );
+
+        this.client = new net.Socket();
+
+        // Setup event handlers
+        this.client.on("connect", () => {
+          logger.success(
+            `Connected to scanner at ${config.host}:${config.port}`
+          );
+          this.isConnected = true;
+          this.reconnectAttempts = 0;
+          this.pendingConnection = null;
+          resolve();
+        });
+
+        this.client.on("error", (error) => {
+          logger.error(`Scanner connection error: ${error.message}`);
+          this.handleError(error);
+        });
+
+        this.client.on("close", () => {
+          logger.warn("Scanner connection closed");
+          this.handleDisconnect();
+        });
+
+        this.client.on("end", () => {
+          logger.warn("Scanner connection ended");
+          this.handleDisconnect();
+        });
+
+        // Attempt connection
+        this.client.connect(config);
+      } catch (error) {
+        this.pendingConnection = null;
+        this.handleError(error);
+        reject(error);
+      }
+    });
+
+    return this.pendingConnection;
+  }
+
+  handleError(error) {
+    this.isConnected = false;
+    this.pendingConnection = null;
+
+    if (error.code === "ECONNREFUSED" || error.code === "ETIMEDOUT") {
+      this.scheduleReconnect();
+    }
+  }
+
+  handleDisconnect() {
+    if (this.isConnected) {
+      logger.warn("Scanner connection lost");
+    }
+    this.isConnected = false;
+    this.pendingConnection = null;
+    this.scheduleReconnect();
+  }
+
+  scheduleReconnect() {
+    if (
+      this.connectionConfig &&
+      (this.maxReconnectAttempts === 0 ||
+        this.reconnectAttempts < this.maxReconnectAttempts)
+    ) {
+      this.reconnectAttempts++;
+      logger.info(
+        `Scheduling scanner reconnection attempt ${this.reconnectAttempts} in ${this.reconnectInterval / 1000} seconds...`
+      );
+
+      setTimeout(() => {
+        if (!this.isConnected && !this.pendingConnection) {
+          this.connect(this.connectionConfig).catch(() => {
+            // Error handling is done in connect() method
+          });
+        }
+      }, this.reconnectInterval);
+    }
+  }
+
+  async getDataTwiceAndConcat(options = {}) {
+    const { isFirst = false, isSecond = false } = options;
+
+    if (!this.isConnected) {
+      throw new Error("Scanner connection not established");
+    }
+
     return new Promise((resolve, reject) => {
-      this.client = new net.Socket();
+      let data = "";
+      let dataCount = 0;
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error("Scanner read timeout"));
+      }, 10000); // 10 second timeout
 
-      this.client.connect(port, host, () => {
-        console.log(`Connected to TCP server at ${host}:${port}`);
-        resolve(this.client);
-      });
+      const dataHandler = (chunk) => {
+        data += chunk.toString();
+        dataCount++;
 
-      this.client.on("error", (err) => {
-        console.error("TCP connection error:", err.message);
-        this.client = null; // Reset client on error
-        reject(err);
-      });
+        if (dataCount === 2) {
+          cleanup();
+          const cleanedData = data.replace(/[\r\n]+/g, "").trim();
+          logger.info(
+            `Scanner data received (${isFirst ? "First" : isSecond ? "Second" : "Unknown"} scan): ${cleanedData}`
+          );
+          resolve(cleanedData);
+        }
+      };
 
-      this.client.on("close", () => {
-        console.log("TCP connection closed");
-        this.client = null; // Reset client on close
-      });
+      const errorHandler = (error) => {
+        cleanup();
+        reject(error);
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        this.client.removeListener("data", dataHandler);
+        this.client.removeListener("error", errorHandler);
+      };
+
+      this.client.on("data", dataHandler);
+      this.client.on("error", errorHandler);
     });
   }
 
-  async readData() {
-    if (!this.client) {
-      throw new Error("TCP client is not connected.");
-    }
-
-    return new Promise((resolve, reject) => {
-      this.client.once("data", (data) => {
-        resolve(data?.toString()?.trim());
-      });
-
-      this.client.on("error", (err) => {
-        console.error("Error while receiving data:", err.message);
-        reject(err);
-      });
-    });
-  }
-
-  async getDataTwiceAndConcat({ isFirst = true, isSecond = false }) {
-    if (!this.client) {
-      throw new Error("TCP client is not connected.");
-    }
-
-    console.log("Reading data from TCP server...");
-    try {
-      const firstData = await this.readData();
-      console.log("First data received:", { firstData });
-      let concatenatedData = firstData;
-      if (firstData == "0\r\n0" || firstData == "0") {
-        concatenatedData = "NG";
-      }
-
-      if (isSecond && concatenatedData != "NG") {
-        const secondData = await this.readData();
-        console.log("Second data received:", { secondData });
-        concatenatedData += secondData;
-        console.log("Concatenated data:", concatenatedData);
-      }
-
-      return concatenatedData;
-    } catch (err) {
-      throw new Error(`Failed to read data twice: ${err.message}`);
-    }
-  }
-
-  close() {
+  disconnect() {
     if (this.client) {
-      console.log("Closing TCP connection...");
       this.client.destroy();
       this.client = null;
     }
+    this.isConnected = false;
+    this.pendingConnection = null;
   }
 }
 
@@ -110,6 +186,6 @@ export const tcpClient = new TCPClient();
 //     console.error("Error:", error.message);
 //   } finally {
 //     // Close the connection when done
-//     tcpClient.close();
+//     tcpClient.disconnect();
 //   }
 // })();

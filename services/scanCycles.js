@@ -1013,13 +1013,13 @@ class ScannerController {
   }
 
   async fetchScannerData(comService, options = {}) {
-    await this.ensurePLCConnection();
     const {
       isSecondScan = false,
       register = isSecondScan ? 1416 : 1415,
       bit = isSecondScan ? 15 : 0,
       timeout = isSecondScan ? 100 * 1000 : 100 * 1000,
       scannerLabel = isSecondScan ? "Second" : "First",
+      maxRetries = 3,
     } = options;
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
@@ -1030,39 +1030,76 @@ class ScannerController {
     }
     this.isScanning = true;
 
-    try {
-      logger.info(
-        `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
-      );
+    let retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        // Ensure PLC connection first
+        await this.ensurePLCConnection();
 
-      await this.writeBit(register, bit, 1);
+        logger.info(
+          `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
+        );
+        await this.writeBit(register, bit, 1);
 
-      // Ensure scanner connection before getting data
-      await this.ensureScannerConnection();
+        // Ensure scanner connection with retry logic
+        try {
+          await this.ensureScannerConnection();
+        } catch (scannerError) {
+          logger.warn(
+            `Scanner connection failed, attempt ${retryCount + 1}/${maxRetries}`
+          );
+          await sleep(2000); // Wait before retry
+          retryCount++;
+          continue;
+        }
 
-      const result = await tcpClient.getDataTwiceAndConcat({
-        isFirst: !isSecondScan,
-        isSecond: isSecondScan,
-      });
-
-      if (this.io) {
-        this.io.emit("scanner_read", {
-          timestamp: new Date(),
-          scannerType: scannerLabel,
-          data: result,
+        const result = await tcpClient.getDataTwiceAndConcat({
+          isFirst: !isSecondScan,
+          isSecond: isSecondScan,
         });
+
+        // Truncate result to exactly 29 characters
+        const truncatedResult = result.substring(0, 29);
+
+        if (this.io) {
+          this.io.emit("scanner_read", {
+            timestamp: new Date(),
+            scannerType: scannerLabel,
+            data: truncatedResult,
+          });
+        }
+
+        this.isScanning = false;
+        return truncatedResult;
+      } catch (error) {
+        logger.error(
+          `Error in ${scannerLabel} scan attempt ${retryCount + 1}:`,
+          error
+        );
+
+        if (
+          error.message.includes("Scanner connection") ||
+          error.message.includes("Scanner read timeout")
+        ) {
+          // Scanner-specific errors
+          logger.warn(
+            `Retrying scanner operation, attempt ${retryCount + 1}/${maxRetries}`
+          );
+          await sleep(2000); // Wait before retry
+          retryCount++;
+        } else {
+          // PLC or other errors
+          this.handlePLCError(error);
+          throw error;
+        }
       }
-      return result;
-    } catch (error) {
-      if (error.message.includes("Scanner connection")) {
-        logger.error("Scanner connection error:", error);
-      } else {
-        this.handlePLCError(error);
-      }
-      throw error;
-    } finally {
-      this.isScanning = false;
     }
+
+    // If we've exhausted all retries
+    this.isScanning = false;
+    throw new Error(
+      `${scannerLabel} scanner operation failed after ${maxRetries} attempts`
+    );
   }
 
   async handleManualReset() {
