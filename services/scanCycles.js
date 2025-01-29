@@ -1241,16 +1241,23 @@ class ScannerController {
   }
 
   setupPLCConnectionMonitoring() {
-    // Monitor TCP client events
-    tcpClient.on("error", this.handlePLCError.bind(this));
-    tcpClient.on("close", this.handlePLCDisconnection.bind(this));
-    tcpClient.on("end", this.handlePLCDisconnection.bind(this));
+    // Monitor TCP client connection status through error handling in operations
+    // Remove the event listener approach since tcpClient doesn't support it
+    this.plcConnected = true;
   }
 
   async handlePLCError(error) {
     logger.error("PLC connection error:", error);
     this.plcConnected = false;
-    await this.handlePLCDisconnection();
+
+    // Check if error is connection-related
+    if (
+      error.code === "ECONNREFUSED" ||
+      error.code === "ECONNRESET" ||
+      error.code === "ETIMEDOUT"
+    ) {
+      await this.handlePLCDisconnection();
+    }
   }
 
   async handlePLCDisconnection() {
