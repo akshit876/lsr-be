@@ -89,6 +89,8 @@ class ScannerController {
     this.isPulseOn = false;
     this.currentDayId = 1;
     this.lastResetDate = this.getLastResetTime();
+    this.plcConnected = false;
+    this.reconnectionAttemptInProgress = false;
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
@@ -121,8 +123,17 @@ class ScannerController {
         BARCODE_RESET_MINUTE
       );
       logger.success("Barcode generator initialized");
-      await tcpClient.connect({ port: TCP_CONFIG.PORT, host: TCP_CONFIG.HOST });
-      logger.success("TCP Scanner client connected.......");
+
+      // Add TCP connection with retry logic and status tracking
+      await this.connectToPLCWithRetry();
+
+      if (this.io) {
+        this.io.emit("plc_status", {
+          connected: true,
+          timestamp: new Date(),
+          message: "PLC connected successfully",
+        });
+      }
 
       this.isInitialized = true;
       logger.success("Scanner controller initialization complete");
@@ -253,29 +264,37 @@ class ScannerController {
   }
 
   async checkResetOrBit(register, bit, value, timeout = 100 * 1000) {
-    logger.info(`🧹 Waiting for bit ${register}.${bit} to become ${value}`);
-    logger.info(
-      "-----------------------------------------------------------------------------------------------------------"
-    );
+    await this.ensurePLCConnection();
+    try {
+      logger.info(`🧹 Waiting for bit ${register}.${bit} to become ${value}`);
+      logger.info(
+        "-----------------------------------------------------------------------------------------------------------"
+      );
 
-    while (true) {
-      // Add continuous loop
-      try {
-        const result = await this.singleCheckAttempt(
-          register,
-          bit,
-          value,
-          timeout
-        );
-        if (result !== "timeout") {
-          return result;
+      while (true) {
+        try {
+          const result = await this.singleCheckAttempt(
+            register,
+            bit,
+            value,
+            timeout
+          );
+          if (result !== "timeout") {
+            return result;
+          }
+          await this.ensurePLCConnection(); // Check connection before retry
+          logger.info(`Retrying check for bit ${register}.${bit}`);
+        } catch (error) {
+          if (error.message === "PLC connection unavailable") {
+            throw error;
+          }
+          logger.error(`Error in bit check: ${error.message}`);
+          await sleep(1000);
         }
-        // If timeout occurred, continue the loop
-        logger.info(`Retrying check for bit ${register}.${bit}`);
-      } catch (error) {
-        logger.error(`Error in bit check: ${error.message}`);
-        await sleep(1000); // Add small delay before retry
       }
+    } catch (error) {
+      this.handlePLCError(error);
+      throw error;
     }
   }
 
@@ -489,7 +508,7 @@ class ScannerController {
         SerialNumber: serialNumber,
         MarkingData: markingData,
         ScannerData: scannerData,
-        Result: result ? result == "N/A" ? "N/A" : "OK" : "NG",
+        Result: result ? (result == "N/A" ? "N/A" : "OK") : "NG",
         User: userDetails?.email || "Unknown",
         Grade: grading?.toUpperCase(),
         CurrentId: currentId,
@@ -1000,6 +1019,7 @@ class ScannerController {
   }
 
   async fetchScannerData(comService, options = {}) {
+    await this.ensurePLCConnection();
     const {
       isSecondScan = false,
       register = isSecondScan ? 1416 : 1415,
@@ -1022,71 +1042,7 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      // const scannerDataPromise = new Promise((resolve, reject) => {
-      //   // Remove any existing listeners first
-      //   this.comService.removeAllListeners("dataGot");
-
-      //   const dataHandler = (data) => {
-      //     logger.success(
-      //       `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-      //     );
-
-      //     if (this.io) {
-      //       this.io.emit("scanner_read", {
-      //         timestamp: new Date(),
-      //         scannerType: scannerLabel,
-      //         data: data,
-      //       });
-      //     }
-
-      //     clearTimeout(timeoutId);
-      //     this.isScanning = false; // Reset the scanning flag
-      //     resolve(data);
-      //     this.comService.off("dataGot", dataHandler);
-      //   };
-
-      //   logger.info("👂 Adding event listener for scanner data");
-      //   this.comService.on("dataGot", dataHandler);
-
-      //   const timeoutId = setTimeout(() => {
-      //     logger.error(
-      //       `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
-      //     );
-      //     this.comService.off("dataGot", dataHandler);
-      //     this.isScanning = false; // Reset the scanning flag
-      //     reject(new Error(`${scannerLabel} scanner data timeout`));
-      //   }, timeout);
-
-      //   // Only trigger scanner if not already scanning
-      //   logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-      //   writeBit(register, bit, 1)
-      //     .then(() =>
-      //       logger.success(`${scannerLabel} scanner triggered successfully`)
-      //     )
-      //     .catch((err) => {
-      //       logger.error(
-      //         `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-      //         err
-      //       );
-      //       clearTimeout(timeoutId);
-      //       this.isScanning = false; // Reset the scanning flag
-      //       reject(err);
-      //     });
-      // });
-
       await writeBit(register, bit, 1);
-      // .then(() =>
-      //   logger.success(`${scannerLabel} scanner triggered successfully`)
-      // )
-      // .catch((err) => {
-      //   logger.error(
-      //     `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-      //     err
-      //   );
-      //   clearTimeout(timeoutId);
-      //   this.isScanning = false; // Reset the scanning flag
-      //   reject(err);
-      // });
 
       const result = await tcpClient.getDataTwiceAndConcat({
         isFirst: isSecondScan == false,
@@ -1102,11 +1058,7 @@ class ScannerController {
       console.log({ result });
       return result;
     } catch (error) {
-      logger.separator.hash();
-      logger.error(
-        `❌ Error acquiring ${scannerLabel.toLowerCase()} scanner data:`,
-        error
-      );
+      this.handlePLCError(error);
       throw error;
     } finally {
       this.isScanning = false; // Always reset the scanning flag
@@ -1226,6 +1178,123 @@ class ScannerController {
     }
 
     return this.currentDayId++;
+  }
+
+  // Add method to check PLC connection before operations
+  async ensurePLCConnection() {
+    if (!this.plcConnected && !this.reconnectionAttemptInProgress) {
+      logger.warn("PLC connection lost, attempting to reconnect...");
+      await this.connectToPLCWithRetry();
+    }
+    if (!this.plcConnected) {
+      throw new Error("PLC connection unavailable");
+    }
+  }
+
+  async connectToPLCWithRetry(maxRetries = 5, retryDelay = 5000) {
+    if (this.reconnectionAttemptInProgress) {
+      logger.warn("Reconnection attempt already in progress");
+      return;
+    }
+
+    this.reconnectionAttemptInProgress = true;
+    try {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          logger.info(
+            `Attempting to connect to PLC (Attempt ${attempt}/${maxRetries})`
+          );
+          await tcpClient.connect({
+            port: TCP_CONFIG.PORT,
+            host: TCP_CONFIG.HOST,
+          });
+          logger.success("TCP Scanner client connected successfully");
+          this.plcConnected = true;
+
+          // Set up connection monitoring
+          this.setupPLCConnectionMonitoring();
+          return;
+        } catch (error) {
+          logger.error(
+            `Failed to connect to PLC (Attempt ${attempt}/${maxRetries}):`,
+            error
+          );
+
+          if (attempt === maxRetries) {
+            logger.error(
+              "Maximum retry attempts reached. Unable to connect to PLC."
+            );
+            throw new Error(
+              "Failed to establish PLC connection after maximum retries"
+            );
+          }
+
+          logger.info(
+            `Waiting ${retryDelay / 1000} seconds before next retry...`
+          );
+          await sleep(retryDelay);
+        }
+      }
+    } finally {
+      this.reconnectionAttemptInProgress = false;
+    }
+  }
+
+  setupPLCConnectionMonitoring() {
+    // Monitor TCP client events
+    tcpClient.on("error", this.handlePLCError.bind(this));
+    tcpClient.on("close", this.handlePLCDisconnection.bind(this));
+    tcpClient.on("end", this.handlePLCDisconnection.bind(this));
+  }
+
+  async handlePLCError(error) {
+    logger.error("PLC connection error:", error);
+    this.plcConnected = false;
+    await this.handlePLCDisconnection();
+  }
+
+  async handlePLCDisconnection() {
+    if (!this.plcConnected) return; // Prevent multiple handlers
+
+    this.plcConnected = false;
+    logger.warn("PLC connection lost");
+
+    if (this.io) {
+      this.io.emit("plc_status", {
+        connected: false,
+        timestamp: new Date(),
+        message: "PLC connection lost",
+      });
+    }
+
+    // Attempt to reconnect
+    try {
+      await this.connectToPLCWithRetry();
+    } catch (error) {
+      logger.error("Failed to reconnect to PLC:", error);
+    }
+  }
+
+  // Modify existing methods that interact with PLC to use connection check
+
+  async writeBit(register, bit, value) {
+    await this.ensurePLCConnection();
+    try {
+      return await writeBit(register, bit, value);
+    } catch (error) {
+      this.handlePLCError(error);
+      throw error;
+    }
+  }
+
+  async readBit(register, bit) {
+    await this.ensurePLCConnection();
+    try {
+      return await readBit(register, bit);
+    } catch (error) {
+      this.handlePLCError(error);
+      throw error;
+    }
   }
 }
 
