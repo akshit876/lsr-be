@@ -125,9 +125,39 @@ class ScannerController {
       );
       logger.success("Barcode generator initialized");
 
-      // Initialize Modbus connection
+      // Initialize Modbus connection with retry
       logger.info("🔌 Initializing Modbus connection...");
-      await modbusService.connect();
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          await modbusService.connect();
+          // Test the connection
+          await modbusService.readBit(1600, 0);
+          this.plcConnected = true;
+          logger.success("Modbus connection established and verified");
+          break;
+        } catch (error) {
+          retryCount++;
+          logger.warn(
+            `Modbus connection attempt ${retryCount} failed, retrying...`
+          );
+          await sleep(2000);
+
+          if (retryCount === maxRetries) {
+            throw error;
+          }
+        }
+      }
+
+      // Initialize TCP Scanner connection
+      logger.info("🔌 Initializing TCP Scanner connection...");
+      await tcpClient.connect({
+        port: TCP_CONFIG.PORT,
+        host: TCP_CONFIG.HOST,
+      });
+      logger.success("TCP Scanner connection established");
 
       this.isInitialized = true;
       logger.success("Scanner controller initialization complete");
@@ -560,28 +590,8 @@ class ScannerController {
     try {
       await this.initializeScannerAndMonitor(io, comService);
 
-      // if (io) {
-      //   io.on("connection", (socket) => {
-      //     socket.on("pulse_on", () => {
-      //       logger.info("📡 Received pulse_on signal from UI");
-      //       this.isPulseOn = true;
-      //     });
-
-      //     socket.on("pulse_off", () => {
-      //       logger.info("📡 Received pulse_off signal from UI");
-      //       this.isPulseOn = false;
-      //     });
-      //   });
-      // }
-
       while (this.isRunning) {
         try {
-          // if (!this.isPulseOn) {
-          //   logger.info("⏸️ Cycle paused - waiting for pulse_on signal");
-          //   await sleep(1000);
-          //   continue;
-          // }
-
           await sleep(1200);
 
           // Clear separator and print cycle count
@@ -650,7 +660,7 @@ class ScannerController {
   }
 
   startResetMonitoring() {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       const messageHandler = async (message) => {
         if (message === "reset") {
           logger.warn("🔄 Reset signal detected from monitor");
@@ -1218,23 +1228,47 @@ class ScannerController {
   }
 
   async ensurePLCConnection() {
+    if (this.reconnectionAttemptInProgress) {
+      logger.debug("Reconnection already in progress, waiting...");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return;
+    }
+
     try {
-      // Use Modbus service's built-in connection management
-      await modbusService.connect();
-      this.plcConnected = true;
+      this.reconnectionAttemptInProgress = true;
+
+      if (!this.plcConnected) {
+        logger.info("PLC connection lost, attempting to reconnect...");
+        await modbusService.connect();
+
+        // Add a small delay after connection to ensure stability
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Test the connection with a simple read
+        await modbusService.readBit(1600, 0);
+
+        this.plcConnected = true;
+        logger.success("PLC connection re-established and verified");
+      }
     } catch (error) {
       this.plcConnected = false;
+      logger.error("Failed to ensure PLC connection:", error);
       throw new Error("PLC connection unavailable");
+    } finally {
+      this.reconnectionAttemptInProgress = false;
     }
   }
 
   async ensureScannerConnection() {
     try {
-      await tcpClient.connect({
-        port: TCP_CONFIG.PORT,
-        host: TCP_CONFIG.HOST,
-      });
-      logger.info("Scanner TCP connection established");
+      if (!tcpClient.isConnected()) {
+        logger.info("Reconnecting to TCP Scanner...");
+        await tcpClient.connect({
+          port: TCP_CONFIG.PORT,
+          host: TCP_CONFIG.HOST,
+        });
+        logger.info("Scanner TCP connection re-established");
+      }
     } catch (error) {
       logger.error("Scanner TCP connection failed:", error);
       throw new Error("Scanner connection unavailable");
