@@ -155,42 +155,47 @@ class MongoDBService {
       }
 
       // First, get the total counts for each day window
-      const dayWindowCounts = await this.collection.aggregate([
-        {
-          $addFields: {
-            dayWindow: {
-              $let: {
-                vars: {
-                  timestamp: "$Timestamp",
-                  sixAM: {
-                    $dateFromParts: {
-                      year: { $year: "$Timestamp" },
-                      month: { $month: "$Timestamp" },
-                      day: { $dayOfMonth: "$Timestamp" },
-                      hour: 6
-                    }
-                  }
-                },
-                in: {
-                  $cond: {
-                    if: { $lt: ["$Timestamp", "$$sixAM"] },
-                    then: {
-                      $subtract: ["$$sixAM", { $multiply: [24 * 60 * 60 * 1000, 1] }]
+      const dayWindowCounts = await this.collection
+        .aggregate([
+          {
+            $addFields: {
+              dayWindow: {
+                $let: {
+                  vars: {
+                    timestamp: "$Timestamp",
+                    sixAM: {
+                      $dateFromParts: {
+                        year: { $year: "$Timestamp" },
+                        month: { $month: "$Timestamp" },
+                        day: { $dayOfMonth: "$Timestamp" },
+                        hour: 6,
+                      },
                     },
-                    else: "$$sixAM"
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          $group: {
-            _id: "$dayWindow",
-            count: { $sum: 1 }
-          }
-        }
-      ]).toArray();
+                  },
+                  in: {
+                    $cond: {
+                      if: { $lt: ["$Timestamp", "$$sixAM"] },
+                      then: {
+                        $subtract: [
+                          "$$sixAM",
+                          { $multiply: [24 * 60 * 60 * 1000, 1] },
+                        ],
+                      },
+                      else: "$$sixAM",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          {
+            $group: {
+              _id: "$dayWindow",
+              count: { $sum: 1 },
+            },
+          },
+        ])
+        .toArray();
 
       // Create a map of day windows to their total counts
       const dayWindowTotalCounts = new Map(
@@ -205,38 +210,38 @@ class MongoDBService {
         .toArray();
 
       // Transform the data with correct IDs
-      const transformedData = data.map((item) => {
-        const itemTimestamp = new Date(item?.Timestamp);
-        let windowStart = new Date(itemTimestamp);
-        windowStart.setHours(6, 0, 0, 0);
-        if (itemTimestamp < windowStart) {
-          windowStart.setDate(windowStart.getDate() - 1);
-        }
-
-        // Get total count for this day window
-        const totalCount = dayWindowTotalCounts.get(windowStart.getTime()) || 0;
-        
-        // Calculate position from the end of the day
-        const position = await this.collection.countDocuments({
-          Timestamp: {
-            $gt: itemTimestamp,
-            $lt: new Date(windowStart.getTime() + 24 * 60 * 60 * 1000) // next day
+      const transformedData = await Promise.all(
+        data.map(async (item) => {
+          const itemTimestamp = new Date(item?.Timestamp);
+          let windowStart = new Date(itemTimestamp);
+          windowStart.setHours(6, 0, 0, 0);
+          if (itemTimestamp < windowStart) {
+            windowStart.setDate(windowStart.getDate() - 1);
           }
-        });
 
-        return {
-          Id: totalCount - position, // This will give the correct sequential ID
-          Timestamp: item?.Timestamp,
-          SerialNumber: item?.SerialNumber,
-          MarkingData: item?.MarkingData,
-          ScannerData: item?.ScannerData,
-          Shift: item?.Shift,
-          Result: item?.Result,
-          User: item?.User,
-          Grade: item?.Grade,
-          Date: item?.Date,
-        };
-      });
+          const totalCount =
+            dayWindowTotalCounts.get(windowStart.getTime()) || 0;
+          const position = await this.collection.countDocuments({
+            Timestamp: {
+              $gt: itemTimestamp,
+              $lt: new Date(windowStart.getTime() + 24 * 60 * 60 * 1000),
+            },
+          });
+
+          return {
+            Id: totalCount - position,
+            Timestamp: item?.Timestamp,
+            SerialNumber: item?.SerialNumber,
+            MarkingData: item?.MarkingData,
+            ScannerData: item?.ScannerData,
+            Shift: item?.Shift,
+            Result: item?.Result,
+            User: item?.User,
+            Grade: item?.Grade,
+            Date: item?.Date,
+          };
+        })
+      );
 
       // Send the data to the client
       socket.emit("csv-data", { data: transformedData });
