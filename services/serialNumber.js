@@ -139,30 +139,23 @@ class SerialNumberGeneratorService {
     }
 
     // Regular flow - only execute if no reset event has occurred
-    // const lastDocument = await this.getLastDocumentFromMongoDB();
+    const lastDocument = await this.getLastDocumentFromMongoDB();
 
-    const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
-    const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
-    try {
-      // First try to read from code.txt
-      const codeFromFile = fs.readFileSync(CODE_FILE_PATH, "utf8");
-      if (codeFromFile) {
-        // Extract just the serial number portion (last 4 digits)
-        const serialNumberPart = codeFromFile.slice(-4);
-        const parsedSerial = parseInt(serialNumberPart, 10);
-        if (!isNaN(parsedSerial)) {
-          this.currentSerialNumber = parsedSerial;
-          logger.info(`Loaded serial number ${parsedSerial} from code file`);
-        }
-      }
-    } catch (error) {
-      logger.warn(
-        "Could not read serial number from code file:",
-        error.message
+    if (
+      !reset &&
+      lastDocument &&
+      isAfter(new Date(lastDocument.Timestamp), resetTime)
+    ) {
+      this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
+      this.lastResetDate = new Date(lastDocument.Timestamp);
+      logger.info(
+        `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
       );
     }
+
+    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
     this.currentSerialNumber++;
-    return this.currentSerialNumber.toString().padStart(4, '0'); // Format the return value with leading zeros
+    return serialNumber;
   }
 
   incrementSerialNumber() {
