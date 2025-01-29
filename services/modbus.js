@@ -42,7 +42,7 @@ class ModbusConnection {
   handleDisconnect() {
     logger.warn("Modbus connection closed. Attempting to reconnect...");
     this.isConnected = false;
-    // this.scheduleReconnect();
+    this.scheduleReconnect();
   }
 
   scheduleReconnect() {
@@ -388,7 +388,7 @@ class ModbusConnection {
     if (error.errno === "ETIMEDOUT" || error.errno === "ECONNRESET") {
       logger.warn(`Connection error: ${error.errno}. Scheduling reconnect.`);
       this.isConnected = false;
-      // this.scheduleReconnect();
+      this.scheduleReconnect();
     }
   }
 }
