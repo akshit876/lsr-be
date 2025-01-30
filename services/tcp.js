@@ -7,11 +7,12 @@ class TCPClient {
     }
 
     this.client = null; // Holds the single instance of the client
+    this.isConnected = false; // Add isConnected state
     TCPClient.instance = this;
   }
 
   connect({ port, host }) {
-    if (this.client) {
+    if (this.isConnected && this.client) {
       console.log("Reusing existing TCP connection...");
       return Promise.resolve(this.client); // Return the existing connection
     }
@@ -22,18 +23,21 @@ class TCPClient {
 
       this.client.connect(port, host, () => {
         console.log(`Connected to TCP server at ${host}:${port}`);
+        this.isConnected = true; // Set connected state to true
         resolve(this.client);
       });
 
       this.client.on("error", (err) => {
         console.error("TCP connection error:", err.message);
-        this.client = null; // Reset client on error
+        this.client = null;
+        this.isConnected = false; // Set connected state to false on error
         reject(err);
       });
 
       this.client.on("close", () => {
         console.log("TCP connection closed");
-        this.client = null; // Reset client on close
+        this.client = null;
+        this.isConnected = false; // Set connected state to false on close
       });
     });
   }
@@ -87,6 +91,7 @@ class TCPClient {
       console.log("Closing TCP connection...");
       this.client.destroy();
       this.client = null;
+      this.isConnected = false; // Set connected state to false when closing
     }
   }
 }

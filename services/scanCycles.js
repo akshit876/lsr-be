@@ -5,6 +5,7 @@ import logger from "../logger.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
 import mongoDbService from "./mongoDbService.js";
 import {
+  modbusService,
   readBit,
   readRegister,
   readRegisterAndProvideASCII,
@@ -1153,10 +1154,25 @@ class ScannerController {
   async handleReset() {
     try {
       logger.info("🔄 Handling reset signal");
+   
+      
+      // Check and reconnect PLC Modbus if not connected
+      if (!modbusService.isConnected) {
+        logger.info("Reconnecting PLC Modbus...");
+        await modbusService.connect();
+        logger.success("PLC Modbus reconnected");
+      }
+
+      // Check and reconnect TCP Scanner if not connected
+      if (!tcpClient.isConnected) {
+        logger.info("Reconnecting TCP Scanner...");
+        await tcpClient.connect({ port: TCP_CONFIG.PORT, host: TCP_CONFIG.HOST });
+        logger.success("TCP Scanner reconnected");
+      }
+
       await writeBit(1500, 3, 1);
       await this.resetBits();
       this.barcodeGenerator.decSerialNo(); // Decrement serial number if needed
-      // await this.clearCodeFile(CODE_FILE_PATH);
       throw new Error("RESET_DETECTED");
     } catch (error) {
       logger.error("❌ Error handling reset:", error);

@@ -394,6 +394,7 @@ class ModbusConnection {
 }
 
 const modbusConnection = new ModbusConnection();
+export const modbusService = modbusConnection;
 
 export const setSocket = (socket) => {
   modbusConnection.socket = socket;
