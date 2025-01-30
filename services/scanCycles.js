@@ -489,7 +489,7 @@ class ScannerController {
         SerialNumber: serialNumber,
         MarkingData: markingData,
         ScannerData: scannerData,
-        Result: result ? result == "N/A" ? "N/A" : "OK" : "NG",
+        Result: result ? (result == "N/A" ? "N/A" : "OK") : "NG",
         User: userDetails?.email || "Unknown",
         Grade: grading?.toUpperCase(),
         CurrentId: currentId,
@@ -1092,15 +1092,20 @@ class ScannerController {
         isFirst: isSecondScan == false,
         isSecond: isSecondScan,
       });
+
+      // Process result to take only 29 digits if not "NG"
+      const processedResult =
+        result?.trim().toUpperCase() === "NG" ? result : result?.slice(0, 29);
+
       if (this.io) {
         this.io.emit("scanner_read", {
           timestamp: new Date(),
           scannerType: scannerLabel,
-          data: result,
+          data: processedResult,
         });
       }
-      console.log({ result });
-      return result;
+      console.log({ processedResult });
+      return processedResult;
     } catch (error) {
       logger.separator.hash();
       logger.error(
