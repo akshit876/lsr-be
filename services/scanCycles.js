@@ -1218,6 +1218,7 @@ class ScannerController {
   }
 
   async ensurePLCConnection() {
+    // If already attempting to reconnect, wait for that attempt to finish
     if (this.reconnectionAttemptInProgress) {
       return;
     }
