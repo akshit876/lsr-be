@@ -4,14 +4,14 @@ import path, { dirname } from "path";
 import logger from "../logger.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
 import mongoDbService from "./mongoDbService.js";
-import {
-  readBit,
-  readRegister,
-  readRegisterAndProvideASCII,
-  writeBit,
-  writeBitsWithRest,
-  writeRegister,
-} from "./modbus.js";
+// import {
+//   readBit,
+//   readRegister,
+//   readRegisterAndProvideASCII,
+//   writeBit,
+//   writeBitsWithRest,
+//   writeRegister,
+// } from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 
 import { promisify } from "util";
@@ -173,7 +173,7 @@ class ScannerController {
       );
 
       // Read current value once
-      const [currentValue] = await readRegister(register, 1);
+      const [currentValue] = await this.readRegister(register, 1);
 
       // Create mask and calculate new value
       const mask = bitsToReset.reduce(
@@ -183,7 +183,7 @@ class ScannerController {
       const newValue = currentValue & mask;
 
       // Write new value with timeout protection
-      const writePromise = writeRegister(register, newValue);
+      const writePromise = this.writeRegister(register, newValue);
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(
           () =>
@@ -317,7 +317,7 @@ class ScannerController {
         const { register, bits } = registerConfig;
         for (const [bit, config] of Object.entries(bits)) {
           try {
-            const bitValue = await readBit(register, parseInt(bit));
+            const bitValue = await this.readBit(register, parseInt(bit));
 
             // Emit event if bit is 1, regardless of previous state
             if (bitValue) {
@@ -351,12 +351,12 @@ class ScannerController {
       // Reset check interval
       resetCheckInterval = setInterval(async () => {
         try {
-          const resetSignal = await readBit(1600, 0);
+          const resetSignal = await this.readBit(1600, 0);
           if (resetSignal) {
             cleanup();
             logger.info("Reset signal (1600.0) detected");
             try {
-              await writeBit(1500, 3, 1);
+              await this.writeBit(1500, 3, 1);
               logger.info("Reset bits completed, restarting cycle");
               resolve(true);
             } catch (error) {
@@ -373,7 +373,7 @@ class ScannerController {
       bitCheckInterval = setInterval(async () => {
         try {
           checkCount++;
-          const bitValue = await readBit(register, bit);
+          const bitValue = await this.readBit(register, bit);
           const currentValue = Number(bitValue);
           const expectedValue = Number(value);
 
@@ -396,7 +396,7 @@ class ScannerController {
             logger.info(
               `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
             );
-            const resetSignal = await readBit(1600, 0);
+            const resetSignal = await this.readBit(1600, 0);
             logger.info(
               `Current state: Reset(1600.0): ${resetSignal}, ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
             );
@@ -409,8 +409,8 @@ class ScannerController {
       // Initial checks
       try {
         const [resetSignal, bitValue] = await Promise.all([
-          readBit(1600, 0),
-          readBit(register, bit),
+          this.readBit(1600, 0),
+          this.readBit(register, bit),
         ]);
 
         // Initial check of all monitored registers
@@ -650,7 +650,7 @@ class ScannerController {
   }
 
   startResetMonitoring() {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       const messageHandler = async (message) => {
         if (message === "reset") {
           logger.warn("🔄 Reset signal detected from monitor");
@@ -702,7 +702,7 @@ class ScannerController {
       // await this.signalFileTransfer();
 
       logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
-      await writeBit(1414, 15, 1);
+      await this.writeBit(1414, 15, 1);
 
       logger.info("🔍 Checking for reset or waiting for bit 1410.3");
       if (await this.checkResetOrBit(1410, 3, 1)) {
@@ -804,7 +804,7 @@ class ScannerController {
     // If scannerData is "NG", proceed with workflow
     if (scannerData && scannerData.trim().toUpperCase() === "NG") {
       logger.warn("⚠️ First scan data is NG, proceeding with workflow");
-      await writeBit(1414, 14, 1);
+      await this.writeBit(1414, 14, 1);
       return { shouldContinue: true };
     }
 
@@ -823,7 +823,7 @@ class ScannerController {
         });
       }
 
-      await writeBit(1414, 13, 1);
+      await this.writeBit(1414, 13, 1);
       throw new Error("RESTART_CYCLE");
     }
     return {
@@ -937,7 +937,7 @@ class ScannerController {
       logger.info("🔄 Second scan resulted in NG");
       logger.info("🔄 Setting grade to F and marking as non-matching");
 
-      await writeBit(1417, 1, 1); // Write 1 to indicate failure
+      await this.writeBit(1417, 1, 1); // Write 1 to indicate failure
 
       await this.saveToMongoDB({
         io: this.io,
@@ -964,7 +964,7 @@ class ScannerController {
     const checkGrading = await this.checkGrading(secondScannerData);
     logger.info("🔄 Grade acceptance ", checkGrading);
 
-    await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
+    await this.writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
 
     await this.saveToMongoDB({
       io: this.io,
@@ -1142,7 +1142,7 @@ class ScannerController {
   async handleReset() {
     try {
       logger.info("🔄 Handling reset signal");
-      await writeBit(1500, 3, 1);
+      await this.writeBit(1500, 3, 1);
       await this.resetBits();
       this.barcodeGenerator.decSerialNo(); // Decrement serial number if needed
       // await this.clearCodeFile(CODE_FILE_PATH);
@@ -1156,7 +1156,7 @@ class ScannerController {
   async signalFileTransfer() {
     try {
       logger.info("🔄 Signaling file transfer...");
-      await writeBitsWithRest(1414, 2, 1, 200, false);
+      await this.writeBitsWithRest(1414, 2, 1, 200, false);
       logger.success("File transfer signal sent");
     } catch (error) {
       logger.error("❌ Error signaling file transfer:", error);
@@ -1218,13 +1218,33 @@ class ScannerController {
   }
 
   async ensurePLCConnection() {
+    if (this.reconnectionAttemptInProgress) {
+      return;
+    }
+
     try {
-      // Use Modbus service's built-in connection management
-      await modbusService.connect();
-      this.plcConnected = true;
-    } catch (error) {
-      this.plcConnected = false;
-      throw new Error("PLC connection unavailable");
+      this.reconnectionAttemptInProgress = true;
+
+      // Add exponential backoff for reconnection attempts
+      let retryDelay = 5000;
+      const maxDelay = 30000;
+
+      while (!this.plcConnected) {
+        try {
+          await modbusService.connect();
+          this.plcConnected = true;
+          logger.success("PLC connection established");
+          break;
+        } catch (error) {
+          logger.warn(
+            `Connection failed, retrying in ${retryDelay / 1000} seconds...`
+          );
+          await sleep(retryDelay);
+          retryDelay = Math.min(retryDelay * 1.5, maxDelay);
+        }
+      }
+    } finally {
+      this.reconnectionAttemptInProgress = false;
     }
   }
 
@@ -1267,6 +1287,22 @@ class ScannerController {
     try {
       await modbusService.writeBit(register, bit, value);
     } catch (error) {
+      if (
+        error.message.includes("Port Not Open") ||
+        error.message.includes("Connection")
+      ) {
+        logger.warn("PLC connection lost, attempting to reconnect...");
+        await this.ensurePLCConnection();
+
+        try {
+          await modbusService.writeBit(register, bit, value);
+          return;
+        } catch (retryError) {
+          await this.handlePLCError(retryError);
+          throw retryError;
+        }
+      }
+
       await this.handlePLCError(error);
       throw error;
     }
@@ -1276,6 +1312,21 @@ class ScannerController {
     try {
       return await modbusService.readBit(register, bit);
     } catch (error) {
+      if (
+        error.message.includes("Port Not Open") ||
+        error.message.includes("Connection")
+      ) {
+        logger.warn("PLC connection lost, attempting to reconnect...");
+        await this.ensurePLCConnection();
+
+        try {
+          return await modbusService.readBit(register, bit);
+        } catch (retryError) {
+          await this.handlePLCError(retryError);
+          throw retryError;
+        }
+      }
+
       await this.handlePLCError(error);
       throw error;
     }
@@ -1285,6 +1336,21 @@ class ScannerController {
     try {
       return await modbusService.readRegister(register, length);
     } catch (error) {
+      if (
+        error.message.includes("Port Not Open") ||
+        error.message.includes("Connection")
+      ) {
+        logger.warn("PLC connection lost, attempting to reconnect...");
+        await this.ensurePLCConnection();
+
+        try {
+          return await modbusService.readRegister(register, length);
+        } catch (retryError) {
+          await this.handlePLCError(retryError);
+          throw retryError;
+        }
+      }
+
       await this.handlePLCError(error);
       throw error;
     }
@@ -1294,6 +1360,22 @@ class ScannerController {
     try {
       await modbusService.writeRegister(register, value);
     } catch (error) {
+      if (
+        error.message.includes("Port Not Open") ||
+        error.message.includes("Connection")
+      ) {
+        logger.warn("PLC connection lost, attempting to reconnect...");
+        await this.ensurePLCConnection();
+
+        try {
+          await modbusService.writeRegister(register, value);
+          return;
+        } catch (retryError) {
+          await this.handlePLCError(retryError);
+          throw retryError;
+        }
+      }
+
       await this.handlePLCError(error);
       throw error;
     }
@@ -1303,6 +1385,24 @@ class ScannerController {
     try {
       return await modbusService.readRegisterAndProvideASCII(register, length);
     } catch (error) {
+      if (
+        error.message.includes("Port Not Open") ||
+        error.message.includes("Connection")
+      ) {
+        logger.warn("PLC connection lost, attempting to reconnect...");
+        await this.ensurePLCConnection();
+
+        try {
+          return await modbusService.readRegisterAndProvideASCII(
+            register,
+            length
+          );
+        } catch (retryError) {
+          await this.handlePLCError(retryError);
+          throw retryError;
+        }
+      }
+
       await this.handlePLCError(error);
       throw error;
     }
@@ -1318,6 +1418,28 @@ class ScannerController {
         shouldLog
       );
     } catch (error) {
+      if (
+        error.message.includes("Port Not Open") ||
+        error.message.includes("Connection")
+      ) {
+        logger.warn("PLC connection lost, attempting to reconnect...");
+        await this.ensurePLCConnection();
+
+        try {
+          await modbusService.writeBitsWithRest(
+            register,
+            bit,
+            value,
+            restTime,
+            shouldLog
+          );
+          return;
+        } catch (retryError) {
+          await this.handlePLCError(retryError);
+          throw retryError;
+        }
+      }
+
       await this.handlePLCError(error);
       throw error;
     }

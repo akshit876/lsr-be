@@ -10,6 +10,66 @@ const MODBUS_IP = process.env.MODBUS_HOST || DEFAULT_MODBUS_IP;
 const MODBUS_PORT =
   parseInt(process.env.MODBUS_PORT, 10) || DEFAULT_MODBUS_PORT;
 
+// Add connection options
+const CONNECTION_OPTIONS = {
+  host: '192.168.3.145',
+  port: 502,
+  autoReconnect: true,
+  timeout: 10000,
+  keepalive: true,
+  keepaliveTimeout: 30000,
+  retryRate: 5000,
+  maxRetries: 10
+};
+
+let client = null;
+let isConnecting = false;
+
+export async function connect() {
+  if (isConnecting) {
+    logger.debug("Connection attempt already in progress");
+    return;
+  }
+
+  try {
+    isConnecting = true;
+    
+    if (client) {
+      try {
+        await client.close();
+      } catch (err) {
+        logger.warn("Error closing existing connection:", err.message);
+      }
+    }
+
+    client = new ModbusRTU();
+    
+    // Set up connection event handlers
+    client.on('connect', () => {
+      logger.info("Modbus connection established");
+      isConnecting = false;
+    });
+
+    client.on('close', () => {
+      logger.warn("Modbus connection closed");
+    });
+
+    client.on('error', (err) => {
+      logger.error("Modbus connection error:", err.message);
+    });
+
+    await client.connectTCP(CONNECTION_OPTIONS);
+    
+    // Verify connection with a test read
+    await client.readCoils(0, 1);
+    
+    return client;
+  } catch (error) {
+    isConnecting = false;
+    throw error;
+  }
+}
+
 class ModbusConnection {
   constructor() {
     this.client = new ModbusRTU();
@@ -417,7 +477,6 @@ export const setSocket = (socket) => {
   modbusConnection.socket = socket;
 };
 
-export const connect = () => modbusConnection.connect();
 export const readRegister = (
   address,
   len,
