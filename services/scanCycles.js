@@ -492,7 +492,7 @@ class ScannerController {
         Result: result
           ? result == "N/A"
             ? "N/A"
-            : result == "OK"
+            : result == "OK" || result == true
               ? "OK"
               : "NG"
           : "NG",
