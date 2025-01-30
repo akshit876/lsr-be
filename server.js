@@ -60,6 +60,15 @@ export const REGISTERS_TO_MONITOR = [
       },
     },
   },
+  {
+    register: 1700,
+    bits: {
+      1: {
+        eventName: "reject-bin",
+        message: "Put the part in the rejection bin",
+      },
+    },
+  },
 ];
 
 // Single function to monitor one register

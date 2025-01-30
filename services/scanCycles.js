@@ -698,6 +698,15 @@ class ScannerController {
         );
         // this.barcodeGenerator.decSerialNo();
         await sleep(1000);
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: barcodeData.serialNo,
+          markingData: barcodeData.text,
+          scannerData: "N/A",
+          result: "NG",
+          grading: "N/A",
+          isUpdate: true,
+        });
         return;
       }
 
