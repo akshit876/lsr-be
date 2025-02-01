@@ -65,14 +65,16 @@ class TCPClient {
     console.log("Reading data from TCP server...");
     try {
       const firstData = await this.readData();
-      const timestamp = new Date().toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
+      const timestamp = new Date()
+        .toLocaleString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+        .replace(/,/g, ""); // Remove any commas from the timestamp
 
       console.log("First data received:", { firstData });
       let concatenatedData = firstData;
@@ -100,8 +102,8 @@ class TCPClient {
       }
 
       // Format the second data - if NG, both columns will be NG
-      const csvSecondData = concatenatedData === "NG" ? "NG" : secondData;
-      const csvFirstData = concatenatedData === "NG" ? "NG" : firstData;
+      const csvSecondData = secondData;
+      const csvFirstData = firstData;
 
       // Append data to CSV
       fs.appendFileSync(
