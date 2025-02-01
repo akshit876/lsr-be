@@ -63,18 +63,49 @@ class TCPClient {
     console.log("Reading data from TCP server...");
     try {
       const firstData = await this.readData();
+      const timestamp = new Date().toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+
       console.log("First data received:", { firstData });
       let concatenatedData = firstData;
+      let secondData = "";
+
       if (firstData == "0\r\n0" || firstData == "0") {
         concatenatedData = "NG";
       }
 
       if (isSecond && concatenatedData != "NG") {
-        const secondData = await this.readData();
+        secondData = await this.readData();
         console.log("Second data received:", { secondData });
         concatenatedData += secondData;
         console.log("Concatenated data:", concatenatedData);
       }
+
+      // Save to CSV
+      const fs = require("fs");
+      const path = require("path");
+      const csvPath = "D:/scanner_data.csv";
+
+      // Create CSV header if file doesn't exist
+      if (!fs.existsSync(csvPath)) {
+        fs.writeFileSync(csvPath, "Timestamp,First Data,Second Data\n");
+      }
+
+      // Format the second data - if NG, both columns will be NG
+      const csvSecondData = concatenatedData === "NG" ? "NG" : secondData;
+      const csvFirstData = concatenatedData === "NG" ? "NG" : firstData;
+
+      // Append data to CSV
+      fs.appendFileSync(
+        csvPath,
+        `${timestamp},${csvFirstData},${csvSecondData}\n`
+      );
 
       return concatenatedData;
     } catch (err) {

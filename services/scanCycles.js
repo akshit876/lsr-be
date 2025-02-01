@@ -1107,6 +1107,7 @@ class ScannerController {
         isFirst: isSecondScan == false,
         isSecond: isSecondScan,
       });
+      logger.info(`📝 Scanner result: ${result}`);
 
       // Process result to take only 29 digits if not "NG"
       const processedResult =
@@ -1119,7 +1120,12 @@ class ScannerController {
           data: processedResult,
         });
       }
-      console.log({ processedResult });
+      logger.info("📡 Emitting scanner read event", {
+        timestamp: new Date(),
+        scannerType: scannerLabel,
+        data: processedResult,
+      });
+      logger.info("Scanner result:", { processedResult });
       return processedResult;
     } catch (error) {
       logger.separator.hash();
