@@ -1,4 +1,6 @@
 import net from "net";
+import fs from "fs";
+import path, { dirname } from "path";
 
 class TCPClient {
   constructor() {
@@ -88,8 +90,8 @@ class TCPClient {
       }
 
       // Save to CSV
-      const fs = require("fs");
-      const path = require("path");
+      // const fs = require("fs");
+      // const path = require("path");
       const csvPath = "D:/scanner_data.csv";
 
       // Create CSV header if file doesn't exist
