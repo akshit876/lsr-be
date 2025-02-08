@@ -683,9 +683,24 @@ class ScannerController {
         logger.info("Cycle stopped after first scan");
         return;
       }
+      /**
+       *  return {
+        isValid: true,
+        parsedData: {
+          dieNumber: dieNo,
+          date,
+          shift,
+          year: fullYear,
+          month,
+          monthLetter,
+        },
+       */
 
       // Step 2: Generate and Write Barcode
-      const barcodeData = await this.generateAndWriteBarcode(partNumber);
+      const barcodeData = await this.generateAndWriteBarcode(
+        partNumber,
+        firstScanResult
+      );
       if (!barcodeData) {
         // this.barcodeGenerator.decSerialNo();
         return;
@@ -786,6 +801,97 @@ class ScannerController {
     }
   }
 
+  // Utility function to convert letter to month number (A=1, B=2, etc.)
+  letterToMonth(letter) {
+    return letter.toUpperCase().charCodeAt(0) - "A".charCodeAt(0) + 1;
+  }
+
+  // Utility function to get days in month
+  getDaysInMonth(year, month) {
+    return new Date(year, month, 0).getDate();
+  }
+
+  validateScanData(dieNo, dateShift, yearMonth) {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+
+    try {
+      // 1. Validate die number format (Sx where x is a number)
+      const isDieNoValid = /^S\d+$/.test(dieNo);
+      if (!isDieNoValid) {
+        return { isValid: false, error: "Invalid die number format" };
+      }
+
+      // 2. Parse date and shift
+      const date = parseInt(dateShift.slice(0, 2));
+      const shift = dateShift.slice(2);
+
+      // 3. Parse year and month
+      const year = parseInt(yearMonth[0]);
+      const monthLetter = yearMonth[1];
+      const month = this.letterToMonth(monthLetter);
+
+      // Validate shift (only A, B, or C)
+      if (!["A", "B", "C"].includes(shift)) {
+        return { isValid: false, error: "Invalid shift. Must be A, B, or C" };
+      }
+
+      // Validate month (1-12)
+      if (month < 1 || month > 12) {
+        return { isValid: false, error: "Invalid month letter. Must be A-L" };
+      }
+
+      // Validate year
+      const lastDigitCurrentYear = currentYear % 10;
+      const isCurrentYear = year === lastDigitCurrentYear;
+      const isPreviousYear = year === (currentYear - 1) % 10;
+
+      if (!isCurrentYear && !isPreviousYear) {
+        return { isValid: false, error: "Invalid year" };
+      }
+
+      // If previous year, only accept if it's December and current month is January
+      if (isPreviousYear) {
+        const currentMonth = currentDate.getMonth() + 1; // 0-based to 1-based
+        if (!(month === 12 && currentMonth === 1)) {
+          return {
+            isValid: false,
+            error:
+              "Previous year only valid for December when current month is January",
+          };
+        }
+      }
+
+      // Get the full year for date validation
+      const fullYear = isCurrentYear ? currentYear : currentYear - 1;
+
+      // Validate date based on month and year
+      const daysInMonth = this.getDaysInMonth(fullYear, month);
+      if (date < 1 || date > daysInMonth) {
+        return {
+          isValid: false,
+          error: `Invalid date. Month ${month} in year ${fullYear} has ${daysInMonth} days`,
+        };
+      }
+
+      // All validations passed
+      return {
+        isValid: true,
+        parsedData: {
+          dieNumber: dieNo,
+          date,
+          shift,
+          year: fullYear,
+          month,
+          monthLetter,
+        },
+      };
+    } catch (error) {
+      return { isValid: false, error: `Validation error: ${error.message}` };
+    }
+  }
+
+  // Modified handleFirstScan function using the validator
   async handleFirstScan(comService) {
     logger.info("Starting first scan handler");
 
@@ -804,33 +910,43 @@ class ScannerController {
     }
 
     // If scannerData is "NG", proceed with workflow
-    if (scannerData && scannerData.trim().toUpperCase() === "NG") {
-      logger.warn("⚠️ First scan data is NG, proceeding with workflow");
-      await writeBit(1414, 14, 1);
-      return { shouldContinue: true };
-    }
+    // if (scannerData && scannerData.trim().toUpperCase() === "NG") {
+    //   logger.warn("⚠️ First scan data is NG, proceeding with workflow");
+    //   await writeBit(1414, 14, 1);
+    //   return { shouldContinue: true };
+    // }
 
-    // If scannerData is OK, emit socket event and restart cycle
-    if (scannerData != null) {
-      logger.info(
-        "First scan data is OK, stopping machine and restarting cycle"
-      );
+    // Parse and validate the structured data
+    if (scannerData) {
+      const parts = scannerData.trim().split(" ");
+      if (parts.length === 3) {
+        const [dieNo, dateShift, yearMonth] = parts;
+        const validation = this.validateScanData(dieNo, dateShift, yearMonth);
 
-      // Emit socket event if io is available
-      if (this.io) {
-        this.io.emit("first_scan_ok", {
-          timestamp: new Date(),
-          scannerData: scannerData,
-          message: "First scan detected OK part, cycle restarting",
-        });
+        if (validation.isValid) {
+          logger.info("First scan data is OK, proceeding the cycle...");
+          logger.info("Parsed data:", validation.parsedData);
+
+          if (this.io) {
+            this.io.emit("first_scan_ok", {
+              timestamp: new Date(),
+              scannerData: scannerData,
+              parsedData: validation.parsedData,
+              message: "First scan detected OK part, cycle proceeding...",
+            });
+          }
+
+          await writeBit(1414, 14, 1);
+          return {
+            shouldContinue: true,
+            parsedData: validation.parsedData,
+            scannerData: scannerData,
+          };
+        }
       }
-
-      await writeBit(1414, 13, 1);
-      throw new Error("RESTART_CYCLE");
     }
-    return {
-      shouldContinue: false,
-    };
+
+    return { shouldContinue: false };
   }
 
   // Add this helper function to format date
@@ -865,9 +981,14 @@ class ScannerController {
     }
   }
 
-  async generateAndWriteBarcode(partNumber) {
+  async generateAndWriteBarcode(partNumber, firstScanResult) {
     const { text, serialNo } = await this.barcodeGenerator.generateBarcodeData({
-      date: new Date(),
+      date: firstScanResult.parsedData.date,
+      shift: firstScanResult.parsedData.shift,
+      year: firstScanResult.parsedData.year,
+      month: firstScanResult.parsedData.month,
+      monthLetter: firstScanResult.parsedData.monthLetter,
+      dieNumber: firstScanResult.parsedData.dieNumber,
       mongoDbService,
       partNumber,
     });
@@ -881,9 +1002,10 @@ class ScannerController {
     }
 
     try {
-      // Format the date and combine with serial number
-      const currentDate = new Date();
-      const formattedDate = this.formatDateForSerial(currentDate);
+      // Get current year's first digit and combine with parsed year digit
+      const currentYearFirstDigit =
+        Math.floor(new Date().getFullYear() / 10) % 10; // For 2025 this gets 2
+      const formattedDate = `${String(firstScanResult.parsedData.date).padStart(2, "0")}${String(firstScanResult.parsedData.month).padStart(2, "0")}${currentYearFirstDigit}${firstScanResult.parsedData.year}`;
       const serialWithDate = `${formattedDate}XX${serialNo}`;
 
       // Write both files using the reusable function

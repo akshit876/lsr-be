@@ -41,13 +41,37 @@ class BarcodeGenerator {
       throw error;
     }
   }
-
-  async generateBarcodeData({ date = new Date(), mongoDbService, partNumber }) {
+  /**
+ * 
+ * @param { const { text, serialNo } = await this.barcodeGenerator.generateBarcodeData({  
+      date: firstScanResult.parsedData.date,  
+      shift: firstScanResult.parsedData.shift,
+      year: firstScanResult.parsedData.year,
+      month: firstScanResult.parsedData.month,
+      monthLetter: firstScanResult.parsedData.monthLetter,
+      dieNumber: firstScanResult.parsedData.dieNumber,
+      currentDate: new Date(),
+      mongoDbService,
+      partNumber,
+    });} param0 
+ * @returns 
+ */
+  async generateBarcodeData({
+    date,
+    mongoDbService,
+    partNumber,
+    currentDate,
+    monthLetter,
+    dieNumber,
+    shift: providedShift,
+    year: providedYear,
+    month: providedMonth,
+  }) {
     try {
-      // Calculate date components
-      const year = format(date, "yy");
-      const month = format(date, "MM");
-      const day = format(date, "dd");
+      // Use provided values or calculate from date if not provided
+      const year = providedYear || format(date, "yy");
+      const month = providedMonth || format(date, "MM");
+      const day = date;
 
       // Calculate Julian date
       const startOfYear = new Date(date.getFullYear(), 0, 0);
@@ -56,8 +80,8 @@ class BarcodeGenerator {
         .toString()
         .padStart(3, "0");
 
-      // Get current shift
-      const shift = this.shiftUtility.getCurrentShift(date);
+      // Use provided shift or calculate if not provided
+      const shift = providedShift || "NA";
 
       // Fetch config and part number if not provided
       const { partNumber: fetchedPartNumber, configData } =
@@ -87,6 +111,8 @@ class BarcodeGenerator {
             return { ...field, value: serialString };
           case "Shift":
             return { ...field, value: shift };
+          case "STORE":
+            return { ...field, value: dieNumber };
           // case "SUPPLIER CODE":
           //   return { ...field, value: "04101" }; // Hardcoded as per original
           default:
@@ -102,6 +128,8 @@ class BarcodeGenerator {
         .sort((a, b) => a.order - b.order)
         .map((field) => field.value || "")
         .join("");
+      logger.info(barcodeText);
+      logger.info(serialString);
 
       return {
         text: barcodeText,
