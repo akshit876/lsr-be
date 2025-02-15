@@ -931,15 +931,63 @@ class ScannerController {
       isSecondScan: true,
     });
 
+    // Create backup directory if it doesn't exist
+    const backupDir = path.join("D:", "img_backups");
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    // Use the marking data for the image filename
+    const imagePath = path.join("D:", "cameraimage", `${barcodeData.text}.jpg`);
+
     // Check if scanner data is "NG"
     if (secondScannerData.trim().toUpperCase() === "NG") {
-      const grading = "F"; // Set grading to F for NG cases
-      const isDataMatching = false; // NG always means no match
+      const grading = "F";
+      const isDataMatching = false;
 
       logger.info("🔄 Second scan resulted in NG");
       logger.info("🔄 Setting grade to F and marking as non-matching");
 
-      await writeBit(1417, 1, 1); // Write 1 to indicate failure
+      await writeBit(1417, 1, 1);
+
+      // Wait 5 seconds and check for image
+      logger.info("Waiting 5 seconds to check for image...");
+      await sleep(5000);
+
+      // Search for any image that contains the marking data
+      const cameraDir = path.join("D:", "cameraimage");
+      const files = fs.readdirSync(cameraDir);
+      const matchingImage = files.find((file) =>
+        file.includes(barcodeData.text)
+      );
+      const actualImagePath = matchingImage
+        ? path.join(cameraDir, matchingImage)
+        : null;
+
+      if (!actualImagePath || !fs.existsSync(actualImagePath)) {
+        logger.error(
+          `Image file not found containing marking data: ${barcodeData.text}`
+        );
+        if (this.io) {
+          this.io.emit("image_save_error", {
+            timestamp: new Date(),
+            message: `Failed to save image for marking data: ${barcodeData.text}`,
+            path: imagePath,
+          });
+        }
+        logger.info("Ending cycle without saving to MongoDB");
+        return { success: false };
+      }
+
+      // Move image to backup folder
+      try {
+        const backupPath = path.join(backupDir, matchingImage);
+        fs.copyFileSync(actualImagePath, backupPath);
+        fs.unlinkSync(actualImagePath); // Delete original after successful copy
+        logger.info(`Image backed up to: ${backupPath}`);
+      } catch (error) {
+        logger.error(`Error backing up image: ${error.message}`);
+      }
 
       await this.saveToMongoDB({
         io: this.io,
@@ -967,6 +1015,43 @@ class ScannerController {
     logger.info("🔄 Grade acceptance ", checkGrading);
 
     await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
+
+    // Wait 5 seconds and check for image
+    logger.info("Waiting 5 seconds to check for image...");
+    await sleep(5000);
+
+    // Search for any image that contains the marking data
+    const cameraDir = path.join("D:", "cameraimage");
+    const files = fs.readdirSync(cameraDir);
+    const matchingImage = files.find((file) => file.includes(barcodeData.text));
+    const actualImagePath = matchingImage
+      ? path.join(cameraDir, matchingImage)
+      : null;
+
+    if (!actualImagePath || !fs.existsSync(actualImagePath)) {
+      logger.error(
+        `Image file not found containing marking data: ${barcodeData.text}`
+      );
+      if (this.io) {
+        this.io.emit("image_save_error", {
+          timestamp: new Date(),
+          message: `Failed to save image for marking data: ${barcodeData.text}`,
+          path: imagePath,
+        });
+      }
+      logger.info("Ending cycle without saving to MongoDB");
+      return { success: false };
+    }
+
+    // Move image to backup folder
+    try {
+      const backupPath = path.join(backupDir, matchingImage);
+      fs.copyFileSync(actualImagePath, backupPath);
+      fs.unlinkSync(actualImagePath); // Delete original after successful copy
+      logger.info(`Image backed up to: ${backupPath}`);
+    } catch (error) {
+      logger.error(`Error backing up image: ${error.message}`);
+    }
 
     await this.saveToMongoDB({
       io: this.io,
