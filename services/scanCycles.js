@@ -476,6 +476,7 @@ class ScannerController {
     grading,
     result,
     isUpdate = false,
+    remark = "",
   }) {
     const now = new Date();
     const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
@@ -499,6 +500,7 @@ class ScannerController {
         User: userDetails?.email || "Unknown",
         Grade: grading?.toUpperCase(),
         CurrentId: currentId,
+        remark: remark,
       };
 
       if (isUpdate) {
@@ -975,6 +977,16 @@ class ScannerController {
             path: imagePath,
           });
         }
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: barcodeData.serialNo,
+          markingData: barcodeData.text,
+          scannerData: secondScannerData,
+          result: false,
+          grading,
+          isUpdate: true,
+          remark: "Image not found",
+        });
         logger.info("Ending cycle without saving to MongoDB");
         return { success: false };
       }
