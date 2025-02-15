@@ -1026,7 +1026,7 @@ class ScannerController {
     const checkGrading = await this.checkGrading(secondScannerData);
     logger.info("🔄 Grade acceptance ", checkGrading);
 
-    await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
+    // await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
 
     // Wait 5 seconds and check for image
     logger.info("Waiting 5 seconds to check for image...");
@@ -1044,11 +1044,23 @@ class ScannerController {
       logger.error(
         `Image file not found containing marking data: ${barcodeData.text}`
       );
+      await writeBit(1417, 1, 1);
+
       if (this.io) {
         this.io.emit("image_save_error", {
           timestamp: new Date(),
           message: `Failed to save image for marking data: ${barcodeData.text}`,
           path: imagePath,
+        });
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: barcodeData.serialNo,
+          markingData: barcodeData.text,
+          scannerData: secondScannerData,
+          result: false,
+          grading,
+          isUpdate: true,
+          remark: "Image not found",
         });
       }
       logger.info("Ending cycle without saving to MongoDB");
@@ -1074,6 +1086,8 @@ class ScannerController {
       grading,
       isUpdate: true,
     });
+
+    await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
 
     return { success: isDataMatching };
   }
