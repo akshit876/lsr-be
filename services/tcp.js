@@ -71,37 +71,19 @@ class TCPClient {
         console.log("Received data chunk:", data);
       }
 
-      // Clean up the data by removing the backslash and splitting by newlines
+      // Clean up the data by removing the backslash
       const cleanData = completeData.replace("\\", "").trim();
       console.log("Clean data:", cleanData);
 
-      // Split the data into lines and remove empty lines
-      const dataLines = cleanData
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean);
-
-      const timestamp = new Date()
-        .toLocaleString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-        .replace(/,/g, "");
-
       if (isFirst) {
-        // For first scan, combine all lines and check for zeros
-        const combinedData = dataLines.join("");
-        return combinedData.includes("0") ? "NG" : combinedData;
+        return cleanData.includes("0") ? "NG" : cleanData;
       }
 
-      // For second scan trigger, combine first three lines
-      const secondScanData = dataLines.slice(0, 3).join("");
+      // For second scan, just take the first 7 characters (S113A5A)
+      const secondScanData = cleanData.substring(0, 7);
+
       // For third scan trigger, combine the last two lines
-      const thirdScanData = dataLines.slice(3, 5).join("");
+      const thirdScanData = cleanData.slice(7).join("");
 
       // Save to CSV
       const csvPath = "D:/scanner_data.csv";
@@ -111,10 +93,17 @@ class TCPClient {
 
       fs.appendFileSync(
         csvPath,
-        `${timestamp},${secondScanData},${thirdScanData}\n`
+        `${new Date().toLocaleString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })},${secondScanData},${thirdScanData}\n`
       );
 
-      return isSecond ? secondScanData : isThird ? thirdScanData : null;
+      return isSecond ? secondScanData : null;
     } catch (err) {
       throw new Error(`Failed to read data: ${err.message}`);
     }

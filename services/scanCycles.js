@@ -1089,7 +1089,7 @@ class ScannerController {
       const day = secondScannerData.substring(2, 4); // 13
       const shift = secondScannerData.substring(4, 5); // A
       const year = secondScannerData.substring(5, 6); // 5
-      const month = secondScannerData.substring(6, 7); // A
+      const month = secondScannerData.substring(6); // A
 
       // Construct the formatted string
       const formattedData = `${dieNo} ${day}${shift} ${year}${month}`;
