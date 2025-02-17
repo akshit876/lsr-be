@@ -91,10 +91,10 @@ class TCPClient {
         })
         .replace(/,/g, "");
 
-      // Check for NG conditions (if second scan contains 0)
+      // Check for NG conditions (if either scan contains 0)
       let finalFirstScan = firstScanData;
       let finalSecondScan = secondScanData;
-      if (secondScanData.includes("0")) {
+      if (firstScanData.includes("0") || secondScanData.includes("0")) {
         finalFirstScan = "NG";
         finalSecondScan = "NG";
       }
