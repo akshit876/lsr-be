@@ -925,10 +925,6 @@ class ScannerController {
       scanType: "first",
     });
 
-    // const scannerData = await readRegisterAndProvideASCII(1470, 20);
-
-    // logger.info(`Received scanner data: "${scannerData}"`);
-
     // Check for reset signal before proceeding
     if (await this.checkReset()) {
       logger.warn("⚠️ Reset detected during first scan, restarting cycle");
@@ -942,35 +938,22 @@ class ScannerController {
       return { shouldContinue: true };
     }
 
-    // Parse and validate the structured data
-    // if (scannerData) {
-    //   const parts = scannerData.trim().split(" ");
-    //   if (parts.length === 3) {
-    //     const [dieNo, dateShift, yearMonth] = parts;
-    //     const validation = this.validateScanData(dieNo, dateShift, yearMonth);
+    // If we get here and have valid scanner data, it means the part is already marked
+    if (scannerData && scannerData.trim() !== "") {
+      logger.warn("⚠️ Part appears to be already marked");
 
-    //     if (validation.isValid) {
-    //       logger.info("First scan data is OK, proceeding the cycle...");
-    //       logger.info("Parsed data:", validation.parsedData);
+      // Emit the "part_already_marked" event to the UI
+      if (this.io) {
+        this.io.emit("first_scan_ok", {
+          timestamp: new Date(),
+          scannerData: scannerData,
+          message:
+            "Part detected with existing marking. Please use an unmarked part.",
+        });
+      }
 
-    //       if (this.io) {
-    //         this.io.emit("first_scan_ok", {
-    //           timestamp: new Date(),
-    //           scannerData: scannerData,
-    //           parsedData: validation.parsedData,
-    //           message: "First scan detected OK part, cycle proceeding...",
-    //         });
-    //       }
-
-    //       await writeBit(1414, 14, 1);
-    //       return {
-    //         shouldContinue: true,
-    //         parsedData: validation.parsedData,
-    //         scannerData: scannerData,
-    //       };
-    //     }
-    //   }
-    // }
+      // await writeBit(1414, 14, 1);
+    }
 
     return { shouldContinue: false };
   }
