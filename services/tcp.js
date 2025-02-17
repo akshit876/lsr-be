@@ -1,6 +1,8 @@
 import net from "net";
 import fs from "fs";
 import path, { dirname } from "path";
+import logger from "../logger.js";
+import { readBit } from "./modbus.js";
 
 class TCPClient {
   constructor() {
@@ -65,10 +67,32 @@ class TCPClient {
     console.log("Reading data from TCP server...");
     try {
       let completeData = "";
+
+      // Add reset check loop
       while (!completeData.includes("\\")) {
+        // Check for reset signal before each read
+        try {
+          const resetSignal = await readBit(1600, 0);
+          if (resetSignal) {
+            logger.warn(
+              "⚠️ Reset detected while reading TCP data, restarting cycle"
+            );
+            throw new Error("RESET_DETECTED");
+          }
+        } catch (resetError) {
+          if (resetError.message === "RESET_DETECTED") {
+            throw resetError; // Propagate reset error
+          }
+          // If it's just a read error, log and continue
+          logger.error("Error checking reset bit:", resetError);
+        }
+
         const data = await this.readData();
         completeData += data;
         console.log("Received data chunk:", data);
+
+        // Add a small delay between reads to allow for reset checks
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
       // Clean up the data by removing the backslash and any line endings
@@ -105,6 +129,9 @@ class TCPClient {
 
       return isSecond ? secondScanData : thirdScanData;
     } catch (err) {
+      if (err.message === "RESET_DETECTED") {
+        throw err; // Propagate reset error to be handled by the main cycle
+      }
       throw new Error(`Failed to read data: ${err.message}`);
     }
   }

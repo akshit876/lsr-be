@@ -1106,58 +1106,67 @@ class ScannerController {
   async handleThirdScan(comService, barcodeData) {
     logger.info("Starting third scan handler");
 
-    const thirdScannerData = await this.fetchScannerData(comService, {
-      scanType: "third",
-    });
+    try {
+      const thirdScannerData = await this.fetchScannerData(comService, {
+        scanType: "third",
+      });
 
-    // Check if scanner data is "NG"
-    if (thirdScannerData.trim().toUpperCase() === "NG") {
-      const grading = "F"; // Set grading to F for NG cases
-      const isDataMatching = false; // NG always means no match
+      // Check if scanner data is "NG"
+      if (thirdScannerData.trim().toUpperCase() === "NG") {
+        const grading = "F"; // Set grading to F for NG cases
+        const isDataMatching = false; // NG always means no match
 
-      logger.info("🔄 Third scan resulted in NG");
-      logger.info("🔄 Setting grade to F and marking as non-matching");
+        logger.info("🔄 Third scan resulted in NG");
+        logger.info("🔄 Setting grade to F and marking as non-matching");
 
-      await writeBit(1417, 1, 1); // Write 1 to indicate failure
+        await writeBit(1417, 1, 1); // Write 1 to indicate failure
+
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: barcodeData.serialNo,
+          markingData: barcodeData.codeText,
+          scannerData: thirdScannerData,
+          result: false,
+          grading,
+          isUpdate: true,
+        });
+
+        return { success: false };
+      }
+
+      // Normal case handling (non-NG)
+      const grading = thirdScannerData.slice(-1);
+      const trimmedThirdScannerData = thirdScannerData.slice(0, -1);
+
+      const isDataMatching = await this.compareScannerDataWithCode(
+        trimmedThirdScannerData
+      );
+      logger.info("🔄 Third scan data matching without grade:", isDataMatching);
+
+      const checkGrading = await this.checkGrading(thirdScannerData);
+      logger.info("🔄 Third scan grade acceptance:", checkGrading);
+
+      await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1); // 1417.0 for OK, 1417.1 for NG
 
       await this.saveToMongoDB({
         io: this.io,
         serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.codeText,
+        markingData: barcodeData.text,
         scannerData: thirdScannerData,
-        result: false,
+        result: isDataMatching && checkGrading,
         grading,
         isUpdate: true,
       });
 
-      return { success: false };
+      return { success: isDataMatching };
+    } catch (error) {
+      if (error.message === "RESET_DETECTED") {
+        logger.warn("Reset detected during third scan, restarting cycle");
+        await this.handleReset();
+        throw error; // Propagate to main cycle handler
+      }
+      throw error;
     }
-
-    // Normal case handling (non-NG)
-    const grading = thirdScannerData.slice(-1);
-    const trimmedThirdScannerData = thirdScannerData.slice(0, -1);
-
-    const isDataMatching = await this.compareScannerDataWithCode(
-      trimmedThirdScannerData
-    );
-    logger.info("🔄 Third scan data matching without grade:", isDataMatching);
-
-    const checkGrading = await this.checkGrading(thirdScannerData);
-    logger.info("🔄 Third scan grade acceptance:", checkGrading);
-
-    await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1); // 1417.0 for OK, 1417.1 for NG
-
-    await this.saveToMongoDB({
-      io: this.io,
-      serialNumber: barcodeData.serialNo,
-      markingData: barcodeData.text,
-      scannerData: thirdScannerData,
-      result: isDataMatching && checkGrading,
-      grading,
-      isUpdate: true,
-    });
-
-    return { success: isDataMatching };
   }
 
   async handleScanError(error) {
