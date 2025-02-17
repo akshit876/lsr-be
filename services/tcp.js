@@ -57,7 +57,7 @@ class TCPClient {
     });
   }
 
-  async getDataTwiceAndConcat({ isFirst = true, isSecond = false }) {
+  async getDataTwiceAndConcat(comService, { triggerType = "first" }) {
     if (!this.client) {
       throw new Error("TCP client is not connected.");
     }
@@ -65,20 +65,21 @@ class TCPClient {
     console.log("Reading data from TCP server...");
     try {
       let completeData = "";
-      // Keep reading until we find the terminating backslash
       while (!completeData.includes("\\")) {
         const data = await this.readData();
         completeData += data;
         console.log("Received data chunk:", data);
       }
 
-      // Clean up the data by removing the backslash and any whitespace
+      // Clean up the data by removing the backslash and splitting by newlines
       const cleanData = completeData.replace("\\", "").trim();
       console.log("Clean data:", cleanData);
 
-      // Extract first scan (S1 + next 6 characters) and second scan (remaining characters before \)
-      const firstScanData = cleanData.substring(0, 7); // S1 + 13A5A
-      const secondScanData = cleanData.substring(7).trim(); // 00
+      // Split the data into lines and remove empty lines
+      const dataLines = cleanData
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
 
       const timestamp = new Date()
         .toLocaleString("en-GB", {
@@ -91,33 +92,31 @@ class TCPClient {
         })
         .replace(/,/g, "");
 
-      // Check for NG conditions (if either scan contains 0)
-      let finalFirstScan = firstScanData;
-      let finalSecondScan = secondScanData;
-      if (firstScanData.includes("0") || secondScanData.includes("0")) {
-        finalFirstScan = "NG";
-        finalSecondScan = "NG";
+      if (triggerType === "first") {
+        // For first scan, combine all lines and check for zeros
+        const combinedData = dataLines.join("");
+        return combinedData.includes("0") ? "NG" : combinedData;
       }
 
-      console.log("Processed data:", {
-        firstScan: finalFirstScan,
-        secondScan: finalSecondScan,
-      });
+      // For second scan trigger, combine first three lines
+      const secondScanData = dataLines.slice(0, 3).join("");
+      // For third scan trigger, combine the last two lines
+      const thirdScanData = dataLines.slice(3, 5).join("");
 
       // Save to CSV
       const csvPath = "D:/scanner_data.csv";
       if (!fs.existsSync(csvPath)) {
-        fs.writeFileSync(csvPath, "Timestamp,First Data,Second Data\n");
+        fs.writeFileSync(csvPath, "Timestamp,Second Scan,Third Scan\n");
       }
 
       fs.appendFileSync(
         csvPath,
-        `${timestamp},${finalFirstScan},${finalSecondScan}\n`
+        `${timestamp},${secondScanData},${thirdScanData}\n`
       );
 
-      return isSecond ? finalFirstScan + finalSecondScan : finalFirstScan;
+      return triggerType === "second" ? secondScanData : thirdScanData;
     } catch (err) {
-      throw new Error(`Failed to read data twice: ${err.message}`);
+      throw new Error(`Failed to read data: ${err.message}`);
     }
   }
 

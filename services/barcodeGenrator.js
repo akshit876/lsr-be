@@ -63,24 +63,28 @@ class BarcodeGenerator {
     currentDate,
     monthLetter,
     dieNumber,
-    shift: providedShift,
-    year: providedYear,
-    month: providedMonth,
+    ocrShift,
+    ocrYear,
+    ocrMonth,
   }) {
     try {
-      // Use provided values or calculate from date if not provided
-      const year = providedYear || format(date, "yy");
-      const month = providedMonth || format(date, "MM");
+      // Use current date for all timestamp-based fields
+      const now = new Date();
+      const year = format(now, "yy");
+      const month = format(now, "MM");
+      const day = format(now, "dd");
+      const shift = this.shiftUtility.getCurrentShift(now);
 
       // Convert month number to letter (1-12 to A-L)
       const monthToLetter = (monthNum) => {
         const monthInt = parseInt(monthNum);
-        if (monthInt < 1 || monthInt > 12) return "A"; // Default to A if invalid
-        return String.fromCharCode(64 + monthInt); // 65 is ASCII for 'A'
+        if (monthInt < 1 || monthInt > 12) {
+          return "A"; // Default to A if invalid
+        }
+        return String.fromCharCode(64 + monthInt);
       };
 
-      const monthLetterValue = monthLetter || monthToLetter(month);
-      const day = date;
+      const monthLetterValue = monthToLetter(month);
 
       // Calculate Julian date
       const startOfYear = new Date(date.getFullYear(), 0, 0);
@@ -90,7 +94,7 @@ class BarcodeGenerator {
         .padStart(3, "0");
 
       // Use provided shift or calculate if not provided
-      const shift = providedShift || "NA";
+      // const shift = providedShift || "NA";
 
       // Fetch config and part number if not provided
       const { partNumber: fetchedPartNumber, configData } =
@@ -114,14 +118,10 @@ class BarcodeGenerator {
             return { ...field, value: monthLetterValue };
           case "Date":
             return { ...field, value: day };
-          case "Julian Date":
-            return { ...field, value: julianDay };
           case "Serial Number":
             return { ...field, value: serialString };
           case "Shift":
             return { ...field, value: shift };
-          case "STORE":
-            return { ...field, value: dieNumber };
           // case "SUPPLIER CODE":
           //   return { ...field, value: "04101" }; // Hardcoded as per original
           default:
@@ -140,8 +140,23 @@ class BarcodeGenerator {
       logger.info(barcodeText);
       logger.info(serialString);
 
+      // Calculate the century prefix based on the current year
+      const currentYear = new Date().getFullYear();
+      const centuryPrefix = Math.floor(currentYear / 100);
+      const formattedOcrYear =
+        ocrYear?.toString().length === 1
+          ? `${centuryPrefix}${ocrYear}`
+          : ocrYear;
+
+      // Append OCR data to barcode text
+      const ocrDate = `${day}${monthLetterValue}${formattedOcrYear}`;
+      const ocrData = `${dieNumber}${ocrDate}${ocrShift}`;
+      const finalText = barcodeText + ocrData;
+      logger.info("Final text with OCR data:", finalText);
+
       return {
         text: barcodeText,
+        barcodeText: finalText,
         serialNo: serialString,
         fields: fields,
       };

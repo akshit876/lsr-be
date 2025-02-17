@@ -725,7 +725,7 @@ class ScannerController {
       // Step 2: Generate and Write Barcode
       const barcodeData = await this.generateAndWriteBarcode(
         partNumber,
-        firstScanResult
+        ocrScanResult.ocrData
       );
       if (!barcodeData) {
         // this.barcodeGenerator.decSerialNo();
@@ -1007,17 +1007,18 @@ class ScannerController {
     }
   }
 
-  async generateAndWriteBarcode(partNumber, firstScanResult) {
-    const { text, serialNo } = await this.barcodeGenerator.generateBarcodeData({
-      date: firstScanResult.parsedData.date,
-      shift: firstScanResult.parsedData.shift,
-      year: firstScanResult.parsedData.year,
-      month: firstScanResult.parsedData.month,
-      monthLetter: firstScanResult.parsedData.monthLetter,
-      dieNumber: firstScanResult.parsedData.dieNumber,
-      mongoDbService,
-      partNumber,
-    });
+  async generateAndWriteBarcode(partNumber, ocrScanResult) {
+    const { text, barcodeText, serialNo } =
+      await this.barcodeGenerator.generateBarcodeData({
+        date: ocrScanResult.date,
+        shift: ocrScanResult.shift,
+        year: ocrScanResult.year,
+        month: ocrScanResult.month,
+        monthLetter: ocrScanResult.monthLetter,
+        dieNumber: ocrScanResult.dieNumber,
+        mongoDbService,
+        partNumber,
+      });
 
     // Check for reset signal before writing data
     if (await this.checkReset()) {
@@ -1029,19 +1030,15 @@ class ScannerController {
 
     try {
       // Get current year's first digit and combine with parsed year digit
-      const currentYearFirstDigit =
-        Math.floor(new Date().getFullYear() / 10) % 10; // For 2025 this gets 2
-      const formattedDate = `${String(firstScanResult.parsedData.date).padStart(2, "0")}${String(firstScanResult.parsedData.month).padStart(2, "0")}${currentYearFirstDigit}${firstScanResult.parsedData.year}`;
-      const serialWithDate = `${formattedDate}XX${serialNo}`;
+      // const currentYearFirstDigit =
+      //   Math.floor(new Date().getFullYear() / 10) % 10; // For 2025 this gets 2
+      // const formattedDate = `${String(firstScanResult.parsedData.date).padStart(2, "0")}${String(firstScanResult.parsedData.month).padStart(2, "0")}${currentYearFirstDigit}${firstScanResult.parsedData.year}`;
+      // const serialWithDate = `${formattedDate}XX${serialNo}`;
 
       // Write both files using the reusable function
       await Promise.all([
-        this.writeToFile(CODE_FILE_PATH, text, "OCR data"),
-        this.writeToFile(
-          TEXT_FILE_PATH,
-          serialWithDate,
-          "Serial number with date"
-        ),
+        this.writeToFile(CODE_FILE_PATH, barcodeText, "OCR data"),
+        this.writeToFile(TEXT_FILE_PATH, text, "Serial number with date"),
       ]);
 
       // Emit marking data to UI
@@ -1082,52 +1079,28 @@ class ScannerController {
 
     // Check if scanner data is "NG"
     if (secondScannerData.trim().toUpperCase() === "NG") {
-      const grading = "F"; // Set grading to F for NG cases
-      const isDataMatching = false; // NG always means no match
-
       logger.info("🔄 Second scan resulted in NG");
-      logger.info("🔄 Setting grade to F and marking as non-matching");
-
-      await writeBit(1517, 2, 1); // Write 1 to indicate failure
-
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: "",
-        markingData: "",
-        scannerData: secondScannerData,
-        result: false,
-        grading,
-        isUpdate: true,
-      });
-
       return { success: false };
     }
 
-    // Normal case handling (non-NG)
-    const grading = secondScannerData.slice(-1);
-    const trimmedSecondScannerData = secondScannerData.slice(0, -1);
+    try {
+      // Extract components from the scanner data
+      const dieNo = secondScannerData.substring(0, 2); // S1
+      const day = secondScannerData.substring(2, 4); // 13
+      const shift = secondScannerData.substring(4, 5); // A
+      const year = secondScannerData.substring(5, 6); // 5
+      const month = secondScannerData.substring(6, 7); // A
 
-    const isDataMatching = await this.compareScannerDataWithCode(
-      trimmedSecondScannerData
-    );
-    logger.info("🔄 Data matching without grade", isDataMatching);
+      // Construct the formatted string
+      const formattedData = `${dieNo} ${day}${shift} ${year}${month}`;
+      logger.info("🔄 Formatted OCR data:", formattedData);
+      await writeBit(1517, 3, 1); //1517.3 for OK, 1517.2 for NG
 
-    const checkGrading = await this.checkGrading(secondScannerData);
-    logger.info("🔄 Grade acceptance ", checkGrading);
-
-    await writeBit(1517, isDataMatching && checkGrading ? 3 : 2, 1); //1517.3 for OK, 1517.2 for NG
-
-    await this.saveToMongoDB({
-      io: this.io,
-      serialNumber: "",
-      markingData: "",
-      scannerData: secondScannerData,
-      result: isDataMatching && checkGrading,
-      grading,
-      isUpdate: true,
-    });
-
-    return { success: isDataMatching };
+      return { success: true, ocrData: { dieNo, day, shift, year, month } };
+    } catch (error) {
+      logger.error("❌ Error formatting OCR data:", error);
+      return { success: false };
+    }
   }
 
   async handleThirdScan(comService, barcodeData) {
