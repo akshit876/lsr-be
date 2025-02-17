@@ -79,13 +79,36 @@ class TCPClient {
         return cleanData.includes("0") ? "NG" : cleanData;
       }
 
-      // For second scan, just take the first 7 characters (S113A5A)
+      if (isThird) {
+        // Remove first 3 zeros and check remaining data for zeros
+        const dataWithoutLeadingZeros = cleanData.slice(3);
+        const hasZero = dataWithoutLeadingZeros.includes("0");
+        const finalData = hasZero ? "NG" : dataWithoutLeadingZeros;
+
+        // Save to CSV
+        const csvPath = "D:/scanner_data.csv";
+        if (!fs.existsSync(csvPath)) {
+          fs.writeFileSync(csvPath, "Timestamp,Second Scan,Third Scan\n");
+        }
+
+        fs.appendFileSync(
+          csvPath,
+          `${new Date().toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })},,${finalData}\n` // Note: second scan column is empty
+        );
+
+        return finalData;
+      }
+
+      // Original logic for non-third scan types
       const secondScanData = cleanData.substring(0, 7);
-
-      // For third scan, take everything after index 7
       const thirdScanData = cleanData.slice(7);
-
-      // Check if third scan data contains any zero
       const hasZero = thirdScanData.includes("0");
       const finalThirdScanData = hasZero ? "NG" : thirdScanData;
 
