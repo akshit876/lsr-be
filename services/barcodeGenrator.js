@@ -156,7 +156,7 @@ class BarcodeGenerator {
 
       return {
         text: barcodeText,
-        barcodeText: finalText,
+        codeText: finalText,
         serialNo: serialString,
         fields: fields,
       };

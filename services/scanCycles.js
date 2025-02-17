@@ -1008,7 +1008,7 @@ class ScannerController {
   }
 
   async generateAndWriteBarcode(partNumber, ocrScanResult) {
-    const { text, barcodeText, serialNo } =
+    const { text, codeText, serialNo } =
       await this.barcodeGenerator.generateBarcodeData({
         ocrDate: ocrScanResult.date,
         ocrShift: ocrScanResult.shift,
@@ -1037,7 +1037,7 @@ class ScannerController {
 
       // Write both files using the reusable function
       await Promise.all([
-        this.writeToFile(CODE_FILE_PATH, barcodeText, "OCR data"),
+        this.writeToFile(CODE_FILE_PATH, codeText, "OCR data"),
         this.writeToFile(TEXT_FILE_PATH, text, "Serial number with date"),
       ]);
 
