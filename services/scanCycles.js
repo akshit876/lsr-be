@@ -850,6 +850,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid die number format",
             details: `Expected format: S followed by numbers, received: ${dieNo}`,
+            message: `Invalid die number format. Expected format: S followed by numbers, received: ${dieNo}`,
           });
         }
         return { isValid: false, error: "Invalid die number format" };
@@ -871,6 +872,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid shift value",
             details: `Shift must be A, B, or C. Received: ${shift}`,
+            message: `Invalid shift value. Shift must be A, B, or C. Received: ${shift}`,
           });
         }
         return { isValid: false, error: "Invalid shift. Must be A, B, or C" };
@@ -883,6 +885,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid month letter",
             details: `Month letter must be A-L. Received: ${monthLetter}`,
+            message: `Invalid month letter. Month letter must be A-L. Received: ${monthLetter}`,
           });
         }
         return { isValid: false, error: "Invalid month letter. Must be A-L" };
@@ -899,6 +902,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid year",
             details: `Year must be current (${lastDigitCurrentYear}) or previous year (${(currentYear - 1) % 10}). Received: ${year}`,
+            message: `Invalid year. Year must be current (${lastDigitCurrentYear}) or previous year (${(currentYear - 1) % 10}). Received: ${year}`,
           });
         }
         return { isValid: false, error: "Invalid year" };
@@ -908,6 +912,16 @@ class ScannerController {
       if (isPreviousYear) {
         const currentMonth = currentDate.getMonth() + 1; // 0-based to 1-based
         if (!(month === 12 && currentMonth === 1)) {
+          if (this.io) {
+            this.io.emit("validation_error", {
+              timestamp: new Date(),
+              error: "Invalid year/month combination",
+              details:
+                "Previous year only valid for December when current month is January",
+              message:
+                "Invalid year/month combination. Previous year only valid for December when current month is January",
+            });
+          }
           return {
             isValid: false,
             error:
@@ -916,12 +930,18 @@ class ScannerController {
         }
       }
 
-      // Get the full year for date validation
-      const fullYear = isCurrentYear ? currentYear : currentYear - 1;
-
       // Validate date based on month and year
+      const fullYear = isCurrentYear ? currentYear : currentYear - 1;
       const daysInMonth = this.getDaysInMonth(fullYear, month);
       if (date < 1 || date > daysInMonth) {
+        if (this.io) {
+          this.io.emit("validation_error", {
+            timestamp: new Date(),
+            error: "Invalid date",
+            details: `Invalid date. Month ${month} in year ${fullYear} has ${daysInMonth} days`,
+            message: `Invalid date. Month ${month} in year ${fullYear} has ${daysInMonth} days`,
+          });
+        }
         return {
           isValid: false,
           error: `Invalid date. Month ${month} in year ${fullYear} has ${daysInMonth} days`,
@@ -946,6 +966,7 @@ class ScannerController {
           timestamp: new Date(),
           error: "Validation error",
           details: error.message,
+          message: `Validation error: ${error.message}`,
         });
       }
       return { isValid: false, error: `Validation error: ${error.message}` };
@@ -1110,6 +1131,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid OCR data length",
             details: `Expected length >= 7, received length: ${secondScannerData.length}`,
+            message: `Expected length >= 7, received length: ${secondScannerData.length}`,
           });
         }
         await writeBit(1517, 2, 1); // Signal NG
