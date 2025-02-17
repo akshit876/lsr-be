@@ -76,7 +76,9 @@ class TCPClient {
       console.log("Clean data:", cleanData);
 
       if (isFirst) {
-        return cleanData.includes("0") ? "NG" : cleanData;
+        // Check if all characters in cleanData are zeros
+        const isAllZeros = cleanData.split("").every((char) => char === "0");
+        return isAllZeros ? "NG" : cleanData;
       }
 
       if (isThird) {
