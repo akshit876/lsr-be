@@ -81,9 +81,9 @@ class TCPClient {
 
       // For second scan, just take the first 7 characters (S113A5A)
       const secondScanData = cleanData.substring(0, 7);
-
-      // For third scan trigger, combine the last two lines
-      const thirdScanData = cleanData.slice(7).join("");
+      
+      // For third scan, take everything after index 7
+      const thirdScanData = cleanData.slice(7);
 
       // Save to CSV
       const csvPath = "D:/scanner_data.csv";
@@ -103,7 +103,7 @@ class TCPClient {
         })},${secondScanData},${thirdScanData}\n`
       );
 
-      return isSecond ? secondScanData : null;
+      return isSecond ? secondScanData : thirdScanData;
     } catch (err) {
       throw new Error(`Failed to read data: ${err.message}`);
     }
