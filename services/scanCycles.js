@@ -716,10 +716,7 @@ class ScannerController {
       }
 
       // Step 4: Second Scanner Check (OCR data)
-      const ocrScanResult = await this.handleSecondScan(
-        comService,
-        barcodeData
-      );
+      const ocrScanResult = await this.handleSecondScan(comService, "");
       if (!ocrScanResult.success) {
         logger.info("Second scan (OCR) failed, stopping cycle");
         return;
@@ -1081,6 +1078,7 @@ class ScannerController {
     const secondScannerData = await this.fetchScannerData(comService, {
       scanType: "second",
     });
+    logger.info("🔄 Second scanner data:", secondScannerData);
 
     // Check if scanner data is "NG"
     if (secondScannerData.trim().toUpperCase() === "NG") {
@@ -1094,8 +1092,8 @@ class ScannerController {
 
       await this.saveToMongoDB({
         io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
+        serialNumber: "",
+        markingData: "",
         scannerData: secondScannerData,
         result: false,
         grading,
@@ -1121,8 +1119,8 @@ class ScannerController {
 
     await this.saveToMongoDB({
       io: this.io,
-      serialNumber: barcodeData.serialNo,
-      markingData: barcodeData.text,
+      serialNumber: "",
+      markingData: "",
       scannerData: secondScannerData,
       result: isDataMatching && checkGrading,
       grading,
