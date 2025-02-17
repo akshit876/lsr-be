@@ -748,7 +748,7 @@ class ScannerController {
         await this.saveToMongoDB({
           io: this.io,
           serialNumber: barcodeData.serialNo,
-          markingData: barcodeData.codeText,
+          markingData: barcodeData.text,
           scannerData: "N/A",
           result: "NG",
           grading: "N/A",

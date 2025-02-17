@@ -82,10 +82,13 @@ class TCPClient {
       }
 
       if (isThird) {
-        // Remove first 3 zeros and check remaining data for zeros
+        // Remove first 3 zeros and check remaining data
         const dataWithoutLeadingZeros = cleanData.slice(3);
-        const hasZero = dataWithoutLeadingZeros.includes("0");
-        const finalData = dataWithoutLeadingZeros;
+        // If all remaining characters are zeros, return "NG"
+        const isAllZeros = dataWithoutLeadingZeros
+          .split("")
+          .every((char) => char === "0");
+        const finalData = isAllZeros ? "NG" : dataWithoutLeadingZeros;
 
         // Save to CSV
         const csvPath = "D:/scanner_data.csv";
@@ -102,7 +105,7 @@ class TCPClient {
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
-          })},,${finalData}\n` // Note: second scan column is empty
+          })},,${finalData}\n`
         );
 
         return finalData;
