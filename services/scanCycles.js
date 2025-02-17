@@ -840,6 +840,7 @@ class ScannerController {
   validateScanData(dieNo, dateShift, yearMonth) {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
+    const fullOCRData = `${dieNo}${dateShift}${yearMonth}`; // Combine all parts for display
 
     try {
       // 1. Validate die number format (Sx where x is a number)
@@ -850,7 +851,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid die number format",
             details: `Expected format: S followed by numbers, received: ${dieNo}`,
-            message: `Invalid die number format. Expected format: S followed by numbers, received: ${dieNo}`,
+            message: `OCR Error: Invalid die number format in OCR data '${fullOCRData}'. Expected format: S followed by numbers, received: ${dieNo}`,
           });
         }
         return { isValid: false, error: "Invalid die number format" };
@@ -872,7 +873,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid shift value",
             details: `Shift must be A, B, or C. Received: ${shift}`,
-            message: `Invalid shift value. Shift must be A, B, or C. Received: ${shift}`,
+            message: `OCR Error: Invalid shift value in OCR data '${fullOCRData}'. Shift must be A, B, or C. Received: ${shift}`,
           });
         }
         return { isValid: false, error: "Invalid shift. Must be A, B, or C" };
@@ -885,7 +886,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid month letter",
             details: `Month letter must be A-L. Received: ${monthLetter}`,
-            message: `Invalid month letter. Month letter must be A-L. Received: ${monthLetter}`,
+            message: `OCR Error: Invalid month letter in OCR data '${fullOCRData}'. Month letter must be A-L. Received: ${monthLetter}`,
           });
         }
         return { isValid: false, error: "Invalid month letter. Must be A-L" };
@@ -902,7 +903,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid year",
             details: `Year must be current (${lastDigitCurrentYear}) or previous year (${(currentYear - 1) % 10}). Received: ${year}`,
-            message: `Invalid year. Year must be current (${lastDigitCurrentYear}) or previous year (${(currentYear - 1) % 10}). Received: ${year}`,
+            message: `OCR Error: Invalid year in OCR data '${fullOCRData}'. Year must be current (${lastDigitCurrentYear}) or previous year (${(currentYear - 1) % 10}). Received: ${year}`,
           });
         }
         return { isValid: false, error: "Invalid year" };
@@ -918,8 +919,7 @@ class ScannerController {
               error: "Invalid year/month combination",
               details:
                 "Previous year only valid for December when current month is January",
-              message:
-                "Invalid year/month combination. Previous year only valid for December when current month is January",
+              message: `OCR Error: Invalid year/month combination in OCR data '${fullOCRData}'. Previous year only valid for December when current month is January`,
             });
           }
           return {
@@ -939,7 +939,7 @@ class ScannerController {
             timestamp: new Date(),
             error: "Invalid date",
             details: `Invalid date. Month ${month} in year ${fullYear} has ${daysInMonth} days`,
-            message: `Invalid date. Month ${month} in year ${fullYear} has ${daysInMonth} days`,
+            message: `OCR Error: Invalid date in OCR data '${fullOCRData}'. Month ${month} in year ${fullYear} has ${daysInMonth} days`,
           });
         }
         return {
@@ -966,7 +966,7 @@ class ScannerController {
           timestamp: new Date(),
           error: "Validation error",
           details: error.message,
-          message: `Validation error: ${error.message}`,
+          message: `OCR Error: Validation failed for OCR data '${fullOCRData}'. ${error.message}`,
         });
       }
       return { isValid: false, error: `Validation error: ${error.message}` };
