@@ -1045,18 +1045,18 @@ class ScannerController {
       if (this.io) {
         this.io.emit("marking_data", {
           timestamp: new Date(),
-          data: text,
+          data: codeText,
         });
       }
 
-      const isVerified = await this.verifyAndRetryWrite(text, 2);
+      const isVerified = await this.verifyAndRetryWrite(codeText, 2);
 
       // Add MongoDB write after file verification
       if (isVerified) {
         await this.saveToMongoDB({
           io: this.io,
           serialNumber: serialNo,
-          markingData: text,
+          markingData: codeText,
           scannerData: "N/A", // No scanner data at this point
           result: "N/A", // File write was successful
           grading: "N/A", // No grading at this point
