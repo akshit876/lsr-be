@@ -1252,7 +1252,9 @@ class ScannerController {
 
       // Process result to take only 29 digits if not "NG"
       const processedResult =
-        result?.trim().toUpperCase() === "NG" ? result : result?.slice(0, 29);
+        result?.trim().toUpperCase() === "NG" || result?.trim() === "00000"
+          ? "NG"
+          : result?.slice(0, 29);
 
       if (this.io) {
         this.io.emit("scanner_read", {
