@@ -83,7 +83,7 @@ class TCPClient {
         // Remove first 3 zeros and check remaining data for zeros
         const dataWithoutLeadingZeros = cleanData.slice(3);
         const hasZero = dataWithoutLeadingZeros.includes("0");
-        const finalData = hasZero ? "NG" : dataWithoutLeadingZeros;
+        const finalData = dataWithoutLeadingZeros;
 
         // Save to CSV
         const csvPath = "D:/scanner_data.csv";
