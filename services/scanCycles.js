@@ -939,41 +939,41 @@ class ScannerController {
     }
 
     // If scannerData is "NG", proceed with workflow
-    // if (scannerData && scannerData.trim().toUpperCase() === "NG") {
-    //   logger.warn("⚠️ First scan data is NG, proceeding with workflow");
-    //   await writeBit(1414, 14, 1);
-    //   return { shouldContinue: true };
-    // }
+    if (scannerData && scannerData.trim().toUpperCase() === "NG") {
+      logger.warn("⚠️ First scan data is NG, proceeding with workflow");
+      await writeBit(1414, 14, 1);
+      return { shouldContinue: true };
+    }
 
     // Parse and validate the structured data
-    if (scannerData) {
-      const parts = scannerData.trim().split(" ");
-      if (parts.length === 3) {
-        const [dieNo, dateShift, yearMonth] = parts;
-        const validation = this.validateScanData(dieNo, dateShift, yearMonth);
+    // if (scannerData) {
+    //   const parts = scannerData.trim().split(" ");
+    //   if (parts.length === 3) {
+    //     const [dieNo, dateShift, yearMonth] = parts;
+    //     const validation = this.validateScanData(dieNo, dateShift, yearMonth);
 
-        if (validation.isValid) {
-          logger.info("First scan data is OK, proceeding the cycle...");
-          logger.info("Parsed data:", validation.parsedData);
+    //     if (validation.isValid) {
+    //       logger.info("First scan data is OK, proceeding the cycle...");
+    //       logger.info("Parsed data:", validation.parsedData);
 
-          if (this.io) {
-            this.io.emit("first_scan_ok", {
-              timestamp: new Date(),
-              scannerData: scannerData,
-              parsedData: validation.parsedData,
-              message: "First scan detected OK part, cycle proceeding...",
-            });
-          }
+    //       if (this.io) {
+    //         this.io.emit("first_scan_ok", {
+    //           timestamp: new Date(),
+    //           scannerData: scannerData,
+    //           parsedData: validation.parsedData,
+    //           message: "First scan detected OK part, cycle proceeding...",
+    //         });
+    //       }
 
-          await writeBit(1414, 14, 1);
-          return {
-            shouldContinue: true,
-            parsedData: validation.parsedData,
-            scannerData: scannerData,
-          };
-        }
-      }
-    }
+    //       await writeBit(1414, 14, 1);
+    //       return {
+    //         shouldContinue: true,
+    //         parsedData: validation.parsedData,
+    //         scannerData: scannerData,
+    //       };
+    //     }
+    //   }
+    // }
 
     return { shouldContinue: false };
   }
