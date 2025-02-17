@@ -1064,7 +1064,7 @@ class ScannerController {
         });
       }
 
-      return isVerified ? { text, serialNo } : null;
+      return isVerified ? { text: codeText, serialNo } : null;
     } catch (error) {
       logger.error("❌ Error in file writing process:", error);
       throw error;
@@ -1124,7 +1124,7 @@ class ScannerController {
         await this.saveToMongoDB({
           io: this.io,
           serialNumber: barcodeData.serialNo,
-          markingData: barcodeData.codeText,
+          markingData: barcodeData.text,
           scannerData: thirdScannerData,
           result: false,
           grading,
@@ -1151,7 +1151,7 @@ class ScannerController {
       await this.saveToMongoDB({
         io: this.io,
         serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.codeText,
+        markingData: barcodeData.text,
         scannerData: thirdScannerData,
         result: isDataMatching && checkGrading,
         grading,

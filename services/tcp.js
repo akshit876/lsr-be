@@ -85,6 +85,10 @@ class TCPClient {
       // For third scan, take everything after index 7
       const thirdScanData = cleanData.slice(7);
 
+      // Check if third scan data contains any zero
+      const hasZero = thirdScanData.includes("0");
+      const finalThirdScanData = hasZero ? "NG" : thirdScanData;
+
       // Save to CSV
       const csvPath = "D:/scanner_data.csv";
       if (!fs.existsSync(csvPath)) {
@@ -100,10 +104,10 @@ class TCPClient {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-        })},${secondScanData},${thirdScanData}\n`
+        })},${secondScanData},${finalThirdScanData}\n`
       );
 
-      return isSecond ? secondScanData : thirdScanData;
+      return isSecond ? secondScanData : finalThirdScanData;
     } catch (err) {
       throw new Error(`Failed to read data: ${err.message}`);
     }
