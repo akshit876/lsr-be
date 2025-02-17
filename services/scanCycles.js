@@ -845,6 +845,13 @@ class ScannerController {
       // 1. Validate die number format (Sx where x is a number)
       const isDieNoValid = /^S\d+$/.test(dieNo);
       if (!isDieNoValid) {
+        if (this.io) {
+          this.io.emit("validation_error", {
+            timestamp: new Date(),
+            error: "Invalid die number format",
+            details: `Expected format: S followed by numbers, received: ${dieNo}`,
+          });
+        }
         return { isValid: false, error: "Invalid die number format" };
       }
 
@@ -859,11 +866,25 @@ class ScannerController {
 
       // Validate shift (only A, B, or C)
       if (!["A", "B", "C"].includes(shift)) {
+        if (this.io) {
+          this.io.emit("validation_error", {
+            timestamp: new Date(),
+            error: "Invalid shift value",
+            details: `Shift must be A, B, or C. Received: ${shift}`,
+          });
+        }
         return { isValid: false, error: "Invalid shift. Must be A, B, or C" };
       }
 
       // Validate month (1-12)
       if (month < 1 || month > 12) {
+        if (this.io) {
+          this.io.emit("validation_error", {
+            timestamp: new Date(),
+            error: "Invalid month letter",
+            details: `Month letter must be A-L. Received: ${monthLetter}`,
+          });
+        }
         return { isValid: false, error: "Invalid month letter. Must be A-L" };
       }
 
@@ -873,6 +894,13 @@ class ScannerController {
       const isPreviousYear = year === (currentYear - 1) % 10;
 
       if (!isCurrentYear && !isPreviousYear) {
+        if (this.io) {
+          this.io.emit("validation_error", {
+            timestamp: new Date(),
+            error: "Invalid year",
+            details: `Year must be current (${lastDigitCurrentYear}) or previous year (${(currentYear - 1) % 10}). Received: ${year}`,
+          });
+        }
         return { isValid: false, error: "Invalid year" };
       }
 
@@ -913,6 +941,13 @@ class ScannerController {
         },
       };
     } catch (error) {
+      if (this.io) {
+        this.io.emit("validation_error", {
+          timestamp: new Date(),
+          error: "Validation error",
+          details: error.message,
+        });
+      }
       return { isValid: false, error: `Validation error: ${error.message}` };
     }
   }
@@ -1067,19 +1102,49 @@ class ScannerController {
     }
 
     try {
-      // Extract components from the scanner data
+      // Basic format validation
+      if (!secondScannerData || secondScannerData.length < 7) {
+        logger.error("❌ Invalid OCR data length");
+        await writeBit(1517, 2, 1); // Signal NG
+        return { success: false };
+      }
+
+      // Extract components
       const dieNo = secondScannerData.substring(0, 2); // S1
       const day = secondScannerData.substring(2, 4); // 13
       const shift = secondScannerData.substring(4, 5); // A
       const year = secondScannerData.substring(5, 6); // 5
       const month = secondScannerData.substring(6); // A
 
+      // Use existing validation function
+      const validationResult = this.validateScanData(
+        dieNo,
+        `${day}${shift}`,
+        `${year}${month}`
+      );
+
+      if (!validationResult.isValid) {
+        logger.error(`Validation failed: ${validationResult.error}`);
+        await writeBit(1517, 2, 1); // Signal NG
+        return { success: false };
+      }
+
       // Construct the formatted string
       const formattedData = `${dieNo} ${day}${shift} ${year}${month}`;
       logger.info("🔄 Formatted OCR data:", formattedData);
       await writeBit(1517, 3, 1); //1517.3 for OK, 1517.2 for NG
 
-      return { success: true, ocrData: { dieNo, day, shift, year, month } };
+      return {
+        success: true,
+        ocrData: {
+          dieNo,
+          day,
+          shift,
+          year,
+          month,
+          monthLetter: month, // Adding monthLetter to match the expected format
+        },
+      };
     } catch (error) {
       logger.error("❌ Error formatting OCR data:", error);
       return { success: false };
@@ -1211,7 +1276,7 @@ class ScannerController {
         isSecond: scanType === "second",
         isThird: scanType === "third",
       });
-      logger.info(`📝 Scanner result: ${result}`);
+      logger.info(` Scanner result: ${result}`);
 
       // Process result to take only 29 digits if not "NG"
       const processedResult =
