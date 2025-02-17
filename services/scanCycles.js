@@ -1105,6 +1105,13 @@ class ScannerController {
       // Basic format validation
       if (!secondScannerData || secondScannerData.length < 7) {
         logger.error("❌ Invalid OCR data length");
+        if (this.io) {
+          this.io.emit("validation_error", {
+            timestamp: new Date(),
+            error: "Invalid OCR data length",
+            details: `Expected length >= 7, received length: ${secondScannerData.length}`,
+          });
+        }
         await writeBit(1517, 2, 1); // Signal NG
         return { success: false };
       }
