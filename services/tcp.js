@@ -72,17 +72,13 @@ class TCPClient {
         console.log("Received data chunk:", data);
       }
 
-      // Split the data by newlines and clean up
-      const lines = completeData
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line && line !== "\\"); // Remove empty lines and the backslash
+      // Clean up the data by removing the backslash and any whitespace
+      const cleanData = completeData.replace("\\", "").trim();
+      console.log("Clean data:", cleanData);
 
-      console.log("Processed lines:", lines);
-
-      // First 3 lines for first scan, next 2 for second scan
-      const firstScanData = lines.slice(0, 3).join("");
-      const secondScanData = lines.slice(3, 5).join("");
+      // Extract first scan (S1 + next 6 characters) and second scan (remaining characters before \)
+      const firstScanData = cleanData.substring(0, 7); // S1 + 13A5A
+      const secondScanData = cleanData.substring(7).trim(); // 00
 
       const timestamp = new Date()
         .toLocaleString("en-GB", {
@@ -95,10 +91,10 @@ class TCPClient {
         })
         .replace(/,/g, "");
 
-      // Check for NG conditions
+      // Check for NG conditions (if second scan contains 0)
       let finalFirstScan = firstScanData;
       let finalSecondScan = secondScanData;
-      if (firstScanData.includes("0") || secondScanData.includes("0")) {
+      if (secondScanData.includes("0")) {
         finalFirstScan = "NG";
         finalSecondScan = "NG";
       }
