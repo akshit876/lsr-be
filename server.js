@@ -67,6 +67,38 @@ export const REGISTERS_TO_MONITOR = [
         eventName: "reject-bin",
         message: "Put the part in the rejection bin",
       },
+      2: {
+        eventName: "tap-missing1",
+        message: "Tap missing 1...",
+      },
+      3: {
+        eventName: "tap-missing2",
+        message: "Tap missing 2...",
+      },
+      4: {
+        eventName: "tap-missing3",
+        message: "Tap missing 3...",
+      },
+      5: {
+        eventName: "tap-missing4",
+        message: "Tap missing 4...",
+      },
+      6: {
+        eventName: "tap-missing5",
+        message: "Tap missing 5...",
+      },
+      7: {
+        eventName: "tap-missing6",
+        message: "Tap missing 6...",
+      },
+      8: {
+        eventName: "tap-missing7",
+        message: "Tap missing 7...",
+      },
+      9: {
+        eventName: "tap-missing8",
+        message: "Tap missing 8...",
+      },
     },
   },
 ];
