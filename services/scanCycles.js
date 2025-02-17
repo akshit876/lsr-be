@@ -696,6 +696,35 @@ class ScannerController {
         },
        */
 
+      // NEW: Wait for 1517.0 before second scan
+      logger.info("🔍 Waiting for bit 1517.0 before second scan");
+      if (await this.checkResetOrBit(1517, 0, 1)) {
+        logger.warn(
+          "⚠️ Reset detected while waiting for 1517.0, restarting cycle"
+        );
+        await sleep(1000);
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: barcodeData.serialNo,
+          markingData: barcodeData.text,
+          scannerData: "N/A",
+          result: "NG",
+          grading: "N/A",
+          isUpdate: true,
+        });
+        return;
+      }
+
+      // Step 4: Second Scanner Check (OCR data)
+      const ocrScanResult = await this.handleSecondScan(
+        comService,
+        barcodeData
+      );
+      if (!ocrScanResult.success) {
+        logger.info("Second scan (OCR) failed, stopping cycle");
+        return;
+      }
+
       // Step 2: Generate and Write Barcode
       const barcodeData = await this.generateAndWriteBarcode(
         partNumber,
@@ -732,7 +761,7 @@ class ScannerController {
       }
 
       // Step 4: Second Scanner Check
-      const secondScanResult = await this.handleSecondScan(
+      const thirdScanResult = await this.handleThirdScan(
         comService,
         barcodeData
       );
@@ -896,7 +925,7 @@ class ScannerController {
     logger.info("Starting first scan handler");
 
     const scannerData = await this.fetchScannerData(comService, {
-      isSecondScan: false,
+      scanType: "first",
     });
 
     // const scannerData = await readRegisterAndProvideASCII(1470, 20);
@@ -1050,7 +1079,7 @@ class ScannerController {
 
   async handleSecondScan(comService, barcodeData) {
     const secondScannerData = await this.fetchScannerData(comService, {
-      isSecondScan: true,
+      scanType: "second",
     });
 
     // Check if scanner data is "NG"
@@ -1061,7 +1090,7 @@ class ScannerController {
       logger.info("🔄 Second scan resulted in NG");
       logger.info("🔄 Setting grade to F and marking as non-matching");
 
-      await writeBit(1417, 1, 1); // Write 1 to indicate failure
+      await writeBit(1517, 2, 1); // Write 1 to indicate failure
 
       await this.saveToMongoDB({
         io: this.io,
@@ -1088,13 +1117,70 @@ class ScannerController {
     const checkGrading = await this.checkGrading(secondScannerData);
     logger.info("🔄 Grade acceptance ", checkGrading);
 
-    await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1);
+    await writeBit(1517, isDataMatching && checkGrading ? 3 : 2, 1); //1517.3 for OK, 1517.2 for NG
 
     await this.saveToMongoDB({
       io: this.io,
       serialNumber: barcodeData.serialNo,
       markingData: barcodeData.text,
       scannerData: secondScannerData,
+      result: isDataMatching && checkGrading,
+      grading,
+      isUpdate: true,
+    });
+
+    return { success: isDataMatching };
+  }
+
+  async handleThirdScan(comService, barcodeData) {
+    logger.info("Starting third scan handler");
+
+    const thirdScannerData = await this.fetchScannerData(comService, {
+      scanType: "third",
+    });
+
+    // Check if scanner data is "NG"
+    if (thirdScannerData.trim().toUpperCase() === "NG") {
+      const grading = "F"; // Set grading to F for NG cases
+      const isDataMatching = false; // NG always means no match
+
+      logger.info("🔄 Third scan resulted in NG");
+      logger.info("🔄 Setting grade to F and marking as non-matching");
+
+      await writeBit(1417, 1, 1); // Write 1 to indicate failure
+
+      await this.saveToMongoDB({
+        io: this.io,
+        serialNumber: barcodeData.serialNo,
+        markingData: barcodeData.text,
+        scannerData: thirdScannerData,
+        result: false,
+        grading,
+        isUpdate: true,
+      });
+
+      return { success: false };
+    }
+
+    // Normal case handling (non-NG)
+    const grading = thirdScannerData.slice(-1);
+    const trimmedThirdScannerData = thirdScannerData.slice(0, -1);
+
+    const isDataMatching = await this.compareScannerDataWithCode(
+      trimmedThirdScannerData
+    );
+    logger.info("🔄 Third scan data matching without grade:", isDataMatching);
+
+    const checkGrading = await this.checkGrading(thirdScannerData);
+    logger.info("🔄 Third scan grade acceptance:", checkGrading);
+
+    await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1); // 1417.0 for OK, 1417.1 for NG
+
+    await this.saveToMongoDB({
+      io: this.io,
+      serialNumber: barcodeData.serialNo,
+      markingData: barcodeData.text,
+      scannerData: thirdScannerData,
       result: isDataMatching && checkGrading,
       grading,
       isUpdate: true,
@@ -1138,16 +1224,16 @@ class ScannerController {
 
   async fetchScannerData(comService, options = {}) {
     const {
-      isSecondScan = false,
-      register = isSecondScan ? 1416 : 1415,
-      bit = isSecondScan ? 15 : 0,
-      timeout = isSecondScan ? 100 * 1000 : 100 * 1000,
-      scannerLabel = isSecondScan ? "Second" : "First",
+      scanType = "first", // Can be 'first', 'second', or 'third'
+      register = this.getScanRegister(scanType),
+      bit = this.getScanBit(scanType),
+      timeout = 100 * 1000, // Same timeout for all scans
+      scannerLabel = this.getScanLabel(scanType),
     } = options;
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
 
-    // Add a flag to prevent multiple triggers
+    // Prevent multiple triggers
     if (this.isScanning) {
       logger.warn("Scanner already in progress, skipping new trigger");
       return null;
@@ -1155,79 +1241,12 @@ class ScannerController {
     this.isScanning = true;
 
     try {
-      logger.info(
-        `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
-      );
-
-      // const scannerDataPromise = new Promise((resolve, reject) => {
-      //   // Remove any existing listeners first
-      //   this.comService.removeAllListeners("dataGot");
-
-      //   const dataHandler = (data) => {
-      //     logger.success(
-      //       `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-      //     );
-
-      //     if (this.io) {
-      //       this.io.emit("scanner_read", {
-      //         timestamp: new Date(),
-      //         scannerType: scannerLabel,
-      //         data: data,
-      //       });
-      //     }
-
-      //     clearTimeout(timeoutId);
-      //     this.isScanning = false; // Reset the scanning flag
-      //     resolve(data);
-      //     this.comService.off("dataGot", dataHandler);
-      //   };
-
-      //   logger.info("👂 Adding event listener for scanner data");
-      //   this.comService.on("dataGot", dataHandler);
-
-      //   const timeoutId = setTimeout(() => {
-      //     logger.error(
-      //       `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
-      //     );
-      //     this.comService.off("dataGot", dataHandler);
-      //     this.isScanning = false; // Reset the scanning flag
-      //     reject(new Error(`${scannerLabel} scanner data timeout`));
-      //   }, timeout);
-
-      //   // Only trigger scanner if not already scanning
-      //   logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-      //   writeBit(register, bit, 1)
-      //     .then(() =>
-      //       logger.success(`${scannerLabel} scanner triggered successfully`)
-      //     )
-      //     .catch((err) => {
-      //       logger.error(
-      //         `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-      //         err
-      //       );
-      //       clearTimeout(timeoutId);
-      //       this.isScanning = false; // Reset the scanning flag
-      //       reject(err);
-      //     });
-      // });
-
       await writeBit(register, bit, 1);
-      // .then(() =>
-      //   logger.success(`${scannerLabel} scanner triggered successfully`)
-      // )
-      // .catch((err) => {
-      //   logger.error(
-      //     `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-      //     err
-      //   );
-      //   clearTimeout(timeoutId);
-      //   this.isScanning = false; // Reset the scanning flag
-      //   reject(err);
-      // });
 
       const result = await tcpClient.getDataTwiceAndConcat({
-        isFirst: isSecondScan == false,
-        isSecond: isSecondScan,
+        isFirst: scanType === "first",
+        isSecond: scanType === "second",
+        isThird: scanType === "third",
       });
       logger.info(`📝 Scanner result: ${result}`);
 
@@ -1242,12 +1261,13 @@ class ScannerController {
           data: processedResult,
         });
       }
+
       logger.info("📡 Emitting scanner read event", {
         timestamp: new Date(),
         scannerType: scannerLabel,
         data: processedResult,
       });
-      logger.info("Scanner result:", { processedResult });
+
       return processedResult;
     } catch (error) {
       logger.separator.hash();
@@ -1257,7 +1277,47 @@ class ScannerController {
       );
       throw error;
     } finally {
-      this.isScanning = false; // Always reset the scanning flag
+      this.isScanning = false;
+    }
+  }
+
+  // Helper methods for scan configuration
+  getScanRegister(scanType) {
+    switch (scanType) {
+      case "first":
+        return 1415;
+      case "second":
+        return 1517;
+      case "third":
+        return 1417; // Adjust this register number as needed
+      default:
+        return 1415;
+    }
+  }
+
+  getScanBit(scanType) {
+    switch (scanType) {
+      case "first":
+        return 0;
+      case "second":
+        return 1;
+      case "third":
+        return 7; // Adjust this bit number as needed
+      default:
+        return 0;
+    }
+  }
+
+  getScanLabel(scanType) {
+    switch (scanType) {
+      case "first":
+        return "First";
+      case "second":
+        return "Second";
+      case "third":
+        return "Third";
+      default:
+        return "Unknown";
     }
   }
 
