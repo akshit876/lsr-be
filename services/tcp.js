@@ -57,7 +57,7 @@ class TCPClient {
     });
   }
 
-  async getDataTwiceAndConcat({ triggerType = "first" }) {
+  async getDataTwiceAndConcat({ isFirst, isSecond, isThird }) {
     if (!this.client) {
       throw new Error("TCP client is not connected.");
     }
@@ -92,7 +92,7 @@ class TCPClient {
         })
         .replace(/,/g, "");
 
-      if (triggerType === "first") {
+      if (isFirst) {
         // For first scan, combine all lines and check for zeros
         const combinedData = dataLines.join("");
         return combinedData.includes("0") ? "NG" : combinedData;
@@ -114,7 +114,7 @@ class TCPClient {
         `${timestamp},${secondScanData},${thirdScanData}\n`
       );
 
-      return triggerType === "second" ? secondScanData : thirdScanData;
+      return isSecond ? secondScanData : isThird ? thirdScanData : null;
     } catch (err) {
       throw new Error(`Failed to read data: ${err.message}`);
     }
