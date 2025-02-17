@@ -55,17 +55,27 @@ class BarcodeGenerator {
       partNumber,
     });} param0 
  * @returns 
+
+    await this.barcodeGenerator.generateBarcodeData({
+        date: ocrScanResult.date,
+        ocrShift: ocrScanResult.shift,
+        ocrYear: ocrScanResult.year,
+        ocrMonth: ocrScanResult.month,
+        ocrMonthLetter: ocrScanResult.monthLetter,
+        ocrDieNumber: ocrScanResult.dieNumber,
+        mongoDbService,
+        partNumber,
+      });
  */
   async generateBarcodeData({
-    date,
-    mongoDbService,
-    partNumber,
-    currentDate,
-    monthLetter,
-    dieNumber,
+    ocrDate,
     ocrShift,
     ocrYear,
     ocrMonth,
+    ocrMonthLetter,
+    ocrDieNumber,
+    mongoDbService,
+    partNumber,
   }) {
     try {
       // Use current date for all timestamp-based fields
@@ -85,16 +95,6 @@ class BarcodeGenerator {
       };
 
       const monthLetterValue = monthToLetter(month);
-
-      // Calculate Julian date
-      const startOfYear = new Date(date.getFullYear(), 0, 0);
-      const diff = date - startOfYear;
-      const julianDay = Math.floor(diff / (1000 * 60 * 60 * 24))
-        .toString()
-        .padStart(3, "0");
-
-      // Use provided shift or calculate if not provided
-      // const shift = providedShift || "NA";
 
       // Fetch config and part number if not provided
       const { partNumber: fetchedPartNumber, configData } =
@@ -149,8 +149,8 @@ class BarcodeGenerator {
           : ocrYear;
 
       // Append OCR data to barcode text
-      const ocrDate = `${day}${monthLetterValue}${formattedOcrYear}`;
-      const ocrData = `${dieNumber}${ocrDate}${ocrShift}`;
+      const ocrDateFormatted = `${ocrDate}${ocrMonthLetter}${formattedOcrYear}`;
+      const ocrData = `${ocrDieNumber}${ocrDateFormatted}${ocrShift}`;
       const finalText = barcodeText + ocrData;
       logger.info("Final text with OCR data:", finalText);
 

@@ -71,8 +71,8 @@ class TCPClient {
         console.log("Received data chunk:", data);
       }
 
-      // Clean up the data by removing the backslash
-      const cleanData = completeData.replace("\\", "").trim();
+      // Clean up the data by removing the backslash and any line endings
+      const cleanData = completeData.replace(/[\\\r\n]/g, "").trim();
       console.log("Clean data:", cleanData);
 
       if (isFirst) {
@@ -81,7 +81,7 @@ class TCPClient {
 
       // For second scan, just take the first 7 characters (S113A5A)
       const secondScanData = cleanData.substring(0, 7);
-      
+
       // For third scan, take everything after index 7
       const thirdScanData = cleanData.slice(7);
 
