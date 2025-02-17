@@ -57,7 +57,7 @@ class TCPClient {
     });
   }
 
-  async getDataTwiceAndConcat(comService, { triggerType = "first" }) {
+  async getDataTwiceAndConcat({ triggerType = "first" }) {
     if (!this.client) {
       throw new Error("TCP client is not connected.");
     }

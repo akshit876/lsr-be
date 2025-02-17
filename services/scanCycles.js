@@ -1195,7 +1195,7 @@ class ScannerController {
 
   async fetchScannerData(comService, options = {}) {
     const {
-      scanType = "first", // Can be 'first', 'second', or 'third'
+      scanType = options.scanType, // Can be 'first', 'second', or 'third'
       register = this.getScanRegister(scanType),
       bit = this.getScanBit(scanType),
       timeout = 100 * 1000, // Same timeout for all scans
