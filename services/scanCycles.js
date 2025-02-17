@@ -1010,12 +1010,12 @@ class ScannerController {
   async generateAndWriteBarcode(partNumber, ocrScanResult) {
     const { text, codeText, serialNo } =
       await this.barcodeGenerator.generateBarcodeData({
-        ocrDate: ocrScanResult.date,
+        ocrDate: ocrScanResult.day,
         ocrShift: ocrScanResult.shift,
         ocrYear: ocrScanResult.year,
         ocrMonth: ocrScanResult.month,
         ocrMonthLetter: ocrScanResult.monthLetter,
-        ocrDieNumber: ocrScanResult.dieNumber,
+        ocrDieNumber: ocrScanResult.dieNo,
         mongoDbService,
         partNumber,
       });

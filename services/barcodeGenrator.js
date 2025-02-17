@@ -140,16 +140,18 @@ class BarcodeGenerator {
       logger.info(barcodeText);
       logger.info(serialString);
 
-      // Calculate the century prefix based on the current year
-      const currentYear = new Date().getFullYear();
-      const centuryPrefix = Math.floor(currentYear / 100);
+      // Get the current decade digit dynamically
+      const currentYear = new Date().getFullYear().toString();
+      const currentDecade = currentYear.slice(0, 3); // Gets "202" from "2024"
+
+      // Convert single digit year to double digit using current decade
       const formattedOcrYear =
         ocrYear?.toString().length === 1
-          ? `${centuryPrefix}${ocrYear}`
+          ? `${currentDecade.slice(-1)}${ocrYear}` // Gets "2" from "202" and adds to year
           : ocrYear;
 
       // Append OCR data to barcode text
-      const ocrDateFormatted = `${ocrDate}${ocrMonthLetter}${formattedOcrYear}`;
+      const ocrDateFormatted = `${ocrDate}${ocrMonth}${formattedOcrYear}`;
       const ocrData = `${ocrDieNumber}${ocrDateFormatted}${ocrShift}`;
       const finalText = barcodeText + ocrData;
       logger.info("Final text with OCR data:", finalText);
