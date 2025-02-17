@@ -71,6 +71,15 @@ class BarcodeGenerator {
       // Use provided values or calculate from date if not provided
       const year = providedYear || format(date, "yy");
       const month = providedMonth || format(date, "MM");
+
+      // Convert month number to letter (1-12 to A-L)
+      const monthToLetter = (monthNum) => {
+        const monthInt = parseInt(monthNum);
+        if (monthInt < 1 || monthInt > 12) return "A"; // Default to A if invalid
+        return String.fromCharCode(64 + monthInt); // 65 is ASCII for 'A'
+      };
+
+      const monthLetterValue = monthLetter || monthToLetter(month);
       const day = date;
 
       // Calculate Julian date
@@ -102,7 +111,7 @@ class BarcodeGenerator {
           case "Year":
             return { ...field, value: year };
           case "Month":
-            return { ...field, value: month };
+            return { ...field, value: monthLetterValue };
           case "Date":
             return { ...field, value: day };
           case "Julian Date":

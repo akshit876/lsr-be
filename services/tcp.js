@@ -64,7 +64,26 @@ class TCPClient {
 
     console.log("Reading data from TCP server...");
     try {
-      const firstData = await this.readData();
+      let completeData = "";
+      // Keep reading until we find the terminating backslash
+      while (!completeData.includes("\\")) {
+        const data = await this.readData();
+        completeData += data;
+        console.log("Received data chunk:", data);
+      }
+
+      // Split the data by newlines and clean up
+      const lines = completeData
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line && line !== "\\"); // Remove empty lines and the backslash
+
+      console.log("Processed lines:", lines);
+
+      // First 3 lines for first scan, next 2 for second scan
+      const firstScanData = lines.slice(0, 3).join("");
+      const secondScanData = lines.slice(3, 5).join("");
+
       const timestamp = new Date()
         .toLocaleString("en-GB", {
           day: "2-digit",
@@ -74,44 +93,33 @@ class TCPClient {
           minute: "2-digit",
           second: "2-digit",
         })
-        .replace(/,/g, ""); // Remove any commas from the timestamp
+        .replace(/,/g, "");
 
-      console.log("First data received:", { firstData });
-      let concatenatedData = firstData;
-      let secondData = "";
-
-      if (firstData == "0\r\n0" || firstData == "0") {
-        concatenatedData = "NG";
+      // Check for NG conditions
+      let finalFirstScan = firstScanData;
+      let finalSecondScan = secondScanData;
+      if (firstScanData.includes("0") || secondScanData.includes("0")) {
+        finalFirstScan = "NG";
+        finalSecondScan = "NG";
       }
 
-      if (isSecond && concatenatedData != "NG") {
-        secondData = await this.readData();
-        console.log("Second data received:", { secondData });
-        concatenatedData += secondData;
-        console.log("Concatenated data:", concatenatedData);
-      }
+      console.log("Processed data:", {
+        firstScan: finalFirstScan,
+        secondScan: finalSecondScan,
+      });
 
       // Save to CSV
-      // const fs = require("fs");
-      // const path = require("path");
       const csvPath = "D:/scanner_data.csv";
-
-      // Create CSV header if file doesn't exist
       if (!fs.existsSync(csvPath)) {
         fs.writeFileSync(csvPath, "Timestamp,First Data,Second Data\n");
       }
 
-      // Format the second data - if NG, both columns will be NG
-      const csvSecondData = secondData;
-      const csvFirstData = firstData;
-
-      // Append data to CSV
       fs.appendFileSync(
         csvPath,
-        `${timestamp},${csvFirstData},${csvSecondData}\n`
+        `${timestamp},${finalFirstScan},${finalSecondScan}\n`
       );
 
-      return concatenatedData;
+      return isSecond ? finalFirstScan + finalSecondScan : finalFirstScan;
     } catch (err) {
       throw new Error(`Failed to read data twice: ${err.message}`);
     }
