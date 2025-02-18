@@ -1139,7 +1139,8 @@ class ScannerController {
       }
 
       // Extract components
-      const dieNo = secondScannerData.substring(0, 2); // S1
+      const rawDieNo = secondScannerData.substring(0, 2); // S1
+      const dieNo = rawDieNo.replace("S", "0"); // Replace S with 0
       const day = secondScannerData.substring(2, 4); // 13
       const shift = secondScannerData.substring(4, 5); // A
       const year = secondScannerData.substring(5, 6); // 5
