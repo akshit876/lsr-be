@@ -1319,7 +1319,7 @@ class ScannerController {
       if (this.io) {
         let emitData = processedResult;
         // For third scan, if data is not NG, remove the last character (grade)
-        if (scannerLabel === "third" && processedResult.trim().toUpperCase() !== "NG") {
+        if (scanType === "third" && processedResult.trim().toUpperCase() !== "NG") {
           emitData = processedResult.slice(0, -1);
         }
         this.io.emit("scanner_read", {
@@ -1327,6 +1327,7 @@ class ScannerController {
           scannerType: scannerLabel,
           data: emitData,
         });
+        logger.info(` Scanner result emitted: ${emitData}`);
       }
 
       logger.info("📡 Emitting scanner read event", {
