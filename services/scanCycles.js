@@ -1032,15 +1032,16 @@ class ScannerController {
       const checkGrading = await this.checkGrading(secondScannerData);
       logger.info("🔄 Grade acceptance ", checkGrading);
 
-      // If grade is F or data doesn't match, retry
-      if (grading.toUpperCase() === 'F' ||grading.toUpperCase() === '') {
+      // If grade is not A or B, retry
+      const acceptableGrades = ['A', 'B'];
+      if (!acceptableGrades.includes(grading.toUpperCase())) {
         if (retryCount < MAX_RETRIES) {
-          logger.info(`🔄 ${grading.toUpperCase() === 'F' ? 'Grade F' : 'Data mismatch'} detected, retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          logger.info(`🔄 Grade ${grading.toUpperCase() || 'MISSING'} detected (not A/B), retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
           retryCount++;
           continue;
         }
-        logger.info(`🔄 Still getting ${grading.toUpperCase() === 'F' ? 'Grade F' : 'data mismatch'} after all retries`);
+        logger.info(`🔄 Still getting grade ${grading.toUpperCase() || 'MISSING'} after all retries`);
       }
 
       // Handle image backup and save to MongoDB
