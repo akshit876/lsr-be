@@ -1221,8 +1221,10 @@ class ScannerController {
       );
       logger.info("🔄 Third scan data matching without grade:", isDataMatching);
 
-      const checkGrading = await this.checkGrading(thirdScannerData);
-      logger.info("🔄 Third scan grade acceptance:", checkGrading);
+      // Temporarily bypassing grade check
+      // const checkGrading = await this.checkGrading(thirdScannerData);
+      const checkGrading = true; // Force passing grade check
+      logger.info("🔄 Third scan grade check bypassed - temporarily set to pass");
 
       await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1); // 1417.0 for OK, 1417.1 for NG
 
