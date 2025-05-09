@@ -144,13 +144,10 @@ class BarcodeGenerator {
 
       // Get the current decade digit dynamically
       const currentYear = new Date().getFullYear().toString();
-      const currentDecade = currentYear.slice(0, 3); // Gets "202" from "2024"
 
-      // Convert single digit year to double digit using current decade
+      // Get only the last digit of the year
       const formattedOcrYear =
-        ocrYear?.toString().length === 1
-          ? `${currentDecade.slice(-1)}${ocrYear}` // Gets "2" from "202" and adds to year
-          : ocrYear;
+        ocrYear?.toString().slice(-1) || currentYear.slice(-1);
 
       // Append OCR data to barcode text
       const ocrDateFormatted = `${ocrDate}${ocrMonth}${formattedOcrYear}`;
