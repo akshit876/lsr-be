@@ -113,7 +113,7 @@ class SerialNumberGeneratorService {
 
   getNextSerialNumber() {
     this.checkAndResetSerialNumber();
-    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
+    const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
     this.currentSerialNumber++;
     return serialNumber;
   }
@@ -133,7 +133,7 @@ class SerialNumberGeneratorService {
     if (this.isManualReset || this.hasResetEventOccurred) {
       this.isManualReset = false;
       this.hasResetEventOccurred = false; // Reset the flag after use
-      const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
+      const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
       this.currentSerialNumber++;
       return serialNumber;
     }
@@ -153,21 +153,21 @@ class SerialNumberGeneratorService {
       );
     }
 
-    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
+    const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
     this.currentSerialNumber++;
     return serialNumber;
   }
 
   incrementSerialNumber() {
     this.currentSerialNumber++;
-    return this.currentSerialNumber.toString().padStart(4, '0'); // Format the return value with leading zeros
+    return this.currentSerialNumber.toString().padStart(3, "0"); // Format the return value with leading zeros
   }
 
   decSerialNumber() {
     // this.checkAndResetSerialNumber();
     // const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");r
     this.currentSerialNumber--;
-    return this.currentSerialNumber.toString().padStart(4, '0'); // Format the return value with leading zeros
+    return this.currentSerialNumber.toString().padStart(3, "0"); // Format the return value with leading zeros
   }
 
   checkAndResetSerialNumber() {
@@ -202,11 +202,11 @@ class SerialNumberGeneratorService {
     //   return true;
     // }
     // return false;
-    if (this.currentSerialNumber >= 9999) {
+    if (this.currentSerialNumber >= 999) {
       this.currentSerialNumber = this.initialSerialNumber;
       this.lastResetDate = new Date();
       logger.info(
-        `Serial number reset to ${this.initialSerialNumber.toString().padStart(4, "0")} after reaching 9999`
+        `Serial number reset to ${this.initialSerialNumber.toString().padStart(3, "0")} after reaching 999`
       );
       return true;
     }

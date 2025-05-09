@@ -80,7 +80,9 @@ class BarcodeGenerator {
     try {
       // Use current date for all timestamp-based fields
       const now = new Date();
-      const year = format(now, "yy");
+      const fullYear = now.getFullYear().toString();
+      // Use only the last digit of the year
+      const year = fullYear.slice(-1);
       const month = format(now, "MM");
       const day = format(now, "dd");
       const shift = this.shiftUtility.getCurrentShift(now);
