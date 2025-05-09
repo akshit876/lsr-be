@@ -1224,7 +1224,9 @@ class ScannerController {
       // Temporarily bypassing grade check
       // const checkGrading = await this.checkGrading(thirdScannerData);
       const checkGrading = true; // Force passing grade check
-      logger.info("🔄 Third scan grade check bypassed - temporarily set to pass");
+      logger.info(
+        "🔄 Third scan grade check bypassed - temporarily set to pass"
+      );
 
       await writeBit(1417, isDataMatching && checkGrading ? 0 : 1, 1); // 1417.0 for OK, 1417.1 for NG
 
@@ -1310,16 +1312,19 @@ class ScannerController {
       });
       logger.info(` Scanner result: ${result}`);
 
-      // Process result to take only 29 digits if not "NG"
+      // Process result to take only 31 digits if not "NG"
       const processedResult =
         result?.trim().toUpperCase() === "NG" || result?.trim() === "00000"
           ? "NG"
-          : result?.slice(0, 29);
+          : result?.slice(0, 31);
 
       if (this.io) {
         let emitData = processedResult;
         // For third scan, if data is not NG, remove the last character (grade)
-        if (scanType === "third" && processedResult.trim().toUpperCase() !== "NG") {
+        if (
+          scanType === "third" &&
+          processedResult.trim().toUpperCase() !== "NG"
+        ) {
           emitData = processedResult.slice(0, -1);
         }
         this.io.emit("scanner_read", {
