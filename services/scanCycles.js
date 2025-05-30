@@ -117,7 +117,6 @@ class ScannerController {
       // Initialize barcode generator
       logger.info("🏷️ Setting up barcode generator...");
       this.shiftUtility = new ShiftUtility();
-      await this.shiftUtility.initialize();
       this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
       await this.barcodeGenerator.initialize("main-data", "records");
       this.barcodeGenerator.setResetTime(
