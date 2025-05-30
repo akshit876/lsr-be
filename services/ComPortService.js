@@ -3,12 +3,8 @@ import { SerialPort } from "serialport";
 import winston from "winston";
 import "winston-daily-rotate-file";
 import path from "path";
-import async from "async";
 import EventEmitter from "events";
 import process from "process";
-
-// Local sleep function to avoid circular dependency
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class BufferedComPortService extends EventEmitter {
   constructor(options = {}) {
@@ -20,20 +16,8 @@ class BufferedComPortService extends EventEmitter {
       logDir: options.logDir || "logs",
     };
     this.port = null;
-    this.buffer = "";
     this.isInitialized = false;
     this.setupLogger();
-
-    // Initialize async.queue for in-memory job handling
-    this.dataQueue = async.queue(async (task, callback) => {
-      console.log(`Emitting the data first: ${task.line}`);
-      this.emit("dataGot", task.line);
-      await sleep(1000);
-      console.log(`Processing data from queue: ${task.line}`);
-      this.log(`Processing data from queue: ${task.line}`, "info");
-      // Add custom processing logic here, like saving to a database or other transformations
-      callback(); // Signal that the job is done
-    }, 2); // Set concurrency to 1 to process one task at a time
   }
 
   setupLogger() {
@@ -71,9 +55,22 @@ class BufferedComPortService extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
+      this.log(
+        `Connecting to ${this.options.path} at ${this.options.baudRate} baud...`
+      );
+
       this.port = new SerialPort({
         path: this.options.path,
         baudRate: this.options.baudRate,
+        dataBits: 8,
+        parity: "none",
+        stopBits: 1,
+        flowControl: false,
+        // Exact settings that worked in our test
+        rtscts: false,
+        xon: false,
+        xoff: false,
+        xany: false,
         autoOpen: false,
       });
 
@@ -92,35 +89,39 @@ class BufferedComPortService extends EventEmitter {
   }
 
   setupListeners() {
-    this.port.on("data", (data) => {
-      this.buffer += data.toString("utf8");
-      this.log(`Received raw data: ${data.toString("utf8")}`, "debug");
-      this.processBuffer();
+    this.log("Setting up simple data listeners (Hercules-style)");
+
+    // Simple raw data listener - exactly like our working test
+    this.port.on("data", (buffer) => {
+      const data = buffer.toString().trim(); // Convert buffer to string and trim
+
+      if (data) {
+        // Only process non-empty data
+        this.log(`Scanner data received: "${data}"`, "info");
+        this.log(
+          `Data details: ${data.length} chars, ${buffer.length} bytes`,
+          "debug"
+        );
+
+        // Emit the data immediately - simple and direct
+        this.emit("dataGot", data);
+      }
     });
 
     this.port.on("error", (err) => {
       this.log(`Port error: ${err.message}`, "error");
+      this.emit("error", err);
     });
-  }
 
-  processBuffer() {
-    let lineEnd = this.buffer.indexOf("\n");
-    while (lineEnd > -1) {
-      const line = this.buffer.slice(0, lineEnd).trim();
-      if (line) {
-        this.log(`Processed line: ${line}`, "info");
-        // Add the processed line to the queue
-        this.dataQueue.push({ line });
-        // Emit an event with the scanner data
-        this.emit("dataGot", line);
-      }
-      this.buffer = this.buffer.slice(lineEnd + 1);
-      lineEnd = this.buffer.indexOf("\n");
-    }
-  }
+    this.port.on("close", () => {
+      this.log("Port closed", "info");
+      this.isInitialized = false;
+    });
 
-  clearBuffer() {
-    this.buffer = ""; // Clear the buffer before second scan
+    this.port.on("disconnect", () => {
+      this.log("Port disconnected", "warn");
+      this.isInitialized = false;
+    });
   }
 
   async closePort() {
