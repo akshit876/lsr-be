@@ -693,7 +693,7 @@ class ScannerController {
           logger.error("   2. Verify scanner is powered on");
           logger.error("   3. Check if barcode is present for scanner to read");
           logger.error(
-            "   4. Verify scanner is configured for correct baud rate (9600)"
+            "   4. Verify scanner is configured for correct baud rate (115200)"
           );
           logger.error("   5. Test scanner with a simple terminal program");
 

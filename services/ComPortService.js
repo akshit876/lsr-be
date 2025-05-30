@@ -17,6 +17,8 @@ class BufferedComPortService extends EventEmitter {
     };
     this.port = null;
     this.isInitialized = false;
+    this.dataBuffer = ""; // Buffer to accumulate characters
+    this.bufferTimeout = null; // Timeout to emit buffered data
     this.setupLogger();
   }
 
@@ -91,20 +93,29 @@ class BufferedComPortService extends EventEmitter {
   setupListeners() {
     this.log("Setting up simple data listeners (Hercules-style)");
 
-    // Simple raw data listener - exactly like our working test
+    // Buffer scanner data since it comes character by character
     this.port.on("data", (buffer) => {
-      const data = buffer.toString().trim(); // Convert buffer to string and trim
+      const newData = buffer.toString().trim();
 
-      if (data) {
-        // Only process non-empty data
-        this.log(`Scanner data received: "${data}"`, "info");
-        this.log(
-          `Data details: ${data.length} chars, ${buffer.length} bytes`,
-          "debug"
-        );
+      if (newData) {
+        this.log(`Raw char received: "${newData}"`, "debug");
 
-        // Emit the data immediately - simple and direct
-        this.emit("dataGot", data);
+        // Add to buffer
+        this.dataBuffer += newData;
+
+        // Clear existing timeout
+        if (this.bufferTimeout) {
+          clearTimeout(this.bufferTimeout);
+        }
+
+        // Set timeout to emit buffered data after 100ms of no new data
+        this.bufferTimeout = setTimeout(() => {
+          if (this.dataBuffer) {
+            this.log(`Complete scanner data: "${this.dataBuffer}"`, "info");
+            this.emit("dataGot", this.dataBuffer);
+            this.dataBuffer = ""; // Clear buffer
+          }
+        }, 100); // 100ms buffer timeout
       }
     });
 
@@ -116,11 +127,21 @@ class BufferedComPortService extends EventEmitter {
     this.port.on("close", () => {
       this.log("Port closed", "info");
       this.isInitialized = false;
+      // Clear any pending timeout
+      if (this.bufferTimeout) {
+        clearTimeout(this.bufferTimeout);
+        this.bufferTimeout = null;
+      }
     });
 
     this.port.on("disconnect", () => {
       this.log("Port disconnected", "warn");
       this.isInitialized = false;
+      // Clear any pending timeout
+      if (this.bufferTimeout) {
+        clearTimeout(this.bufferTimeout);
+        this.bufferTimeout = null;
+      }
     });
   }
 
@@ -138,6 +159,11 @@ class BufferedComPortService extends EventEmitter {
         } else {
           this.log("Port closed successfully");
           this.isInitialized = false;
+          // Clear any pending timeout
+          if (this.bufferTimeout) {
+            clearTimeout(this.bufferTimeout);
+            this.bufferTimeout = null;
+          }
           resolve();
         }
       });
