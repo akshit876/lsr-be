@@ -295,12 +295,12 @@ server.listen(PORT, async (err) => {
     // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
     // barcodeGenerator.initialize('main-data', 'records');
     // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-    comService = new BufferedComPortService({
-      path: 'COM3',
-      baudRate: 9600,
-      logDir: 'com_port_logs',
-    });
-    await comService.initSerialPort();
+    // comService = new BufferedComPortService({
+    //   path: 'COM3',
+    //   baudRate: 9600,
+    //   logDir: 'com_port_logs',
+    // });
+    // await comService.initSerialPort();
     await connect();
     // Fetch part number and pass it to runContinuousScan
     const { partNumber, mainDataRecords } = await fetchPartNumberAndData();
@@ -309,7 +309,7 @@ server.listen(PORT, async (err) => {
     //   logger.error('Failed to start continuous scan:', error);
     //   process.exit(1);
     // });
-    await scannerController.runContinuousScan(io, comService, { partNumber });
+    await scannerController.runContinuousScan(io, null, { partNumber });
   } catch (error) {
     console.log({ error });
     emitErrorEvent(io, 'modbus-connection-error', JSON.stringify(error));

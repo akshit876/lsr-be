@@ -28,6 +28,8 @@ const COM_PORT_CONFIG = {
   path: "COM3", // Using COM3 as requested
   baudRate: 9600, // Standard baud rate, adjust if needed
   logDir: "scanner_logs",
+  autoOpen: false, // Don't auto-open, we'll handle it manually
+  lock: false, // Don't lock the port exclusively
 };
 
 class ScannerController {
@@ -75,11 +77,42 @@ class ScannerController {
       await mongoDbService.connect("main-data", "records");
       logger.success("MongoDB connected successfully");
 
-      // Initialize COM port for RS-232 scanner
+      // Initialize COM port for RS-232 scanner with better error handling
       logger.info("🔌 Setting up COM port for RS-232 scanner...");
-      this.comPortService = new BufferedComPortService(COM_PORT_CONFIG);
-      await this.comPortService.initSerialPort();
-      logger.success("COM port scanner connected successfully on COM3");
+      try {
+        this.comPortService = new BufferedComPortService(COM_PORT_CONFIG);
+        await this.comPortService.initSerialPort();
+        logger.success("COM port scanner connected successfully on COM3");
+      } catch (comError) {
+        if (comError.message.includes("Access denied")) {
+          logger.error(
+            "❌ COM3 Access Denied Error - Troubleshooting suggestions:"
+          );
+          logger.error("   1. Run the application as Administrator");
+          logger.error(
+            "   2. Close any applications using COM3 (Arduino IDE, PuTTY, etc.)"
+          );
+          logger.error("   3. Check if another Node.js instance is running");
+          logger.error("   4. Try unplugging and reconnecting the USB device");
+          logger.error("   5. Check Device Manager for driver issues");
+
+          // List available COM ports for user reference
+          logger.info("💡 Available COM ports on this system:");
+          logger.info("   - COM1: Communications Port");
+          logger.info(
+            "   - COM3: Prolific PL2303GT USB Serial (currently inaccessible)"
+          );
+        } else if (
+          comError.message.includes("File not found") ||
+          comError.message.includes("cannot open")
+        ) {
+          logger.error("❌ COM3 Not Found - Device may be disconnected");
+          logger.error("   1. Check if USB-to-Serial device is connected");
+          logger.error("   2. Verify the device shows up in Device Manager");
+          logger.error("   3. Try a different USB port");
+        }
+        throw new Error(`COM Port Error: ${comError.message}`);
+      }
 
       // Initialize barcode generator
       logger.info("🏷️ Setting up barcode generator...");
