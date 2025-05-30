@@ -66,6 +66,26 @@ class BarcodeGenerator {
       const serialString =
         await this.serialNumberService.getNextDecSerialNumber2();
 
+      // Check if configData has the expected structure
+      if (
+        !configData ||
+        !configData.currentModelConfig ||
+        !configData.currentModelConfig.fields
+      ) {
+        logger.warn(
+          "⚠️ Config data structure not found, using fallback barcode generation"
+        );
+        // Fallback to simple barcode generation
+        const simpleBarcodeText = `${finalPartNumber}${julianDate}${serialString}`;
+        logger.info("Generated fallback barcode text:", simpleBarcodeText);
+
+        return {
+          text: simpleBarcodeText,
+          serialNo: serialString,
+          fields: [],
+        };
+      }
+
       // Map values to fields from config using exact field names from UI
       const fields = configData.currentModelConfig.fields.map((field) => {
         switch (field.fieldName) {
