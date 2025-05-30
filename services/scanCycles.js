@@ -80,10 +80,23 @@ class ScannerController {
       // Initialize COM port for RS-232 scanner with better error handling
       logger.info("🔌 Setting up COM port for RS-232 scanner...");
       try {
+        logger.info("🔍 Creating BufferedComPortService instance...");
         this.comPortService = new BufferedComPortService(COM_PORT_CONFIG);
+        logger.info(
+          `🔍 comPortService created: ${this.comPortService ? "exists" : "null"}`
+        );
+
+        logger.info("🔍 Calling initSerialPort...");
         await this.comPortService.initSerialPort();
+        logger.info(
+          `🔍 After initSerialPort - comPortService: ${this.comPortService ? "exists" : "null"}`
+        );
         logger.success("COM port scanner connected successfully on COM3");
       } catch (comError) {
+        logger.error(`🔍 COM port initialization failed: ${comError.message}`);
+        // Set comPortService to null on error to make debugging easier
+        this.comPortService = null;
+
         if (comError.message.includes("Access denied")) {
           logger.error(
             "❌ COM3 Access Denied Error - Troubleshooting suggestions:"
@@ -929,7 +942,28 @@ class ScannerController {
       await this.initialize();
     }
 
-    this.comPortService = comService;
+    // Debug logging
+    logger.info("🔍 Debugging COM service state:");
+    logger.info(`   - Provided comService: ${comService ? "exists" : "null"}`);
+    logger.info(
+      `   - Internal comPortService: ${this.comPortService ? "exists" : "null"}`
+    );
+    logger.info(`   - isInitialized: ${this.isInitialized}`);
+
+    // Use the internally created comPortService if no external service provided
+    if (comService) {
+      this.comPortService = comService;
+      logger.info("🔗 Using provided COM service");
+    } else {
+      // Use the COM port service created during initialization
+      if (!this.comPortService) {
+        throw new Error(
+          "COM port service not initialized. Make sure initialize() completed successfully."
+        );
+      }
+      logger.info("🔗 Using internal COM port service");
+    }
+
     this.setupResetMonitor();
   }
 
