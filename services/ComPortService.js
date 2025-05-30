@@ -15,7 +15,8 @@ class BufferedComPortService extends EventEmitter {
     super(); // Initialize EventEmitter
     this.options = {
       path: options.path || process.env.SERIAL_PORT || "COM3",
-      baudRate: parseInt(options.baudRate || process.env.BAUD_RATE, 10) || 9600,
+      baudRate:
+        parseInt(options.baudRate || process.env.BAUD_RATE, 10) || 115200,
       logDir: options.logDir || "logs",
     };
     this.port = null;

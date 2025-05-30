@@ -26,7 +26,7 @@ const BARCODE_RESET_MINUTE = 0;
 // COM Port configuration for RS-232 scanner
 const COM_PORT_CONFIG = {
   path: "COM3", // Using COM3 as requested
-  baudRate: 9600, // Standard baud rate, adjust if needed
+  baudRate: 115200, // Updated to 115200 baud rate for scanner
   logDir: "scanner_logs",
   autoOpen: false, // Don't auto-open, we'll handle it manually
   lock: false, // Don't lock the port exclusively
