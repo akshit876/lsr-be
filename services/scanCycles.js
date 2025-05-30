@@ -11,7 +11,6 @@ import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
 import BufferedComPortService from "./ComPortService.js";
-import { REGISTERS_TO_MONITOR } from "../server.js";
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -213,7 +212,10 @@ class ScannerController {
       "-----------------------------------------------------------------------------------------------------------"
     );
 
-    while (true) {
+    let retryCount = 0;
+    const maxRetries = 10; // Prevent infinite loop
+
+    do {
       try {
         const result = await this.singleCheckAttempt(
           register,
@@ -224,17 +226,33 @@ class ScannerController {
         if (result !== "timeout") {
           return result;
         }
-        logger.info(`Retrying check for bit ${register}.${bit}`);
+        retryCount++;
+        if (retryCount < maxRetries) {
+          logger.info(
+            `Retrying check for bit ${register}.${bit} (attempt ${retryCount + 1}/${maxRetries})`
+          );
+        }
       } catch (error) {
         logger.error(`Error in bit check: ${error.message}`);
         await sleep(1000);
+        retryCount++;
       }
-    }
+    } while (retryCount < maxRetries);
+
+    logger.warn(
+      `Maximum retries (${maxRetries}) reached for bit ${register}.${bit}`
+    );
+    return "timeout";
   }
 
   async singleCheckAttempt(register, bit, value, timeout) {
-    return new Promise(async (resolve) => {
-      let timeoutId;
+    return new Promise((resolve) => {
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
+        resolve("timeout");
+      }, timeout);
+
       let checkCount = 0;
       const CHECK_INTERVAL = 100;
 
@@ -249,41 +267,6 @@ class ScannerController {
           clearInterval(bitCheckInterval);
         }
       };
-
-      // Helper function to check and emit register bits
-      const checkRegisterBits = async (registerConfig) => {
-        const { register, bits } = registerConfig;
-        for (const [bit, config] of Object.entries(bits)) {
-          try {
-            const bitValue = await readBit(register, parseInt(bit));
-
-            if (bitValue) {
-              if (this.io) {
-                this.io.emit(config.eventName, {
-                  register,
-                  bit: parseInt(bit),
-                  value: bitValue,
-                  message: config.message,
-                  timestamp: new Date().toISOString(),
-                });
-                logger.info(`${config.message} (Register ${register}.${bit})`);
-              }
-            }
-          } catch (error) {
-            logger.error(
-              `Error checking register ${register} bit ${bit}:`,
-              error
-            );
-          }
-        }
-      };
-
-      // Main timeout
-      timeoutId = setTimeout(() => {
-        cleanup();
-        logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
-        resolve("timeout");
-      }, timeout);
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
@@ -314,16 +297,6 @@ class ScannerController {
           const currentValue = Number(bitValue);
           const expectedValue = Number(value);
 
-          // Check all monitored registers if available
-          if (
-            typeof REGISTERS_TO_MONITOR !== "undefined" &&
-            REGISTERS_TO_MONITOR
-          ) {
-            for (const registerConfig of REGISTERS_TO_MONITOR) {
-              await checkRegisterBits(registerConfig);
-            }
-          }
-
           if (currentValue === expectedValue) {
             cleanup();
             logger.info(
@@ -349,39 +322,33 @@ class ScannerController {
       }, CHECK_INTERVAL);
 
       // Initial checks
-      try {
-        const [resetSignal, bitValue] = await Promise.all([
-          readBit(1600, 0),
-          readBit(register, bit),
-        ]);
+      const performInitialCheck = async () => {
+        try {
+          const [resetSignal, bitValue] = await Promise.all([
+            readBit(1600, 0),
+            readBit(register, bit),
+          ]);
 
-        // Initial check of all monitored registers if available
-        if (
-          typeof REGISTERS_TO_MONITOR !== "undefined" &&
-          REGISTERS_TO_MONITOR
-        ) {
-          for (const registerConfig of REGISTERS_TO_MONITOR) {
-            await checkRegisterBits(registerConfig);
+          if (resetSignal) {
+            cleanup();
+            logger.info("Reset signal detected on initial check");
+            await this.resetBits();
+            resolve(true);
+            return;
           }
-        }
 
-        if (resetSignal) {
-          cleanup();
-          logger.info("Reset signal detected on initial check");
-          await this.resetBits();
-          resolve(true);
-          return;
+          if (Number(bitValue) === Number(value)) {
+            cleanup();
+            logger.info(`Target bit matched on initial check`);
+            resolve(false);
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error in initial checks: ${error.message}`);
         }
+      };
 
-        if (Number(bitValue) === Number(value)) {
-          cleanup();
-          logger.info(`Target bit matched on initial check`);
-          resolve(false);
-          return;
-        }
-      } catch (error) {
-        logger.error(`Error in initial checks: ${error.message}`);
-      }
+      performInitialCheck();
     });
   }
 
