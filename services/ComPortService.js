@@ -6,7 +6,9 @@ import path from "path";
 import async from "async";
 import EventEmitter from "events";
 import process from "process";
-import { sleep } from "./testCycle.js";
+
+// Local sleep function to avoid circular dependency
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class BufferedComPortService extends EventEmitter {
   constructor(options = {}) {
