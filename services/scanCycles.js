@@ -199,7 +199,7 @@ class ScannerController {
     logger.info(
       "-----------------------------------------------------------------------------------------------------------"
     );
-    logger.debug(`awaiting ${register} , bit ${bit}`);
+    logger.debug(`Checking bit ${register}.${bit} for value ${value}`);
     logger.info(
       "-----------------------------------------------------------------------------------------------------------"
     );
@@ -211,8 +211,12 @@ class ScannerController {
       let intervalId;
 
       const cleanup = () => {
-        clearTimeout(timeoutId);
-        clearInterval(intervalId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
       };
 
       const checkReset = async () => {
@@ -232,9 +236,13 @@ class ScannerController {
       const checkBit = async () => {
         try {
           const bitValue = await readBit(register, bit);
+          logger.debug(
+            `Bit ${register}.${bit} current value: ${bitValue}, waiting for: ${value}`
+          );
+
           if (bitValue === value) {
             cleanup();
-            logger.info(`Received signal from PLC at ${register}.${bit}`);
+            logger.info(`✅ Received signal from PLC at ${register}.${bit}`);
             resolve(false);
           }
         } catch (error) {
@@ -242,21 +250,24 @@ class ScannerController {
         }
       };
 
+      // Set timeout (10 seconds for testing, was using TIMEOUT constant)
       timeoutId = setTimeout(() => {
         cleanup();
         logger.warn(
-          `Timeout waiting for ${register}.${bit} to become ${value}`
+          `⏰ Timeout waiting for ${register}.${bit} to become ${value}`
         );
-        resolve(true);
-      }, TIMEOUT);
+        resolve(true); // Return true to indicate timeout/restart
+      }, 10000); // 10 seconds timeout for testing
 
+      // Check every 500ms instead of 100ms to reduce load
       intervalId = setInterval(async () => {
         await checkReset();
         await checkBit();
-      }, 100);
+      }, 500);
 
       // Initial checks
       const performInitialChecks = async () => {
+        logger.info(`🔍 Performing initial check of bit ${register}.${bit}`);
         await checkReset();
         await checkBit();
       };
@@ -427,10 +438,10 @@ class ScannerController {
 
         // Reset and initial setup
         logger.info("🔄 Resetting bits...");
-        await this.resetBits();
+        // await this.resetBits();
         // await writeBit(1410, 0, 1);
 
-        logger.info("🧹Waiting for reset or bit 1410.0 to be 0");
+        logger.info("🧹 Waiting for reset or bit 1410.0 to be 1");
         if (await this.checkResetOrBit(1410, 0, 1)) {
           logger.warn("⚠️ Reset detected at final step, restarting cycle");
           continue;
@@ -567,10 +578,17 @@ class ScannerController {
 
   async checkReset() {
     return new Promise((resolve) => {
+      // If resetEmitter is not available, resolve immediately with false
+      if (!this.resetEmitter) {
+        resolve(false);
+        return;
+      }
+
       const resetHandler = () => {
         this.resetEmitter.removeListener("reset", resetHandler);
         resolve(true);
       };
+
       this.resetEmitter.once("reset", resetHandler);
       setTimeout(() => {
         this.resetEmitter.removeListener("reset", resetHandler);
