@@ -5,6 +5,7 @@ import "winston-daily-rotate-file";
 import path from "path";
 import async from "async";
 import EventEmitter from "events";
+import process from "process";
 import { sleep } from "./testCycle.js";
 
 class BufferedComPortService extends EventEmitter {
