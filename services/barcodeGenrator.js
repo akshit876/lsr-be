@@ -5,9 +5,9 @@ import logger from "../logger.js";
 async function fetchPartNumberAndData(mongoDbService) {
   try {
     // Connect to the MongoDB if not already connected
-    if (!mongoDbService.collection) {
-      await mongoDbService.connect("main-data", "config");
-    }
+    // if (!mongoDbService.collection) {
+    await mongoDbService.connect("main-data", "config");
+    // }
 
     // Fetch part number and config data from the 'configs' collection
     const configData = await mongoDbService.collection.findOne({});
