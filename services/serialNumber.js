@@ -231,72 +231,72 @@ class SerialNumberGeneratorService {
   async getNextDecSerialNumber2() {
     const reset = await this.checkAndResetSerialNumber();
 
-    // IMPORTANT: Always check if the model has changed and reload config from modelSerialConfig
+    // CRITICAL: ALWAYS get fresh model from database on every call
     const currentModelFromDB = await this.getCurrentModelNumber();
 
-    // If model has changed, reload the model-specific serial configuration from modelSerialConfig
-    if (this.currentModelNumber !== currentModelFromDB) {
+    // IMPORTANT: Always reload model config on every call to ensure fresh data
+    // This ensures we never use stale model data when model changes during runtime
+    logger.info(`🔍 ALWAYS reloading model config for: ${currentModelFromDB}`);
+
+    // Set the current model (this will be the fresh one from DB)
+    this.currentModelNumber = currentModelFromDB;
+
+    // ALWAYS load fresh model-specific serial configuration from modelSerialConfig
+    const modelConfig = await this.loadModelSerialConfig();
+
+    // Get the correct starting serial for this model
+    const modelStartingSerial = await this.getModelStartingSerial();
+
+    // Determine the serial number to use
+    let serialToUse;
+
+    if (reset) {
+      // Reset case - use model starting serial
+      this.currentSerialNumber = modelStartingSerial;
+      serialToUse = this.currentSerialNumber;
+
       logger.info(
-        `🔄 Model changed from ${this.currentModelNumber} to ${currentModelFromDB}, reloading from modelSerialConfig...`
+        `🔄 RESET: Using starting serial ${serialToUse} for model: ${this.currentModelNumber}`
       );
+    } else if (!modelConfig || !modelConfig.currentValue) {
+      // No model config exists - start with model's starting serial
+      this.currentSerialNumber = modelStartingSerial;
+      serialToUse = this.currentSerialNumber;
 
-      this.currentModelNumber = currentModelFromDB;
+      logger.info(
+        `🆕 NEW MODEL: Starting with serial ${serialToUse} for model: ${this.currentModelNumber}`
+      );
+    } else {
+      // Model config exists - continue from currentValue + 1
+      const existingValue = parseInt(modelConfig.currentValue, 10);
+      if (!isNaN(existingValue)) {
+        this.currentSerialNumber = existingValue + 1;
+        serialToUse = this.currentSerialNumber;
 
-      // Load model-specific serial configuration from modelSerialConfig
-      const modelConfig = await this.loadModelSerialConfig();
-
-      // Get the correct starting serial for this model
-      const modelStartingSerial = await this.getModelStartingSerial();
-
-      // If no model config exists in modelSerialConfig, start with the model's starting serial
-      if (!modelConfig || !modelConfig.currentValue) {
-        this.currentSerialNumber = modelStartingSerial;
         logger.info(
-          `🆕 New model in modelSerialConfig, starting with serial: ${modelStartingSerial}`
+          `✅ CONTINUING: Model ${this.currentModelNumber} from ${existingValue} to ${serialToUse}`
         );
       } else {
-        // Model config exists in modelSerialConfig - always continue from currentValue + 1 (except during reset)
-        const existingValue = parseInt(modelConfig.currentValue, 10);
-        if (!isNaN(existingValue)) {
-          this.currentSerialNumber = existingValue + 1;
-          logger.info(
-            `✅ Model ${currentModelFromDB} continuing from modelSerialConfig value ${existingValue} to ${this.currentSerialNumber}`
-          );
-        } else {
-          this.currentSerialNumber = modelStartingSerial;
-          logger.warn(
-            `⚠️ Invalid currentValue in modelSerialConfig, using starting serial: ${modelStartingSerial}`
-          );
-        }
+        this.currentSerialNumber = modelStartingSerial;
+        serialToUse = this.currentSerialNumber;
+
+        logger.warn(
+          `⚠️ INVALID DATA: Using starting serial ${serialToUse} for model: ${this.currentModelNumber}`
+        );
       }
     }
 
-    // If a reset happened, the currentSerialNumber was already set to the model starting serial
-    if (reset) {
-      const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
-
-      // Save the USED serial number to modelSerialConfig
-      await this.saveUsedSerialNumber(this.currentSerialNumber);
-
-      this.currentSerialNumber++;
-
-      logger.info(
-        `Using reset serial number: ${serialNumber} for model: ${this.currentModelNumber} (saved to modelSerialConfig)`
-      );
-      return serialNumber;
-    }
-
-    // For normal operation, use the current serial number from modelSerialConfig
-    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
+    // Format the serial number
+    const serialNumber = serialToUse.toString().padStart(4, "0");
 
     // Save the USED serial number to modelSerialConfig
-    await this.saveUsedSerialNumber(this.currentSerialNumber);
+    await this.saveUsedSerialNumber(serialToUse);
 
     // Increment for next call
     this.currentSerialNumber++;
 
     logger.info(
-      `Using current serial number: ${serialNumber} for model: ${this.currentModelNumber} (next will be: ${this.currentSerialNumber}) - saved to modelSerialConfig`
+      `🎯 FINAL: Using serial ${serialNumber} for model: ${this.currentModelNumber} (next will be: ${this.currentSerialNumber}) - saved to modelSerialConfig`
     );
     return serialNumber;
   }
@@ -497,25 +497,39 @@ class SerialNumberGeneratorService {
 
   async getCurrentModelNumber() {
     try {
-      // Connect to config collection to fetch current model
+      // ALWAYS connect fresh to config collection to get current model
       await MongoDBService.connect("main-data", "config");
       const configData = await MongoDBService.collection.findOne({});
+
+      logger.info(
+        `🔍 DEBUG: Raw config data from DB: ${JSON.stringify(configData?.currentModelConfig?.modelNumber || "null")}`
+      );
 
       if (
         configData &&
         configData.currentModelConfig &&
         configData.currentModelConfig.modelNumber
       ) {
-        this.currentModelNumber = configData.currentModelConfig.modelNumber;
-        logger.info(`Current model number: ${this.currentModelNumber}`);
-        return this.currentModelNumber;
+        const freshModelNumber = configData.currentModelConfig.modelNumber;
+        logger.info(
+          `✅ FRESH MODEL from DB: ${freshModelNumber} (was cached as: ${this.currentModelNumber})`
+        );
+
+        // Update cached value
+        this.currentModelNumber = freshModelNumber;
+        return freshModelNumber;
       } else {
-        logger.warn("No model configuration found, using null");
+        logger.warn(
+          "⚠️ No model configuration found in config collection, using null"
+        );
         this.currentModelNumber = null;
         return null;
       }
     } catch (error) {
-      logger.error("Error fetching current model number:", error);
+      logger.error(
+        "❌ Error fetching current model number from config:",
+        error
+      );
       this.currentModelNumber = null;
       return null;
     }
@@ -708,6 +722,46 @@ class SerialNumberGeneratorService {
       logger.info("✅ Finished fixing model serial configurations");
     } catch (error) {
       logger.error("❌ Error fixing model serial configurations:", error);
+      throw error;
+    }
+  }
+
+  // Force refresh the service when model changes - call this when model is changed externally
+  async forceRefresh() {
+    try {
+      logger.info(
+        "🔄 FORCE REFRESH: Clearing cached model data and reloading..."
+      );
+
+      // Clear cached model data
+      this.currentModelNumber = null;
+
+      // Get fresh model from database
+      const currentModel = await this.getCurrentModelNumber();
+      logger.info(`🔄 FORCE REFRESH: Fresh model from DB: ${currentModel}`);
+
+      // Load fresh model config
+      const modelConfig = await this.loadModelSerialConfig();
+
+      if (modelConfig && modelConfig.currentValue) {
+        const existingValue = parseInt(modelConfig.currentValue, 10);
+        if (!isNaN(existingValue)) {
+          this.currentSerialNumber = existingValue + 1;
+          logger.info(
+            `🔄 FORCE REFRESH: Set next serial to ${this.currentSerialNumber} for model ${currentModel}`
+          );
+        }
+      } else {
+        const startingSerial = await this.getModelStartingSerial();
+        this.currentSerialNumber = startingSerial;
+        logger.info(
+          `🔄 FORCE REFRESH: Set starting serial to ${this.currentSerialNumber} for new model ${currentModel}`
+        );
+      }
+
+      logger.info("✅ FORCE REFRESH: Completed successfully");
+    } catch (error) {
+      logger.error("❌ FORCE REFRESH: Failed", error);
       throw error;
     }
   }
