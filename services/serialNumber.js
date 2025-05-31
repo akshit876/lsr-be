@@ -283,15 +283,30 @@ class SerialNumberGeneratorService {
       // Load model-specific serial configuration for the new model
       const modelConfig = await this.loadModelSerialConfig();
 
+      // Get the correct starting serial for this model
+      const modelStartingSerial = await this.getModelStartingSerial();
+
       // If no model config exists for this model, start with the model's starting serial
       if (!modelConfig || !modelConfig.currentValue) {
-        const modelStartingSerial = await this.getModelStartingSerial();
         this.currentSerialNumber = modelStartingSerial;
         logger.info(
           `🆕 New model detected, starting with serial: ${modelStartingSerial}`
         );
+      } else {
+        // Model config exists - always continue from currentValue + 1 (except during reset)
+        const existingValue = parseInt(modelConfig.currentValue, 10);
+        if (!isNaN(existingValue)) {
+          this.currentSerialNumber = existingValue + 1;
+          logger.info(
+            `✅ Model ${currentModelFromDB} continuing from existing value ${existingValue} to ${this.currentSerialNumber}`
+          );
+        } else {
+          this.currentSerialNumber = modelStartingSerial;
+          logger.warn(
+            `⚠️ Invalid currentValue in model config, using starting serial: ${modelStartingSerial}`
+          );
+        }
       }
-      // currentSerialNumber is already set in loadModelSerialConfig() if config exists
     }
 
     // If a reset happened, the currentSerialNumber was already set to the model starting serial
@@ -388,6 +403,28 @@ class SerialNumberGeneratorService {
       const modelNumber = await this.getCurrentModelNumber();
 
       if (modelNumber) {
+        // Check if it's a CMB model and extract the number
+        if (modelNumber.startsWith("CMB-")) {
+          const modelNumericPart = modelNumber.replace("CMB-", "");
+          const numericValue = parseInt(modelNumericPart, 10);
+
+          if (!isNaN(numericValue)) {
+            // For CMB models, use the numeric part * 1000 + 1 as starting serial
+            // Example: CMB-778 → 778001, CMB-877 → 877001
+            const startingSerial = numericValue * 1000 + 1;
+            logger.info(
+              `CMB model ${modelNumber} starting serial: ${startingSerial}`
+            );
+            return startingSerial;
+          } else {
+            logger.warn(
+              `Invalid CMB model number format: ${modelNumber}, using default`
+            );
+            return this.modelStartingSerials["default"];
+          }
+        }
+
+        // Check for specific model configurations
         const startingSerial =
           this.modelStartingSerials[modelNumber] ||
           this.modelStartingSerials["default"];
@@ -459,14 +496,15 @@ class SerialNumberGeneratorService {
       // Connect to a new collection for model-wise serial tracking
       await MongoDBService.connect("main-data", "modelSerialConfig");
 
+      // Get the correct starting serial using our dynamic calculation
+      const dynamicStartingSerial = await this.getModelStartingSerial();
+
       // Update or create model-specific serial configuration
       const updateData = {
         modelNumber: modelNumber,
         currentValue: this.currentSerialNumber.toString(),
         lastReset: new Date(),
-        startingSerial:
-          this.modelStartingSerials[modelNumber] ||
-          this.modelStartingSerials["default"],
+        startingSerial: dynamicStartingSerial, // Use dynamic calculation
         updatedAt: new Date(),
       };
 
@@ -615,14 +653,15 @@ class SerialNumberGeneratorService {
       await MongoDBService.connect("main-data", "modelSerialConfig");
       logger.info("✅ Connected to main-data.modelSerialConfig collection");
 
+      // Get the correct starting serial using our dynamic calculation
+      const dynamicStartingSerial = await this.getModelStartingSerial();
+
       // Update or create model-specific serial configuration with the USED serial number
       const updateData = {
         modelNumber: modelNumber,
         currentValue: usedSerialNumber.toString(), // Last used, not next
         lastUpdated: new Date(),
-        startingSerial:
-          this.modelStartingSerials[modelNumber] ||
-          this.modelStartingSerials["default"],
+        startingSerial: dynamicStartingSerial, // Use dynamic calculation
       };
 
       logger.info(`📝 Upserting data: ${JSON.stringify(updateData)}`);
@@ -647,7 +686,7 @@ class SerialNumberGeneratorService {
       }
 
       logger.info(
-        `Model-wise serial number saved: Model=${modelNumber}, lastUsed=${updateData.currentValue}`
+        `Model-wise serial number saved: Model=${modelNumber}, lastUsed=${updateData.currentValue}, startingSerial=${updateData.startingSerial}`
       );
     } catch (error) {
       logger.error("❌ Error saving used serial number:", error);
@@ -659,6 +698,57 @@ class SerialNumberGeneratorService {
     // We don't need this method since we're using the records collection
     // for tracking model-wise serial numbers
     logger.info("Serial number tracking handled through records collection");
+  }
+
+  // Utility method to fix existing model serial configurations with correct starting serials
+  async fixModelSerialConfigurations() {
+    try {
+      logger.info("🔧 Fixing existing model serial configurations...");
+
+      // Connect to model-wise serial tracking collection
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+
+      // Get all existing model configurations
+      const allModelConfigs = await MongoDBService.collection
+        .find({})
+        .toArray();
+
+      for (const config of allModelConfigs) {
+        const modelNumber = config.modelNumber;
+
+        // Calculate the correct starting serial for this model
+        const tempCurrentModel = this.currentModelNumber;
+        this.currentModelNumber = modelNumber; // Temporarily set for calculation
+        const correctStartingSerial = await this.getModelStartingSerial();
+        this.currentModelNumber = tempCurrentModel; // Restore
+
+        // Only update if the starting serial is different
+        if (config.startingSerial !== correctStartingSerial) {
+          logger.info(
+            `🔄 Updating model ${modelNumber}: startingSerial ${config.startingSerial} → ${correctStartingSerial}`
+          );
+
+          await MongoDBService.collection.updateOne(
+            { modelNumber: modelNumber },
+            {
+              $set: {
+                startingSerial: correctStartingSerial,
+                lastUpdated: new Date(),
+              },
+            }
+          );
+        } else {
+          logger.info(
+            `✅ Model ${modelNumber} already has correct startingSerial: ${correctStartingSerial}`
+          );
+        }
+      }
+
+      logger.info("✅ Finished fixing model serial configurations");
+    } catch (error) {
+      logger.error("❌ Error fixing model serial configurations:", error);
+      throw error;
+    }
   }
 }
 
