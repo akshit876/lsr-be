@@ -269,6 +269,31 @@ class SerialNumberGeneratorService {
   async getNextDecSerialNumber2() {
     const reset = await this.checkAndResetSerialNumber();
 
+    // IMPORTANT: Always check if the model has changed and reload config if needed
+    const currentModelFromDB = await this.getCurrentModelNumber();
+
+    // If model has changed, reload the model-specific serial configuration
+    if (this.currentModelNumber !== currentModelFromDB) {
+      logger.info(
+        `🔄 Model changed from ${this.currentModelNumber} to ${currentModelFromDB}, reloading serial config...`
+      );
+
+      this.currentModelNumber = currentModelFromDB;
+
+      // Load model-specific serial configuration for the new model
+      const modelConfig = await this.loadModelSerialConfig();
+
+      // If no model config exists for this model, start with the model's starting serial
+      if (!modelConfig || !modelConfig.currentValue) {
+        const modelStartingSerial = await this.getModelStartingSerial();
+        this.currentSerialNumber = modelStartingSerial;
+        logger.info(
+          `🆕 New model detected, starting with serial: ${modelStartingSerial}`
+        );
+      }
+      // currentSerialNumber is already set in loadModelSerialConfig() if config exists
+    }
+
     // If a reset happened, the currentSerialNumber was already set to the model starting serial
     if (reset) {
       const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
@@ -278,7 +303,9 @@ class SerialNumberGeneratorService {
 
       this.currentSerialNumber++;
 
-      logger.info(`Using reset serial number: ${serialNumber}`);
+      logger.info(
+        `Using reset serial number: ${serialNumber} for model: ${this.currentModelNumber}`
+      );
       return serialNumber;
     }
 
@@ -292,7 +319,7 @@ class SerialNumberGeneratorService {
     this.currentSerialNumber++;
 
     logger.info(
-      `Using current serial number: ${serialNumber} (currentSerialNumber: ${this.currentSerialNumber - 1})`
+      `Using current serial number: ${serialNumber} for model: ${this.currentModelNumber} (next will be: ${this.currentSerialNumber})`
     );
     return serialNumber;
   }
@@ -357,7 +384,7 @@ class SerialNumberGeneratorService {
 
   async getModelStartingSerial() {
     try {
-      // Get current model number
+      // Always get fresh model number from database
       const modelNumber = await this.getCurrentModelNumber();
 
       if (modelNumber) {
