@@ -160,30 +160,54 @@ class BufferedComPortService extends EventEmitter {
 
   // Helper method to detect if we have a complete scanner message
   isCompleteMessage(data) {
-    // Check for common scanner message patterns
-    // Pattern 1: P followed by numbers, semicolons, letters, and ending with numbers
-    // Example: "P5314775;S0001;1TA;D25150;VR00031510012"
-
-    if (data.length < 10) {
-      return false; // Too short to be complete
+    // Handle simple "NG" response - this is always complete
+    if (data.trim().toUpperCase() === "NG") {
+      this.log(`Complete NG message detected`, "debug");
+      return true;
     }
 
-    // Look for patterns that suggest a complete message:
-    // 1. Starts with 'P' and has semicolons and ends with digits
-    if (data.startsWith("P") && data.includes(";") && /\d+$/.test(data)) {
-      // Check if it has multiple semicolon-separated segments
-      const segments = data.split(";");
-      if (segments.length >= 3) {
-        return true;
-      }
+    // Handle complex barcode patterns
+    // Expected complete pattern: "P5314775;S7001;1TA;D5151;VR0003"
+
+    if (data.length < 20) {
+      return false; // Too short to be complete barcode (complete messages are typically 30+ chars)
     }
 
-    // 2. Contains multiple pattern segments (letters followed by numbers)
-    // Pattern like: letters;numbers;letters;numbers;lettersNumbers
-    const hasMultipleSegments = (data.match(/[A-Z]+\d+/g) || []).length >= 2;
-    const hasEnoughSemicolons = (data.match(/;/g) || []).length >= 2;
+    // Must start with 'P' and contain semicolons for barcode patterns
+    if (!data.startsWith("P") || !data.includes(";")) {
+      return false;
+    }
 
-    if (hasMultipleSegments && hasEnoughSemicolons) {
+    // Check for specific pattern indicators of completeness:
+    // 1. Should NOT end with a semicolon (indicates incomplete)
+    if (data.endsWith(";")) {
+      return false; // Trailing semicolon means more data is coming
+    }
+
+    // 2. Should have at least 4 meaningful segments (not counting empty ones)
+    const segments = data
+      .split(";")
+      .filter((segment) => segment.trim().length > 0);
+    if (segments.length < 4) {
+      return false; // Need at least 4 non-empty segments for complete message
+    }
+
+    // 3. Last segment should match expected pattern (letters + numbers)
+    const lastSegment = segments[segments.length - 1];
+    if (!/^[A-Z]+\d+$/.test(lastSegment)) {
+      return false; // Last segment should be like "VR0003"
+    }
+
+    // 4. Should contain expected patterns throughout
+    const hasPartPattern = /^P\d+/.test(data); // Starts with P + numbers
+    const hasSerialPattern = /;S\d+/.test(data); // Contains ;S + numbers
+    const hasSupplierPattern = /;[A-Z]{2}\d+$/.test(data); // Ends with ;XX#### pattern
+
+    if (hasPartPattern && hasSerialPattern && hasSupplierPattern) {
+      this.log(
+        `Complete barcode pattern detected: ${segments.length} segments`,
+        "debug"
+      );
       return true;
     }
 
