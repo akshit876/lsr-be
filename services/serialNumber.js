@@ -101,6 +101,10 @@ class SerialNumberGeneratorService {
     }
 
     try {
+      // Store the original database and collection names for later restoration
+      this.originalDbName = dbName;
+      this.originalCollectionName = collectionName;
+
       // Connect to MongoDB and fetch the last document from records collection
       await MongoDBService.connect(dbName, collectionName);
       const lastDocument = await this.getLastDocumentFromMongoDB();
@@ -108,6 +112,16 @@ class SerialNumberGeneratorService {
       // Fetch model config to determine starting serial number
       const modelStartingSerial = await this.getModelStartingSerial();
       logger.info(`Model-based starting serial number: ${modelStartingSerial}`);
+
+      // IMPORTANT: Restore connection to the original records collection
+      // because getModelStartingSerial() changed it to config collection
+      await MongoDBService.connect(
+        this.originalDbName,
+        this.originalCollectionName
+      );
+      logger.info(
+        `Restored connection to ${this.originalDbName}.${this.originalCollectionName}`
+      );
 
       if (lastDocument) {
         // Parse existing serial number and ensure it's at least the model minimum
@@ -215,6 +229,17 @@ class SerialNumberGeneratorService {
   async getNextDecSerialNumber2() {
     const reset = this.checkAndResetSerialNumber();
 
+    // Ensure we're connected to the correct records collection before fetching
+    if (this.originalDbName && this.originalCollectionName) {
+      await MongoDBService.connect(
+        this.originalDbName,
+        this.originalCollectionName
+      );
+      logger.info(
+        `Connected to ${this.originalDbName}.${this.originalCollectionName} for getNextDecSerialNumber2`
+      );
+    }
+
     const lastDocument = await this.getLastDocumentFromMongoDB();
     if (!reset && lastDocument) {
       // Safely parse the serial number with validation
@@ -227,6 +252,15 @@ class SerialNumberGeneratorService {
 
         // Ensure we don't go below the model-based starting serial
         const modelStartingSerial = await this.getModelStartingSerial();
+
+        // Restore connection after getting model config
+        if (this.originalDbName && this.originalCollectionName) {
+          await MongoDBService.connect(
+            this.originalDbName,
+            this.originalCollectionName
+          );
+        }
+
         nextSerialNumber = Math.max(nextSerialNumber, modelStartingSerial);
 
         logger.info(
@@ -235,6 +269,15 @@ class SerialNumberGeneratorService {
       } else {
         // Fallback: use model-based starting serial if SerialNumber is invalid
         nextSerialNumber = await this.getModelStartingSerial();
+
+        // Restore connection after getting model config
+        if (this.originalDbName && this.originalCollectionName) {
+          await MongoDBService.connect(
+            this.originalDbName,
+            this.originalCollectionName
+          );
+        }
+
         logger.warn(
           `Invalid or missing SerialNumber in last document: ${lastSerial}, using model starting serial: ${nextSerialNumber}`
         );
@@ -257,6 +300,15 @@ class SerialNumberGeneratorService {
       // Reset case or no last document - use model-based starting serial
       if (reset || !lastDocument) {
         const modelStartingSerial = await this.getModelStartingSerial();
+
+        // Restore connection after getting model config
+        if (this.originalDbName && this.originalCollectionName) {
+          await MongoDBService.connect(
+            this.originalDbName,
+            this.originalCollectionName
+          );
+        }
+
         this.currentSerialNumber = modelStartingSerial;
         logger.info(
           `Reset or no document - using model starting serial: ${modelStartingSerial}`
