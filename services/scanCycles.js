@@ -728,15 +728,15 @@ class ScannerController {
           logger.error("   2. Verify scanner is powered on");
           logger.error("   3. Check if barcode is present for scanner to read");
           logger.error(
-            "   4. Verify scanner is configured for correct baud rate (115200)"
+            "   4. Verify scanner is configured for correct baud rate (9600)"
           );
           logger.error("   5. Test scanner with a simple terminal program");
 
           this.comPortService.off("dataGot", dataHandler);
 
-          // Return "NG" on timeout for testing purposes
-          logger.info(
-            "🔧 Returning 'NG' for timeout to continue workflow testing"
+          // Return "NG" on timeout and ensure proper bit handling
+          logger.warn(
+            "🔧 Scanner timeout - treating as NG to continue workflow"
           );
           resolve("NG");
         }, timeout);
@@ -990,9 +990,12 @@ class ScannerController {
       return { shouldContinue: false };
     }
 
-    // If scannerData is "NG", proceed with workflow
-    if (scannerData && scannerData.trim().toUpperCase() === "NG") {
-      logger.warn("⚠️ First scan data is NG, proceeding with workflow");
+    // Handle timeout/null/undefined or explicit "NG" response
+    if (!scannerData || scannerData.trim().toUpperCase() === "NG") {
+      logger.warn(
+        "⚠️ First scan data is NG or timeout, proceeding with workflow"
+      );
+      logger.info("✍️ Writing bit 1414.7 to signal NG scan");
       await writeBit(1414, 7, 1);
       return { shouldContinue: true };
     }
@@ -1143,13 +1146,17 @@ class ScannerController {
         scanType: "verification",
       });
 
-      if (scannerData !== "NG") {
+      // Handle timeout/null/undefined cases as NG
+      const effectiveScannerData = scannerData || "NG";
+
+      if (effectiveScannerData !== "NG") {
         logger.success("Verification scan OK");
       } else {
-        logger.warn("⚠️ Verification scan NG");
+        logger.warn("⚠️ Verification scan NG or timeout");
       }
 
-      const isDataMatching = await this.compareScannerDataWithCode(scannerData);
+      const isDataMatching =
+        await this.compareScannerDataWithCode(effectiveScannerData);
 
       logger.info(
         `✍️ Writing bit 1414.${isDataMatching ? 3 : 4} to signal data match result`
@@ -1166,7 +1173,7 @@ class ScannerController {
         io: this.io,
         serialNumber: barcodeData.serialNo,
         markingData: barcodeData.text,
-        scannerData: scannerData,
+        scannerData: effectiveScannerData,
         grading: "N/A",
         result: isDataMatching,
         isUpdate: true,
