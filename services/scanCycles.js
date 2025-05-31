@@ -514,7 +514,11 @@ class ScannerController {
     this.io = io;
     this.currentPartNumber = partNumber;
     this.isRunning = true;
-    this.cycleCount = 0;
+    // Don't reset cycle count here - let it persist across runs
+    // this.cycleCount = 0;
+    logger.info(
+      `🔄 Starting continuous scan (current cycle count: ${this.cycleCount})`
+    );
 
     try {
       await this.initializeScannerAndMonitor(io, comService);
@@ -609,9 +613,24 @@ class ScannerController {
     );
 
     // Step 5: Final Checks and Cleanup
-    if ((await this.performFinalChecks()) && verificationScanResult.success) {
+    logger.info("🔍 Starting final checks and cycle completion...");
+    const finalChecksResult = await this.performFinalChecks();
+    logger.info(`📋 Final checks result: ${finalChecksResult}`);
+    logger.info(
+      `🔍 Verification scan result: ${verificationScanResult.success}`
+    );
+
+    if (finalChecksResult) {
       this.cycleCount++;
       logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
+      logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
+    } else {
+      logger.warn(`❌ Cycle completion failed:`);
+      logger.warn(`   - Final checks: ${finalChecksResult}`);
+      logger.warn(
+        `   - Verification success: ${verificationScanResult.success}`
+      );
+      logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
     }
   }
 
