@@ -101,33 +101,33 @@ class BarcodeGenerator {
         let mappedValue;
         switch (field.fieldName) {
           case "PART NO":
-            mappedValue = field.value || "";
+            mappedValue = field.value || ""; // Use configured value
             break;
-          case "SERIAL NUMBER":
+          case "Serial Number": // Note: "Serial Number" not "SERIAL NUMBER"
             mappedValue = serialString;
             break;
           case "FOR STORE":
             mappedValue = field.value || ""; // Use configured value
             break;
-          case "SHIFT":
+          case "Shift": // Note: "Shift" not "SHIFT"
             mappedValue = shift;
             break;
           case "STORE":
             mappedValue = field.value || ""; // Use configured value
             break;
-          case "YEAR":
+          case "Year": // Note: "Year" not "YEAR"
             mappedValue = year;
             break;
-          case "JULIAN DATE":
+          case "Julian Date": // Note: "Julian Date" not "JULIAN DATE"
             mappedValue = julianDate;
             break;
           case "SUPPLIER CODE":
             mappedValue = field.value || ""; // Use configured value
             break;
-          case "MONTH":
+          case "Month": // Note: "Month" not "MONTH"
             mappedValue = month;
             break;
-          case "DATE":
+          case "Date": // Note: "Date" not "DATE"
             mappedValue = day;
             break;
           case "MACHINE NO":
@@ -136,8 +136,11 @@ class BarcodeGenerator {
           case "COMPANY CODE":
             mappedValue = field.value || "";
             break;
+          case "Model Number":
+            mappedValue = field.value || "";
+            break;
           default:
-            mappedValue = field.value;
+            mappedValue = field.value || "";
             break;
         }
 
