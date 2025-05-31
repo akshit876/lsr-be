@@ -101,20 +101,39 @@ class SerialNumberGeneratorService {
     }
 
     try {
-      // Connect to MongoDB and fetch the last document
+      // Connect to MongoDB and fetch the last document from records collection
       await MongoDBService.connect(dbName, collectionName);
       const lastDocument = await this.getLastDocumentFromMongoDB();
 
+      // Fetch model config to determine starting serial number
+      const modelStartingSerial = await this.getModelStartingSerial();
+      logger.info(`Model-based starting serial number: ${modelStartingSerial}`);
+
       if (lastDocument) {
-        this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
+        // Parse existing serial number and ensure it's at least the model minimum
+        const lastSerial = parseInt(lastDocument.SerialNumber, 10);
+        if (!isNaN(lastSerial)) {
+          this.currentSerialNumber = Math.max(
+            lastSerial + 1,
+            modelStartingSerial
+          );
+          logger.info(
+            `Found last serial: ${lastSerial}, next will be: ${this.currentSerialNumber}`
+          );
+        } else {
+          this.currentSerialNumber = modelStartingSerial;
+          logger.warn(
+            `Invalid SerialNumber in last document, using model starting serial: ${modelStartingSerial}`
+          );
+        }
         this.lastResetDate = new Date(lastDocument.Timestamp);
         logger.info(
           `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
         );
       } else {
-        this.currentSerialNumber = 1;
+        this.currentSerialNumber = modelStartingSerial;
         logger.info(
-          "No previous documents found, starting with serial number 0001"
+          `No previous documents found, starting with model-based serial number: ${modelStartingSerial}`
         );
       }
 
@@ -161,14 +180,19 @@ class SerialNumberGeneratorService {
       if (lastSerial && !isNaN(lastSerial)) {
         // If SerialNumber exists and is a valid number
         nextSerialNumber = parseInt(lastSerial, 10) + 1;
+
+        // Ensure we don't go below the model-based starting serial
+        const modelStartingSerial = await this.getModelStartingSerial();
+        nextSerialNumber = Math.max(nextSerialNumber, modelStartingSerial);
+
         logger.info(
           `Found valid SerialNumber: ${lastSerial}, next will be: ${nextSerialNumber}`
         );
       } else {
-        // Fallback: start from 1 if SerialNumber is invalid
-        nextSerialNumber = 1;
+        // Fallback: use model-based starting serial if SerialNumber is invalid
+        nextSerialNumber = await this.getModelStartingSerial();
         logger.warn(
-          `Invalid or missing SerialNumber in last document: ${lastSerial}, starting from 1`
+          `Invalid or missing SerialNumber in last document: ${lastSerial}, using model starting serial: ${nextSerialNumber}`
         );
       }
 
@@ -179,7 +203,15 @@ class SerialNumberGeneratorService {
       );
       return this.currentSerialNumber.toString().padStart(4, "0");
     } else {
-      // Reset case or no last document
+      // Reset case or no last document - use model-based starting serial
+      if (reset || !lastDocument) {
+        const modelStartingSerial = await this.getModelStartingSerial();
+        this.currentSerialNumber = modelStartingSerial;
+        logger.info(
+          `Reset or no document - using model starting serial: ${modelStartingSerial}`
+        );
+      }
+
       const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
       this.currentSerialNumber++;
       logger.info(
@@ -233,6 +265,45 @@ class SerialNumberGeneratorService {
       return true;
     }
     return false;
+  }
+
+  async getModelStartingSerial() {
+    try {
+      // Connect to config collection to fetch model information
+      await MongoDBService.connect("main-data", "config");
+      const configData = await MongoDBService.collection.findOne({});
+
+      if (
+        configData &&
+        configData.currentModelConfig &&
+        configData.currentModelConfig.modelNumber
+      ) {
+        const modelNumber = configData.currentModelConfig.modelNumber;
+        logger.info(`Found model number: ${modelNumber}`);
+
+        // Check if it's CMB-877 model
+        if (modelNumber === "CMB-877") {
+          logger.info(
+            "CMB-877 model detected - starting serial numbers from 7001"
+          );
+          return 7001;
+        } else {
+          logger.info(
+            `Model ${modelNumber} detected - starting serial numbers from 1`
+          );
+          return 1;
+        }
+      } else {
+        logger.warn(
+          "No model configuration found, defaulting to serial number 1"
+        );
+        return 1;
+      }
+    } catch (error) {
+      logger.error("Error fetching model configuration:", error);
+      logger.warn("Defaulting to serial number 1 due to error");
+      return 1;
+    }
   }
 }
 

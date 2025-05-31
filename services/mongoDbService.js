@@ -31,10 +31,27 @@ class MongoDBService {
     }
   }
 
-  async insertRecord(data) {
+  async insertRecord(data, dbName, collectionName) {
     try {
-      const result = await this.collection.insertOne(data);
-      logger.info(`Inserted record with ID: ${result.insertedId}`);
+      // If database and collection parameters are provided, ensure we're connected to the right one
+      let targetCollection = this.collection;
+      if (dbName && collectionName) {
+        // Check if we need to switch to a different database/collection
+        if (
+          !this.db ||
+          this.db.databaseName !== dbName ||
+          !this.collection ||
+          this.collection.collectionName !== collectionName
+        ) {
+          await this.connect(dbName, collectionName);
+          targetCollection = this.collection;
+        }
+      }
+
+      const result = await targetCollection.insertOne(data);
+      logger.info(
+        `Inserted record with ID: ${result.insertedId} in ${dbName}.${collectionName}`
+      );
       return result.insertedId;
     } catch (error) {
       logger.error("Error inserting record:", error);
@@ -148,16 +165,21 @@ class MongoDBService {
 
   async sendMongoDbDataToClient(socket, dbName, collectionName) {
     try {
-      // Check if we're connected to the database, if not, try to connect
-      if (!this.collection) {
+      // Always ensure we're connected to the correct database and collection
+      if (!dbName || !collectionName) {
+        throw new Error("Database name and collection name are required");
+      }
+
+      // Check if we need to connect/reconnect to the correct database/collection
+      if (
+        !this.db ||
+        this.db.databaseName !== dbName ||
+        !this.collection ||
+        this.collection.collectionName !== collectionName
+      ) {
         logger.info(
-          "MongoDB connection not established. Attempting to connect..."
+          `Connecting to ${dbName}.${collectionName} for client data...`
         );
-        if (!dbName || !collectionName) {
-          throw new Error(
-            "Database name and collection name are required for connection"
-          );
-        }
         await this.connect(dbName, collectionName);
       }
 
@@ -169,7 +191,7 @@ class MongoDBService {
         .toArray();
 
       if (data.length === 0) {
-        logger.info("No data found in MongoDB collection.");
+        logger.info(`No data found in ${dbName}.${collectionName} collection.`);
         socket.emit("mongodb-data", { data: [] });
         return;
       }
@@ -185,11 +207,11 @@ class MongoDBService {
         Date: item?.Date,
       }));
 
-      // console.log({ transformedData });
-
       // Send the data to the client
       socket.emit("csv-data", { data: transformedData });
-      logger.info(`Emitted MongoDB data to client: ${socket.id}`);
+      logger.info(
+        `Emitted data from ${dbName}.${collectionName} to client: ${socket.id}`
+      );
     } catch (error) {
       console.error({ error });
       logger.error("Error in sendMongoDbDataToClient: ", error.message);
