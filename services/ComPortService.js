@@ -11,8 +11,7 @@ class BufferedComPortService extends EventEmitter {
     super(); // Initialize EventEmitter
     this.options = {
       path: options.path || process.env.SERIAL_PORT || "COM3",
-      baudRate:
-        parseInt(options.baudRate || process.env.BAUD_RATE, 10) || 115200,
+      baudRate: parseInt(options.baudRate || process.env.BAUD_RATE, 10) || 9600,
       logDir: options.logDir || "logs",
     };
     this.port = null;
@@ -162,37 +161,26 @@ class BufferedComPortService extends EventEmitter {
   isCompleteMessage(data) {
     const trimmedData = data.trim();
 
-    // Handle NG responses - complete without @ delimiter
-    if (trimmedData === "NG" || trimmedData.endsWith("NG")) {
-      this.log(`Complete NG message detected: "${trimmedData}"`, "debug");
-      return true;
-    }
-
-    // Handle successful scans - complete when we see @ delimiter
+    // All scanner messages now end with @ delimiter
     if (trimmedData.includes("@")) {
       this.log(
-        `Complete success message detected (@ found): "${trimmedData}"`,
+        `Complete message detected (@ found): "${trimmedData}"`,
         "debug"
       );
       return true;
-    }
-
-    // For numeric data without @, not yet complete
-    if (trimmedData.length > 0 && /^\d+$/.test(trimmedData)) {
-      this.log(
-        `Incomplete numeric data (waiting for @): "${trimmedData}"`,
-        "debug"
-      );
-      return false;
     }
 
     // For very short data, likely incomplete
     if (trimmedData.length < 2) {
+      this.log(`Data too short: "${trimmedData}"`, "debug");
       return false;
     }
 
-    // Default to incomplete for other cases
-    this.log(`Data appears incomplete: "${trimmedData}"`, "debug");
+    // Default to incomplete for other cases (waiting for @)
+    this.log(
+      `Data appears incomplete (waiting for @): "${trimmedData}"`,
+      "debug"
+    );
     return false;
   }
 
@@ -200,31 +188,24 @@ class BufferedComPortService extends EventEmitter {
   extractFinalMessage(data) {
     const trimmedData = data.trim();
 
-    // Check for successful scan with @ delimiter
-    const atIndex = trimmedData.lastIndexOf("@");
-    if (atIndex !== -1) {
-      // Find the start of the numeric sequence before @
-      let startIndex = atIndex - 1;
-      while (startIndex >= 0 && /\d/.test(trimmedData[startIndex])) {
-        startIndex--;
-      }
-      const successMessage = trimmedData.substring(startIndex + 1, atIndex + 1);
-      this.log(`Extracted success message: "${successMessage}"`, "debug");
-      return successMessage;
+    // Split by @ and get the last non-empty segment
+    const segments = trimmedData
+      .split("@")
+      .filter((segment) => segment.trim() !== "");
+
+    if (segments.length === 0) {
+      this.log(`No valid segments found in: "${trimmedData}"`, "debug");
+      return trimmedData;
     }
 
-    // Check for NG at the end
-    if (trimmedData.endsWith("NG")) {
-      this.log(`Extracted NG message from: "${trimmedData}"`, "debug");
-      return "NG";
-    }
+    // Get the last complete segment
+    const lastSegment = segments[segments.length - 1].trim();
 
-    // Fallback: return the entire trimmed data
     this.log(
-      `No special pattern found, returning entire data: "${trimmedData}"`,
+      `Extracted final message: "${lastSegment}" from segments: [${segments.join(", ")}]`,
       "debug"
     );
-    return trimmedData;
+    return lastSegment;
   }
 
   async closePort() {

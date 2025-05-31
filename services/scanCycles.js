@@ -20,13 +20,11 @@ const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
 export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
-const BARCODE_RESET_HOUR = 6;
-const BARCODE_RESET_MINUTE = 0;
 
 // COM Port configuration for RS-232 scanner
 const COM_PORT_CONFIG = {
   path: "COM3", // Using COM3 as requested
-  baudRate: 115200, // Updated to 115200 baud rate for scanner
+  baudRate: 9600, // Changed to 9600 baud rate for scanner
   logDir: "scanner_logs",
   autoOpen: false, // Don't auto-open, we'll handle it manually
   lock: false, // Don't lock the port exclusively
@@ -132,10 +130,6 @@ class ScannerController {
       this.shiftUtility = new ShiftUtility();
       this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
       await this.barcodeGenerator.initialize("main-data", "records");
-      this.barcodeGenerator.setResetTime(
-        BARCODE_RESET_HOUR,
-        BARCODE_RESET_MINUTE
-      );
       logger.success("Barcode generator initialized");
 
       this.isInitialized = true;
@@ -952,9 +946,16 @@ class ScannerController {
   getLastResetTime() {
     const now = new Date();
     const resetTime = new Date(now);
-    resetTime.setHours(6, 0, 0, 0);
 
-    // If current time is before 6 AM, set reset time to previous day
+    // Use the reset time from SerialNumberGeneratorService if available
+    const resetHour =
+      this.barcodeGenerator?.serialNumberService?.resetHour || 6;
+    const resetMinute =
+      this.barcodeGenerator?.serialNumberService?.resetMinute || 0;
+
+    resetTime.setHours(resetHour, resetMinute, 0, 0);
+
+    // If current time is before reset time, set reset time to previous day
     if (now < resetTime) {
       resetTime.setDate(resetTime.getDate() - 1);
     }

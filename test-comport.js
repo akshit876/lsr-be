@@ -17,7 +17,11 @@ const sleep = promisify(setTimeout);
 // Test configuration
 const TEST_CONFIG = {
   path: "COM3",
-  baudRate: 115200,
+  baudRate: 9600,
+  dataBits: 8,
+  parity: "none",
+  stopBits: 1,
+  flowControl: false,
   logDir: "test_logs",
 };
 

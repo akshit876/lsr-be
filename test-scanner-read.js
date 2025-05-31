@@ -15,6 +15,17 @@ console.log("🔍 RS-232 Scanner Data Reading Test");
 console.log("====================================");
 console.log("🎯 Since Hercules works, let's match its exact configuration!");
 
+// Configuration for COM port
+const config = {
+  path: "COM3", // Adjust if needed
+  baudRate: 9600,
+  dataBits: 8,
+  parity: "none",
+  stopBits: 1,
+  flowControl: false,
+  autoOpen: false, // We'll open manually for better control
+};
+
 class ScannerReader {
   constructor() {
     this.port = null;
@@ -24,27 +35,15 @@ class ScannerReader {
 
   async connect() {
     try {
-      console.log("📡 Connecting to COM3 at 115200 baud...");
+      console.log("📡 Connecting to COM3 at 9600 baud...");
       console.log("🔧 Using EXACT Hercules settings:");
-      console.log("   - Baud: 115200");
+      console.log("   - Baud: 9600");
       console.log("   - Data bits: 8");
       console.log("   - Parity: None");
       console.log("   - Stop bits: 1");
       console.log("   - Flow control: None");
 
-      this.port = new SerialPort({
-        path: "COM3",
-        baudRate: 115200,
-        dataBits: 8,
-        parity: "none",  
-        stopBits: 1,
-        flowControl: false,
-        // Additional settings to match Hercules exactly
-        rtscts: false,
-        xon: false,
-        xoff: false,
-        xany: false,
-      });
+      this.port = new SerialPort(config);
 
       await new Promise((resolve, reject) => {
         this.port.on("open", () => {

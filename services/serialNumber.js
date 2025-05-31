@@ -105,6 +105,9 @@ class SerialNumberGeneratorService {
       this.originalDbName = dbName;
       this.originalCollectionName = collectionName;
 
+      // First, fetch reset time configuration from MongoDB
+      await this.getResetTimeFromConfig();
+
       // Connect to MongoDB and fetch the last document from records collection
       await MongoDBService.connect(dbName, collectionName);
       const lastDocument = await this.getLastDocumentFromMongoDB();
@@ -161,7 +164,7 @@ class SerialNumberGeneratorService {
       }
 
       // Check if a reset is needed when initializing
-      this.checkAndResetSerialNumber();
+      await this.checkAndResetSerialNumber();
 
       this.isInitialized = true;
     } catch (error) {
@@ -219,15 +222,15 @@ class SerialNumberGeneratorService {
     }
   }
 
-  getNextSerialNumber() {
-    this.checkAndResetSerialNumber();
+  async getNextSerialNumber() {
+    await this.checkAndResetSerialNumber();
     const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
     this.currentSerialNumber++;
     return serialNumber;
   }
 
   async getNextDecSerialNumber2() {
-    const reset = this.checkAndResetSerialNumber();
+    const reset = await this.checkAndResetSerialNumber();
 
     // Ensure we're connected to the correct records collection before fetching
     if (this.originalDbName && this.originalCollectionName) {
@@ -331,7 +334,7 @@ class SerialNumberGeneratorService {
     return this.currentSerialNumber;
   }
 
-  checkAndResetSerialNumber() {
+  async checkAndResetSerialNumber() {
     const now = new Date();
 
     // Ensure lastResetDate is valid, fallback to current date if not
@@ -366,10 +369,16 @@ class SerialNumberGeneratorService {
       (!isSameDay(now, this.lastResetDate) ||
         isBefore(this.lastResetDate, resetTime))
     ) {
-      this.currentSerialNumber = 1;
+      // Get model-based starting serial for reset
+      const modelStartingSerial = await this.getModelStartingSerial();
+      this.currentSerialNumber = modelStartingSerial;
       this.lastResetDate = now;
+
+      // Update the serialNoconfig collection with the reset information
+      await this.updateSerialConfigOnReset();
+
       logger.info(
-        `Serial number reset to 0001 at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+        `Serial number reset to ${modelStartingSerial.toString().padStart(4, "0")} at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
       );
       return true;
     }
@@ -412,6 +421,92 @@ class SerialNumberGeneratorService {
       logger.error("Error fetching model configuration:", error);
       logger.warn("Defaulting to serial number 1 due to error");
       return 1;
+    }
+  }
+
+  async getResetTimeFromConfig() {
+    try {
+      // Connect to serialNoconfig collection to fetch reset time configuration
+      await MongoDBService.connect("main-data", "serialNoconfig");
+      const serialConfig = await MongoDBService.collection.findOne({});
+
+      if (serialConfig && serialConfig.resetTime) {
+        // Parse the resetTime format "06:00" into hour and minute
+        const [hour, minute] = serialConfig.resetTime.split(":").map(Number);
+        logger.info(
+          `Found serial number reset configuration: ${serialConfig.resetTime}, interval: ${serialConfig.resetInterval}`
+        );
+
+        // Only apply if reset is enabled (daily interval)
+        if (serialConfig.resetInterval === "daily") {
+          this.resetHour = hour || 6;
+          this.resetMinute = minute || 0;
+          logger.info(
+            `Reset time updated from serialNoconfig: ${this.resetHour}:${this.resetMinute}`
+          );
+        } else {
+          logger.info(
+            `Reset interval is '${serialConfig.resetInterval}', using default reset time`
+          );
+          this.resetHour = 6;
+          this.resetMinute = 0;
+        }
+
+        // Update lastResetDate if available
+        if (serialConfig.lastReset) {
+          this.lastResetDate = new Date(serialConfig.lastReset);
+          logger.info(`Last reset date loaded: ${this.lastResetDate}`);
+        }
+      } else {
+        logger.warn(
+          "No serial number reset configuration found, using defaults (6:00)"
+        );
+        this.resetHour = 6;
+        this.resetMinute = 0;
+      }
+    } catch (error) {
+      logger.error("Error fetching serial number reset configuration:", error);
+      logger.warn("Using default reset time (6:00) due to error");
+      this.resetHour = 6;
+      this.resetMinute = 0;
+    }
+  }
+
+  async updateSerialConfigOnReset() {
+    try {
+      // Connect to serialNoconfig collection to update reset information
+      await MongoDBService.connect("main-data", "serialNoconfig");
+      const serialConfig = await MongoDBService.collection.findOne({});
+
+      if (serialConfig && serialConfig.resetInterval === "daily") {
+        // Update the currentValue field with the new serial number (model-based)
+        serialConfig.currentValue = this.currentSerialNumber.toString();
+
+        // Update the lastReset field with the current date
+        serialConfig.lastReset = new Date();
+
+        // Save the updated serialNoconfig collection
+        await MongoDBService.collection.updateOne(
+          {},
+          {
+            $set: {
+              currentValue: serialConfig.currentValue,
+              lastReset: serialConfig.lastReset,
+            },
+          }
+        );
+
+        logger.info(
+          `Serial number reset information updated in serialNoconfig collection: currentValue=${serialConfig.currentValue}`
+        );
+      } else {
+        logger.info(
+          `Reset interval is '${serialConfig?.resetInterval}', no update needed`
+        );
+      }
+    } catch (error) {
+      logger.error("Error updating serial number reset configuration:", error);
+      throw error;
     }
   }
 }

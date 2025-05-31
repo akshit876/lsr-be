@@ -45,6 +45,7 @@ async function createConfiguration() {
       partNo: "P5314775", // Default part number (you can change this)
       currentModelConfig: {
         modelName: "Default Model",
+        modelNumber: "CMB-877", // Add model number for serial number logic
         fields: [
           {
             fieldName: "PART NO",

@@ -13,11 +13,14 @@ import BufferedComPortService from "./services/ComPortService.js";
 console.log("🚀 Quick COM Port Test Starting...");
 console.log("=====================================");
 
-const comService = new BufferedComPortService({
+// Quick test configuration
+const TEST_CONFIG = {
   path: "COM3",
-  baudRate: 115200,
-  logDir: "quick_test_logs",
-});
+  baudRate: 9600,
+  autoOpen: false,
+};
+
+const comService = new BufferedComPortService(TEST_CONFIG);
 
 async function quickTest() {
   try {
@@ -49,7 +52,7 @@ async function quickTest() {
       console.log("💡 Possible reasons:");
       console.log("   - Scanner not connected or powered off");
       console.log("   - Scanner needs manual trigger");
-      console.log("   - Wrong baud rate (currently using 115200)");
+      console.log("   - Wrong baud rate (currently using 9600)");
       console.log("   - Scanner not configured to send data");
     }
 
