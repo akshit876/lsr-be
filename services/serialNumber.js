@@ -365,33 +365,15 @@ class SerialNumberGeneratorService {
       const modelNumber = await this.getCurrentModelNumber();
 
       if (modelNumber) {
-        // Check if it's a CMB model and extract the number
-        if (modelNumber.startsWith("CMB-")) {
-          const modelNumericPart = modelNumber.replace("CMB-", "");
-          const numericValue = parseInt(modelNumericPart, 10);
-
-          if (!isNaN(numericValue)) {
-            // For CMB models, use the numeric part * 1000 + 1 as starting serial
-            // Example: CMB-778 → 778001, CMB-877 → 877001
-            const startingSerial = numericValue * 1000 + 1;
-            logger.info(
-              `CMB model ${modelNumber} starting serial: ${startingSerial}`
-            );
-            return startingSerial;
-          } else {
-            logger.warn(
-              `Invalid CMB model number format: ${modelNumber}, using default`
-            );
-            return this.modelStartingSerials["default"];
-          }
+        // Specific model configurations
+        if (modelNumber === "CMB-877") {
+          logger.info(`Model ${modelNumber} starting serial: 7001`);
+          return 7001;
+        } else {
+          // All other models (including CMB-778) start from 1
+          logger.info(`Model ${modelNumber} starting serial: 1`);
+          return 1;
         }
-
-        // Check for specific model configurations
-        const startingSerial =
-          this.modelStartingSerials[modelNumber] ||
-          this.modelStartingSerials["default"];
-        logger.info(`Model ${modelNumber} starting serial: ${startingSerial}`);
-        return startingSerial;
       } else {
         logger.warn("No model number found, using default starting serial");
         return this.modelStartingSerials["default"];
