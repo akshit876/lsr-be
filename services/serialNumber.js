@@ -163,7 +163,42 @@ class SerialNumberGeneratorService {
         .sort({ Timestamp: -1 })
         .limit(1)
         .toArray();
-      return latestRecord[0] || null;
+
+      const lastDocument = latestRecord[0] || null;
+
+      // Debug logging to see what's actually in the database
+      if (lastDocument) {
+        logger.info("🔍 Debug - Last document from MongoDB:");
+        logger.info(`  Document ID: ${lastDocument._id}`);
+        logger.info(
+          `  SerialNumber: ${lastDocument.SerialNumber} (type: ${typeof lastDocument.SerialNumber})`
+        );
+        logger.info(
+          `  Timestamp: ${lastDocument.Timestamp} (type: ${typeof lastDocument.Timestamp})`
+        );
+        logger.info(
+          `  All fields: ${JSON.stringify(Object.keys(lastDocument))}`
+        );
+        logger.info(
+          `  Full document: ${JSON.stringify(lastDocument, null, 2)}`
+        );
+      } else {
+        logger.info("🔍 Debug - No documents found in MongoDB collection");
+
+        // Check if collection exists and has any documents at all
+        const totalCount = await MongoDBService.collection.countDocuments({});
+        logger.info(`  Total document count: ${totalCount}`);
+
+        if (totalCount > 0) {
+          // Get any document to see the structure
+          const anyDocument = await MongoDBService.collection.findOne({});
+          logger.info(
+            `  Sample document structure: ${JSON.stringify(Object.keys(anyDocument))}`
+          );
+        }
+      }
+
+      return lastDocument;
     } catch (error) {
       logger.error("Error fetching last document from MongoDB:", error);
       throw error;
