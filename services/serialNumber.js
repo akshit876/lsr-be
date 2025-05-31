@@ -9,6 +9,11 @@ class SerialNumberGeneratorService {
     this.resetHour = 6;
     this.resetMinute = 0;
     this.isInitialized = false;
+    this.currentModelNumber = null; // Track current model for separate sequences
+    this.modelStartingSerials = {
+      "CMB-877": 7001,
+      default: 1,
+    };
   }
 
   //   async initialize(dbName, collectionName) {
@@ -108,59 +113,68 @@ class SerialNumberGeneratorService {
       // First, fetch reset time configuration from MongoDB
       await this.getResetTimeFromConfig();
 
-      // Connect to MongoDB and fetch the last document from records collection
-      await MongoDBService.connect(dbName, collectionName);
-      const lastDocument = await this.getLastDocumentFromMongoDB();
-
-      // Fetch model config to determine starting serial number
+      // Load model-specific serial configuration (priority #1)
+      const modelConfig = await this.loadModelSerialConfig();
+      
+      // Get model-based starting serial
       const modelStartingSerial = await this.getModelStartingSerial();
       logger.info(`Model-based starting serial number: ${modelStartingSerial}`);
 
-      // IMPORTANT: Restore connection to the original records collection
-      // because getModelStartingSerial() changed it to config collection
-      await MongoDBService.connect(
-        this.originalDbName,
-        this.originalCollectionName
-      );
-      logger.info(
-        `Restored connection to ${this.originalDbName}.${this.originalCollectionName}`
-      );
+      // If we have model-specific config, use it
+      if (modelConfig && modelConfig.currentValue) {
+        this.currentSerialNumber = parseInt(modelConfig.currentValue, 10);
+        logger.info(`Using model-specific serial number: ${this.currentSerialNumber}`);
+      } else {
+        // Fallback: Connect to MongoDB and fetch the last document from records collection
+        await MongoDBService.connect(dbName, collectionName);
+        const lastDocument = await this.getLastDocumentFromMongoDB();
 
-      if (lastDocument) {
-        // Parse existing serial number and ensure it's at least the model minimum
-        const lastSerial = parseInt(lastDocument.SerialNumber, 10);
-        if (!isNaN(lastSerial)) {
-          this.currentSerialNumber = Math.max(
-            lastSerial + 1,
-            modelStartingSerial
-          );
+        // IMPORTANT: Restore connection to the original records collection
+        // because other methods might have changed the connection
+        await MongoDBService.connect(
+          this.originalDbName,
+          this.originalCollectionName
+        );
+        logger.info(
+          `Restored connection to ${this.originalDbName}.${this.originalCollectionName}`
+        );
+
+        if (lastDocument) {
+          // Parse existing serial number and ensure it's at least the model minimum
+          const lastSerial = parseInt(lastDocument.SerialNumber, 10);
+          if (!isNaN(lastSerial)) {
+            this.currentSerialNumber = Math.max(
+              lastSerial + 1,
+              modelStartingSerial
+            );
+            logger.info(
+              `Found last serial from records: ${lastSerial}, next will be: ${this.currentSerialNumber}`
+            );
+          } else {
+            this.currentSerialNumber = modelStartingSerial;
+            logger.warn(
+              `Invalid SerialNumber in last document, using model starting serial: ${modelStartingSerial}`
+            );
+          }
+          this.lastResetDate = new Date(lastDocument.Timestamp);
+
+          // Validate the date and fallback if invalid
+          if (isNaN(this.lastResetDate.getTime())) {
+            logger.warn("Invalid Timestamp in last document, using current date");
+            this.lastResetDate = new Date();
+          }
+
           logger.info(
-            `Found last serial: ${lastSerial}, next will be: ${this.currentSerialNumber}`
+            `Initialized serial number to ${this.currentSerialNumber} from MongoDB records`
           );
         } else {
           this.currentSerialNumber = modelStartingSerial;
-          logger.warn(
-            `Invalid SerialNumber in last document, using model starting serial: ${modelStartingSerial}`
+          // Set lastResetDate to current date if no documents
+          this.lastResetDate = new Date();
+          logger.info(
+            `No previous documents found, starting with model-based serial number: ${modelStartingSerial}`
           );
         }
-        this.lastResetDate = new Date(lastDocument.Timestamp);
-
-        // Validate the date and fallback if invalid
-        if (isNaN(this.lastResetDate.getTime())) {
-          logger.warn("Invalid Timestamp in last document, using current date");
-          this.lastResetDate = new Date();
-        }
-
-        logger.info(
-          `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
-        );
-      } else {
-        this.currentSerialNumber = modelStartingSerial;
-        // Set lastResetDate to current date if no documents
-        this.lastResetDate = new Date();
-        logger.info(
-          `No previous documents found, starting with model-based serial number: ${modelStartingSerial}`
-        );
       }
 
       // Check if a reset is needed when initializing
@@ -175,8 +189,18 @@ class SerialNumberGeneratorService {
 
   async getLastDocumentFromMongoDB() {
     try {
+      // Get current model number to filter documents
+      const currentModel = await this.getCurrentModelNumber();
+
+      // Build query filter for current model
+      const query = currentModel ? { ModelNumber: currentModel } : {};
+
+      logger.info(
+        `🔍 Searching for last document with model: ${currentModel || "any"}`
+      );
+
       const latestRecord = await MongoDBService.collection
-        .find()
+        .find(query)
         .sort({ Timestamp: -1 })
         .limit(1)
         .toArray();
@@ -185,7 +209,8 @@ class SerialNumberGeneratorService {
 
       // Debug logging to see what's actually in the database
       if (lastDocument) {
-        logger.info("🔍 Debug - Last document from MongoDB:");
+        logger.info("🔍 Debug - Last document from MongoDB for current model:");
+        logger.info(`  Model: ${lastDocument.ModelNumber || "not set"}`);
         logger.info(`  Document ID: ${lastDocument._id}`);
         logger.info(
           `  SerialNumber: ${lastDocument.SerialNumber} (type: ${typeof lastDocument.SerialNumber})`
@@ -193,14 +218,10 @@ class SerialNumberGeneratorService {
         logger.info(
           `  Timestamp: ${lastDocument.Timestamp} (type: ${typeof lastDocument.Timestamp})`
         );
-        logger.info(
-          `  All fields: ${JSON.stringify(Object.keys(lastDocument))}`
-        );
-        logger.info(
-          `  Full document: ${JSON.stringify(lastDocument, null, 2)}`
-        );
       } else {
-        logger.info("🔍 Debug - No documents found in MongoDB collection");
+        logger.info(
+          `🔍 Debug - No documents found for model: ${currentModel || "any"}`
+        );
 
         // Check if collection exists and has any documents at all
         const totalCount = await MongoDBService.collection.countDocuments({});
@@ -387,40 +408,23 @@ class SerialNumberGeneratorService {
 
   async getModelStartingSerial() {
     try {
-      // Connect to config collection to fetch model information
-      await MongoDBService.connect("main-data", "config");
-      const configData = await MongoDBService.collection.findOne({});
+      // Get current model number
+      const modelNumber = await this.getCurrentModelNumber();
 
-      if (
-        configData &&
-        configData.currentModelConfig &&
-        configData.currentModelConfig.modelNumber
-      ) {
-        const modelNumber = configData.currentModelConfig.modelNumber;
-        logger.info(`Found model number: ${modelNumber}`);
-
-        // Check if it's CMB-877 model
-        if (modelNumber === "CMB-877") {
-          logger.info(
-            "CMB-877 model detected - starting serial numbers from 7001"
-          );
-          return 7001;
-        } else {
-          logger.info(
-            `Model ${modelNumber} detected - starting serial numbers from 1`
-          );
-          return 1;
-        }
+      if (modelNumber) {
+        const startingSerial =
+          this.modelStartingSerials[modelNumber] ||
+          this.modelStartingSerials["default"];
+        logger.info(`Model ${modelNumber} starting serial: ${startingSerial}`);
+        return startingSerial;
       } else {
-        logger.warn(
-          "No model configuration found, defaulting to serial number 1"
-        );
-        return 1;
+        logger.warn("No model number found, using default starting serial");
+        return this.modelStartingSerials["default"];
       }
     } catch (error) {
-      logger.error("Error fetching model configuration:", error);
+      logger.error("Error fetching model starting serial:", error);
       logger.warn("Defaulting to serial number 1 due to error");
-      return 1;
+      return this.modelStartingSerials["default"];
     }
   }
 
@@ -474,39 +478,117 @@ class SerialNumberGeneratorService {
 
   async updateSerialConfigOnReset() {
     try {
-      // Connect to serialNoconfig collection to update reset information
+      const modelNumber = this.currentModelNumber || "default";
+
+      // Connect to a new collection for model-wise serial tracking
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+
+      // Update or create model-specific serial configuration
+      const updateData = {
+        modelNumber: modelNumber,
+        currentValue: this.currentSerialNumber.toString(),
+        lastReset: new Date(),
+        startingSerial:
+          this.modelStartingSerials[modelNumber] ||
+          this.modelStartingSerials["default"],
+        updatedAt: new Date(),
+      };
+
+      // Upsert the model-specific configuration
+      await MongoDBService.collection.updateOne(
+        { modelNumber: modelNumber },
+        { $set: updateData },
+        { upsert: true }
+      );
+
+      logger.info(
+        `Model-wise serial reset updated: Model=${modelNumber}, currentValue=${updateData.currentValue}, startingSerial=${updateData.startingSerial}`
+      );
+
+      // Also update the global serialNoconfig for backward compatibility
       await MongoDBService.connect("main-data", "serialNoconfig");
       const serialConfig = await MongoDBService.collection.findOne({});
 
       if (serialConfig && serialConfig.resetInterval === "daily") {
-        // Update the currentValue field with the new serial number (model-based)
-        serialConfig.currentValue = this.currentSerialNumber.toString();
-
-        // Update the lastReset field with the current date
-        serialConfig.lastReset = new Date();
-
-        // Save the updated serialNoconfig collection
         await MongoDBService.collection.updateOne(
           {},
           {
             $set: {
-              currentValue: serialConfig.currentValue,
-              lastReset: serialConfig.lastReset,
+              currentValue: this.currentSerialNumber.toString(),
+              lastReset: new Date(),
             },
           }
         );
-
-        logger.info(
-          `Serial number reset information updated in serialNoconfig collection: currentValue=${serialConfig.currentValue}`
-        );
-      } else {
-        logger.info(
-          `Reset interval is '${serialConfig?.resetInterval}', no update needed`
-        );
+        logger.info("Global serialNoconfig also updated for compatibility");
       }
     } catch (error) {
-      logger.error("Error updating serial number reset configuration:", error);
+      logger.error(
+        "Error updating model-wise serial reset configuration:",
+        error
+      );
       throw error;
+    }
+  }
+
+  async getCurrentModelNumber() {
+    try {
+      // Connect to config collection to fetch current model
+      await MongoDBService.connect("main-data", "config");
+      const configData = await MongoDBService.collection.findOne({});
+
+      if (
+        configData &&
+        configData.currentModelConfig &&
+        configData.currentModelConfig.modelNumber
+      ) {
+        this.currentModelNumber = configData.currentModelConfig.modelNumber;
+        logger.info(`Current model number: ${this.currentModelNumber}`);
+        return this.currentModelNumber;
+      } else {
+        logger.warn("No model configuration found, using null");
+        this.currentModelNumber = null;
+        return null;
+      }
+    } catch (error) {
+      logger.error("Error fetching current model number:", error);
+      this.currentModelNumber = null;
+      return null;
+    }
+  }
+
+  async loadModelSerialConfig() {
+    try {
+      const modelNumber = await this.getCurrentModelNumber();
+
+      // Connect to model-wise serial tracking collection
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      const modelConfig = await MongoDBService.collection.findOne({
+        modelNumber: modelNumber || "default",
+      });
+
+      if (modelConfig) {
+        logger.info(
+          `Found model-specific serial config for ${modelNumber}: currentValue=${modelConfig.currentValue}, lastReset=${modelConfig.lastReset}`
+        );
+
+        // Load the current serial number and last reset date for this model
+        this.currentSerialNumber =
+          parseInt(modelConfig.currentValue, 10) ||
+          this.getModelStartingSerial();
+        if (modelConfig.lastReset) {
+          this.lastResetDate = new Date(modelConfig.lastReset);
+        }
+
+        return modelConfig;
+      } else {
+        logger.info(
+          `No model-specific config found for ${modelNumber}, will create on first reset`
+        );
+        return null;
+      }
+    } catch (error) {
+      logger.error("Error loading model-wise serial configuration:", error);
+      return null;
     }
   }
 }

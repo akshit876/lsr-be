@@ -443,12 +443,14 @@ class ScannerController {
         email: "Unknown",
       };
       const currentId = await this.getCurrentDayId();
+      const modelNumber = await this.getCurrentModelNumber();
 
       const data = {
         Timestamp: new Date(timestamp),
         SerialNumber: serialNumber,
         MarkingData: markingData,
         ScannerData: scannerData,
+        ModelNumber: modelNumber,
         Result: result
           ? result === "N/A"
             ? "N/A"
@@ -462,16 +464,16 @@ class ScannerController {
       };
 
       if (isUpdate) {
-        // Find and update the most recent record for this serial number
+        // Find and update the most recent record for this serial number AND model
         logger.info(
-          `🔄 Attempting to update record for SerialNumber: ${serialNumber}`
+          `🔄 Attempting to update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
         );
         logger.info(
           `📊 Update data: ScannerData=${scannerData}, Result=${result}`
         );
 
         const updateResult = await mongoDbService.updateLastRecord(
-          { SerialNumber: serialNumber },
+          { SerialNumber: serialNumber, ModelNumber: modelNumber },
           { $set: data },
           "main-data",
           "records"
@@ -479,12 +481,12 @@ class ScannerController {
 
         if (updateResult) {
           logger.info(
-            `✅ Successfully updated MongoDB record for SerialNumber: ${serialNumber}`
+            `✅ Successfully updated MongoDB record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
           );
           logger.info(`📋 Updated fields: ${JSON.stringify(data)}`);
         } else {
           logger.warn(
-            `⚠️ Failed to find/update record for SerialNumber: ${serialNumber}`
+            `⚠️ Failed to find/update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
           );
           logger.warn(`🔍 Trying to insert as new record instead`);
           await mongoDbService.insertRecord(data, "main-data", "records");
@@ -492,10 +494,12 @@ class ScannerController {
       } else {
         // Insert new record
         logger.info(
-          `📝 Inserting new record for SerialNumber: ${serialNumber}`
+          `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
         );
         await mongoDbService.insertRecord(data, "main-data", "records");
-        logger.info(`✅ Data saved to MongoDB with CurrentId: ${currentId}`);
+        logger.info(
+          `✅ Data saved to MongoDB with CurrentId: ${currentId}, Model: ${modelNumber}`
+        );
       }
 
       if (io) {
@@ -1249,6 +1253,28 @@ class ScannerController {
     } catch (error) {
       logger.error("❌ Error during COM port test:", error);
       return false;
+    }
+  }
+
+  async getCurrentModelNumber() {
+    try {
+      // Get current model from config collection
+      await mongoDbService.connect("main-data", "config");
+      const configData = await mongoDbService.collection.findOne({});
+
+      if (
+        configData &&
+        configData.currentModelConfig &&
+        configData.currentModelConfig.modelNumber
+      ) {
+        return configData.currentModelConfig.modelNumber;
+      } else {
+        logger.warn("No model configuration found");
+        return null;
+      }
+    } catch (error) {
+      logger.error("Error fetching current model number:", error);
+      return null;
     }
   }
 }
