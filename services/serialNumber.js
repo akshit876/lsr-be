@@ -459,7 +459,14 @@ class SerialNumberGeneratorService {
       await MongoDBService.connect("main-data", "modelSerialConfig");
 
       // Get the correct starting serial using our dynamic calculation
+      // NOTE: This call will change connection to config, so we need to reconnect after
       const dynamicStartingSerial = await this.getModelStartingSerial();
+
+      // CRITICAL: Reconnect to modelSerialConfig after getModelStartingSerial()
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      logger.info(
+        "✅ Reconnected to main-data.modelSerialConfig collection after getModelStartingSerial"
+      );
 
       // Update or create model-specific serial configuration
       const updateData = {
@@ -478,7 +485,7 @@ class SerialNumberGeneratorService {
       );
 
       logger.info(
-        `Model-wise serial reset updated: Model=${modelNumber}, currentValue=${updateData.currentValue}, startingSerial=${updateData.startingSerial}`
+        `Model-wise serial reset updated in modelSerialConfig: Model=${modelNumber}, currentValue=${updateData.currentValue}, startingSerial=${updateData.startingSerial}`
       );
 
       // Also update the global serialNoconfig for backward compatibility
@@ -611,12 +618,20 @@ class SerialNumberGeneratorService {
         `🔍 Saving used serial number: ${usedSerialNumber} for model: ${modelNumber}`
       );
 
-      // Connect to model-wise serial tracking collection
+      // IMPORTANT: Ensure we connect to modelSerialConfig after getCurrentModelNumber()
+      // which may have changed the connection to config collection
       await MongoDBService.connect("main-data", "modelSerialConfig");
       logger.info("✅ Connected to main-data.modelSerialConfig collection");
 
       // Get the correct starting serial using our dynamic calculation
+      // NOTE: This call will change connection to config, so we need to reconnect after
       const dynamicStartingSerial = await this.getModelStartingSerial();
+
+      // CRITICAL: Reconnect to modelSerialConfig after getModelStartingSerial()
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      logger.info(
+        "✅ Reconnected to main-data.modelSerialConfig collection after getModelStartingSerial"
+      );
 
       // Update or create model-specific serial configuration with the USED serial number
       const updateData = {
@@ -626,7 +641,9 @@ class SerialNumberGeneratorService {
         startingSerial: dynamicStartingSerial, // Use dynamic calculation
       };
 
-      logger.info(`📝 Upserting data: ${JSON.stringify(updateData)}`);
+      logger.info(
+        `📝 Upserting data to modelSerialConfig: ${JSON.stringify(updateData)}`
+      );
 
       // Upsert the model-specific configuration
       const result = await MongoDBService.collection.updateOne(
@@ -648,7 +665,7 @@ class SerialNumberGeneratorService {
       }
 
       logger.info(
-        `Model-wise serial number saved: Model=${modelNumber}, lastUsed=${updateData.currentValue}, startingSerial=${updateData.startingSerial}`
+        `Model-wise serial number saved to modelSerialConfig: Model=${modelNumber}, lastUsed=${updateData.currentValue}, startingSerial=${updateData.startingSerial}`
       );
     } catch (error) {
       logger.error("❌ Error saving used serial number:", error);
