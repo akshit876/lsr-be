@@ -810,42 +810,59 @@ class ScannerController {
     }
 
     try {
+      logger.info("🏷️ Starting barcode generation process...");
+      logger.info(`📦 Part Number: ${partNumber}`);
+
       // Generate barcode data using simplified method
-      const barcodeData = await this.barcodeGenerator.generateBarcodeData({
-        mongoDbService,
-        partNumber,
-      });
+      logger.info("🔄 Calling barcodeGenerator.generateBarcodeData...");
+      const { text: barcodeText, serialNo: serialString } =
+        await this.barcodeGenerator.generateBarcodeData({
+          mongoDbService,
+          partNumber,
+        });
+      logger.info(`✅ Barcode generated: ${barcodeText}`);
+      logger.info(`🔢 Serial Number: ${serialString}`);
 
       // Write both files using the reusable function
+      logger.info("📁 Writing barcode data to files...");
       await Promise.all([
-        this.writeToFile(CODE_FILE_PATH, barcodeData.text, "Barcode data"),
-        this.writeToFile(TEXT_FILE_PATH, barcodeData.text, "Barcode text"),
+        this.writeToFile(CODE_FILE_PATH, barcodeText, "Barcode data"),
+        this.writeToFile(TEXT_FILE_PATH, barcodeText, "Barcode text"),
       ]);
+      logger.info("✅ Files written successfully");
 
       // Emit marking data to UI
       if (this.io) {
+        logger.info("📡 Emitting marking data to UI...");
         this.io.emit("marking_data", {
           timestamp: new Date(),
-          data: barcodeData.text,
+          data: barcodeText,
         });
       }
 
-      const isVerified = await this.verifyAndRetryWrite(barcodeData.text, 2);
+      logger.info("🔍 Verifying file write...");
+      const isVerified = await this.verifyAndRetryWrite(barcodeText, 2);
+      logger.info(`✅ File verification: ${isVerified ? "PASSED" : "FAILED"}`);
 
       // Add MongoDB write after file verification
       if (isVerified) {
+        logger.info("💾 Saving initial data to MongoDB...");
         await this.saveToMongoDB({
           io: this.io,
-          serialNumber: barcodeData.serialNo,
-          markingData: barcodeData.text,
+          serialNumber: serialString,
+          markingData: barcodeText,
           scannerData: "N/A", // No scanner data at this point
           result: "N/A", // File write was successful
           grading: "N/A", // No grading at this point
           isUpdate: false,
         });
+        logger.info("✅ MongoDB save completed");
       }
 
-      return isVerified ? barcodeData : null;
+      logger.info(
+        `🎯 Barcode generation process completed. Returning ${isVerified ? "barcodeData" : "null"}`
+      );
+      return isVerified ? { barcodeText, serialString } : null;
     } catch (error) {
       logger.error("❌ Error in file writing process:", error);
       // Save error state to MongoDB

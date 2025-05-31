@@ -1,14 +1,6 @@
-import {
-  format,
-  parse,
-  isAfter,
-  setHours,
-  setMinutes,
-  isSameDay,
-  isBefore,
-} from 'date-fns';
-import MongoDBService from './mongoDbService.js';
-import logger from '../logger.js';
+import { format, isAfter, isSameDay, isBefore } from "date-fns";
+import MongoDBService from "./mongoDbService.js";
+import logger from "../logger.js";
 
 class SerialNumberGeneratorService {
   constructor() {
@@ -104,7 +96,7 @@ class SerialNumberGeneratorService {
 
   async initialize(dbName, collectionName) {
     if (this.isInitialized) {
-      logger.info('SerialNumberGeneratorService already initialized');
+      logger.info("SerialNumberGeneratorService already initialized");
       return;
     }
 
@@ -122,7 +114,7 @@ class SerialNumberGeneratorService {
       } else {
         this.currentSerialNumber = 1;
         logger.info(
-          'No previous documents found, starting with serial number 0001'
+          "No previous documents found, starting with serial number 0001"
         );
       }
 
@@ -131,7 +123,7 @@ class SerialNumberGeneratorService {
 
       this.isInitialized = true;
     } catch (error) {
-      logger.error('Error initializing SerialNumberGeneratorService:', error);
+      logger.error("Error initializing SerialNumberGeneratorService:", error);
       throw error;
     }
   }
@@ -145,34 +137,54 @@ class SerialNumberGeneratorService {
         .toArray();
       return latestRecord[0] || null;
     } catch (error) {
-      logger.error('Error fetching last document from MongoDB:', error);
+      logger.error("Error fetching last document from MongoDB:", error);
       throw error;
     }
   }
 
   getNextSerialNumber() {
     this.checkAndResetSerialNumber();
-    const serialNumber = this.currentSerialNumber.toString().padStart(4, '0');
+    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
     this.currentSerialNumber++;
     return serialNumber;
   }
 
- async getNextDecSerialNumber2() {
+  async getNextDecSerialNumber2() {
     const reset = this.checkAndResetSerialNumber();
-    // const serialNumber = this.currentSerialNumber.toString().padStart(4, '0');
-    // this.currentSerialNumber++;
-    // return serialNumber;
+
     const lastDocument = await this.getLastDocumentFromMongoDB();
     if (!reset && lastDocument) {
-      this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
+      // Safely parse the serial number with validation
+      const lastSerial = lastDocument.SerialNumber;
+      let nextSerialNumber;
+
+      if (lastSerial && !isNaN(lastSerial)) {
+        // If SerialNumber exists and is a valid number
+        nextSerialNumber = parseInt(lastSerial, 10) + 1;
+        logger.info(
+          `Found valid SerialNumber: ${lastSerial}, next will be: ${nextSerialNumber}`
+        );
+      } else {
+        // Fallback: start from 1 if SerialNumber is invalid
+        nextSerialNumber = 1;
+        logger.warn(
+          `Invalid or missing SerialNumber in last document: ${lastSerial}, starting from 1`
+        );
+      }
+
+      this.currentSerialNumber = nextSerialNumber;
       this.lastResetDate = new Date(lastDocument.Timestamp);
       logger.info(
-        `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
+        `Initialized serial number to ${this.currentSerialNumber} from MongoDB document`
       );
-      return this.currentSerialNumber.toString().padStart(4, '0');
+      return this.currentSerialNumber.toString().padStart(4, "0");
     } else {
-      const serialNumber = this.currentSerialNumber.toString().padStart(4, '0');
+      // Reset case or no last document
+      const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
       this.currentSerialNumber++;
+      logger.info(
+        `Using current serial number: ${serialNumber} (reset: ${reset}, hasDocument: ${!!lastDocument})`
+      );
       return serialNumber;
     }
   }
@@ -181,7 +193,7 @@ class SerialNumberGeneratorService {
     // this.checkAndResetSerialNumber();
     // const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");r
     this.currentSerialNumber--;
-    return  this.currentSerialNumber;
+    return this.currentSerialNumber;
   }
 
   checkAndResetSerialNumber() {
@@ -197,9 +209,9 @@ class SerialNumberGeneratorService {
     );
 
     console.log({
-      now: format(now, 'yyyy-MM-dd HH:mm:ss'),
-      resetTime: format(resetTime, 'yyyy-MM-dd HH:mm:ss'),
-      lastResetDate: format(this.lastResetDate, 'yyyy-MM-dd HH:mm:ss'),
+      now: format(now, "yyyy-MM-dd HH:mm:ss"),
+      resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
+      lastResetDate: format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss"),
       isAfterResetTime: isAfter(now, resetTime), // True if now is past 6:00 AM today
       isSameDayAsLastReset: isSameDay(now, this.lastResetDate), // True if last reset was today
       isLastResetBeforeResetTime: isBefore(this.lastResetDate, resetTime), // Check if last reset was before reset time today
@@ -216,7 +228,7 @@ class SerialNumberGeneratorService {
       this.currentSerialNumber = 1;
       this.lastResetDate = now;
       logger.info(
-        `Serial number reset to 0001 at ${format(now, 'yyyy-MM-dd HH:mm:ss')}`
+        `Serial number reset to 0001 at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
       );
       return true;
     }
