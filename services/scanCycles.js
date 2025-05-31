@@ -245,16 +245,26 @@ class ScannerController {
     }
   }
 
-  async checkResetOrBit(register, bit, value, timeout = 100 * 1000) {
-    logger.info(`🧹 Waiting for bit ${register}.${bit} to become ${value}`);
+  async checkResetOrBit(register, bit, value, timeout = null) {
+    if (timeout === null) {
+      logger.info(
+        `🔄 Waiting indefinitely for PLC bit ${register}.${bit} to become ${value} (no timeout)`
+      );
+    } else {
+      logger.info(
+        `🧹 Waiting for bit ${register}.${bit} to become ${value} (timeout: ${timeout / 1000}s)`
+      );
+    }
+
     logger.info(
       "-----------------------------------------------------------------------------------------------------------"
     );
 
-    let retryCount = 0;
-    const maxRetries = 10; // Prevent infinite loop
+    // For PLC bit monitoring, wait indefinitely until proper signals arrive
+    // No timeout or retry limits - let PLC workflow control the timing
 
-    do {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
       try {
         const result = await this.singleCheckAttempt(
           register,
@@ -265,32 +275,31 @@ class ScannerController {
         if (result !== "timeout") {
           return result;
         }
-        retryCount++;
-        if (retryCount < maxRetries) {
-          logger.info(
-            `Retrying check for bit ${register}.${bit} (attempt ${retryCount + 1}/${maxRetries})`
-          );
-        }
+        // If we get a timeout from singleCheckAttempt, just continue the loop
+        // This ensures we keep waiting for PLC signals indefinitely
+        logger.info(
+          `🔄 Continuing to wait for PLC bit ${register}.${bit} = ${value}...`
+        );
       } catch (error) {
         logger.error(`Error in bit check: ${error.message}`);
         await sleep(1000);
-        retryCount++;
+        // Continue the loop even on errors
       }
-    } while (retryCount < maxRetries);
-
-    logger.warn(
-      `Maximum retries (${maxRetries}) reached for bit ${register}.${bit}`
-    );
-    return "timeout";
+    }
   }
 
   async singleCheckAttempt(register, bit, value, timeout) {
     return new Promise((resolve) => {
-      const timeoutId = setTimeout(() => {
-        cleanup();
-        logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
-        resolve("timeout");
-      }, timeout);
+      let timeoutId = null;
+
+      // Only set timeout if a timeout value is provided
+      if (timeout !== null && timeout > 0) {
+        timeoutId = setTimeout(() => {
+          cleanup();
+          logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
+          resolve("timeout");
+        }, timeout);
+      }
 
       let checkCount = 0;
       const CHECK_INTERVAL = 100;
