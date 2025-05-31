@@ -61,6 +61,9 @@ class BarcodeGenerator {
 
       // Use provided part number or fetched one
       const finalPartNumber = partNumber || fetchedPartNumber;
+      logger.info(`🔍 Debug - finalPartNumber: "${finalPartNumber}"`);
+      logger.info(`🔍 Debug - fetchedPartNumber: "${fetchedPartNumber}"`);
+      logger.info(`🔍 Debug - provided partNumber: "${partNumber}"`);
 
       // Get next serial number
       const serialString =
@@ -86,37 +89,74 @@ class BarcodeGenerator {
         };
       }
 
+      logger.info("🔍 Debug - Config fields before mapping:");
+      configData.currentModelConfig.fields.forEach((field, index) => {
+        logger.info(
+          `  ${index}: ${field.fieldName} = "${field.value}" (order: ${field.order}, checked: ${field.isChecked})`
+        );
+      });
+
       // Map values to fields from config using exact field names from UI
       const fields = configData.currentModelConfig.fields.map((field) => {
+        let mappedValue;
         switch (field.fieldName) {
           case "PART NO":
-            return { ...field, value: finalPartNumber };
+            mappedValue = field.value || "";
+            break;
           case "SERIAL NUMBER":
-            return { ...field, value: serialString };
+            mappedValue = serialString;
+            break;
           case "FOR STORE":
-            return { ...field, value: field.value || "" }; // Use configured value
+            mappedValue = field.value || ""; // Use configured value
+            break;
           case "SHIFT":
-            return { ...field, value: shift };
+            mappedValue = shift;
+            break;
           case "STORE":
-            return { ...field, value: field.value || "" }; // Use configured value
+            mappedValue = field.value || ""; // Use configured value
+            break;
           case "YEAR":
-            return { ...field, value: year };
+            mappedValue = year;
+            break;
           case "JULIAN DATE":
-            return { ...field, value: julianDate };
+            mappedValue = julianDate;
+            break;
           case "SUPPLIER CODE":
-            return { ...field, value: field.value || "" }; // Use configured value
+            mappedValue = field.value || ""; // Use configured value
+            break;
           case "MONTH":
-            return { ...field, value: month };
+            mappedValue = month;
+            break;
           case "DATE":
-            return { ...field, value: day };
+            mappedValue = day;
+            break;
           case "MACHINE NO":
-            return { ...field, value: field.value || "" };
+            mappedValue = field.value || "";
+            break;
           case "COMPANY CODE":
-            return { ...field, value: field.value || "" };
+            mappedValue = field.value || "";
+            break;
           default:
-            return field;
+            mappedValue = field.value;
+            break;
         }
+
+        const mappedField = { ...field, value: mappedValue };
+        logger.info(
+          `🔍 Debug - Mapped ${field.fieldName}: "${field.value}" → "${mappedValue}"`
+        );
+        return mappedField;
       });
+
+      logger.info("🔍 Debug - Fields after mapping (checked only):");
+      fields
+        .filter((field) => field.isChecked)
+        .sort((a, b) => a.order - b.order)
+        .forEach((field, index) => {
+          logger.info(
+            `  ${index}: [${field.order}] ${field.fieldName} = "${field.value}"`
+          );
+        });
 
       // Generate barcode by combining only checked fields in order
       const barcodeText = fields
