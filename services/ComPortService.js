@@ -109,13 +109,13 @@ class BufferedComPortService extends EventEmitter {
         }
 
         // Check if we have what looks like a complete scanner message
-        // Scanner messages typically end with numbers after letters/semicolons
         const isCompleteMessage = this.isCompleteMessage(this.dataBuffer);
 
         if (isCompleteMessage) {
-          // Emit immediately if we detect a complete message
-          this.log(`Complete scanner message detected: "${this.dataBuffer}"`);
-          this.emit("dataGot", this.dataBuffer);
+          // Process concatenated responses and extract the final valid message
+          const finalMessage = this.extractFinalMessage(this.dataBuffer);
+          this.log(`Complete scanner message detected: "${finalMessage}"`);
+          this.emit("dataGot", finalMessage);
           this.dataBuffer = ""; // Clear buffer
         } else {
           // Set longer timeout to wait for more data (500ms instead of 100ms)
@@ -160,58 +160,71 @@ class BufferedComPortService extends EventEmitter {
 
   // Helper method to detect if we have a complete scanner message
   isCompleteMessage(data) {
-    // Handle simple "NG" response - this is always complete
-    if (data.trim().toUpperCase() === "NG") {
-      this.log(`Complete NG message detected`, "debug");
+    const trimmedData = data.trim();
+
+    // Handle NG responses - complete without @ delimiter
+    if (trimmedData === "NG" || trimmedData.endsWith("NG")) {
+      this.log(`Complete NG message detected: "${trimmedData}"`, "debug");
       return true;
     }
 
-    // Handle complex barcode patterns
-    // Expected complete pattern: "P5314775;S7001;1TA;D5151;VR0003"
-
-    if (data.length < 20) {
-      return false; // Too short to be complete barcode (complete messages are typically 30+ chars)
-    }
-
-    // Must start with 'P' and contain semicolons for barcode patterns
-    if (!data.startsWith("P") || !data.includes(";")) {
-      return false;
-    }
-
-    // Check for specific pattern indicators of completeness:
-    // 1. Should NOT end with a semicolon (indicates incomplete)
-    if (data.endsWith(";")) {
-      return false; // Trailing semicolon means more data is coming
-    }
-
-    // 2. Should have at least 4 meaningful segments (not counting empty ones)
-    const segments = data
-      .split(";")
-      .filter((segment) => segment.trim().length > 0);
-    if (segments.length < 4) {
-      return false; // Need at least 4 non-empty segments for complete message
-    }
-
-    // 3. Last segment should match expected pattern (letters + numbers)
-    const lastSegment = segments[segments.length - 1];
-    if (!/^[A-Z]+\d+$/.test(lastSegment)) {
-      return false; // Last segment should be like "VR0003"
-    }
-
-    // 4. Should contain expected patterns throughout
-    const hasPartPattern = /^P\d+/.test(data); // Starts with P + numbers
-    const hasSerialPattern = /;S\d+/.test(data); // Contains ;S + numbers
-    const hasSupplierPattern = /;[A-Z]{2}\d+$/.test(data); // Ends with ;XX#### pattern
-
-    if (hasPartPattern && hasSerialPattern && hasSupplierPattern) {
+    // Handle successful scans - complete when we see @ delimiter
+    if (trimmedData.includes("@")) {
       this.log(
-        `Complete barcode pattern detected: ${segments.length} segments`,
+        `Complete success message detected (@ found): "${trimmedData}"`,
         "debug"
       );
       return true;
     }
 
+    // For numeric data without @, not yet complete
+    if (trimmedData.length > 0 && /^\d+$/.test(trimmedData)) {
+      this.log(
+        `Incomplete numeric data (waiting for @): "${trimmedData}"`,
+        "debug"
+      );
+      return false;
+    }
+
+    // For very short data, likely incomplete
+    if (trimmedData.length < 2) {
+      return false;
+    }
+
+    // Default to incomplete for other cases
+    this.log(`Data appears incomplete: "${trimmedData}"`, "debug");
     return false;
+  }
+
+  // Helper method to extract the final meaningful message from concatenated responses
+  extractFinalMessage(data) {
+    const trimmedData = data.trim();
+
+    // Check for successful scan with @ delimiter
+    const atIndex = trimmedData.lastIndexOf("@");
+    if (atIndex !== -1) {
+      // Find the start of the numeric sequence before @
+      let startIndex = atIndex - 1;
+      while (startIndex >= 0 && /\d/.test(trimmedData[startIndex])) {
+        startIndex--;
+      }
+      const successMessage = trimmedData.substring(startIndex + 1, atIndex + 1);
+      this.log(`Extracted success message: "${successMessage}"`, "debug");
+      return successMessage;
+    }
+
+    // Check for NG at the end
+    if (trimmedData.endsWith("NG")) {
+      this.log(`Extracted NG message from: "${trimmedData}"`, "debug");
+      return "NG";
+    }
+
+    // Fallback: return the entire trimmed data
+    this.log(
+      `No special pattern found, returning entire data: "${trimmedData}"`,
+      "debug"
+    );
+    return trimmedData;
   }
 
   async closePort() {

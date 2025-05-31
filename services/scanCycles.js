@@ -469,17 +469,39 @@ class ScannerController {
 
       if (isUpdate) {
         // Find and update the most recent record for this serial number
-        await mongoDbService.updateLastRecord(
+        logger.info(
+          `🔄 Attempting to update record for SerialNumber: ${serialNumber}`
+        );
+        logger.info(
+          `📊 Update data: ScannerData=${scannerData}, Result=${result}`
+        );
+
+        const updateResult = await mongoDbService.updateLastRecord(
           { SerialNumber: serialNumber },
           { $set: data },
           "main-data",
           "records"
         );
-        logger.info(`Updated MongoDB record for SerialNumber: ${serialNumber}`);
+
+        if (updateResult) {
+          logger.info(
+            `✅ Successfully updated MongoDB record for SerialNumber: ${serialNumber}`
+          );
+          logger.info(`📋 Updated fields: ${JSON.stringify(data)}`);
+        } else {
+          logger.warn(
+            `⚠️ Failed to find/update record for SerialNumber: ${serialNumber}`
+          );
+          logger.warn(`🔍 Trying to insert as new record instead`);
+          await mongoDbService.insertRecord(data, "main-data", "records");
+        }
       } else {
         // Insert new record
+        logger.info(
+          `📝 Inserting new record for SerialNumber: ${serialNumber}`
+        );
         await mongoDbService.insertRecord(data, "main-data", "records");
-        logger.info(`Data saved to MongoDB with CurrentId: ${currentId}`);
+        logger.info(`✅ Data saved to MongoDB with CurrentId: ${currentId}`);
       }
 
       if (io) {
@@ -881,7 +903,7 @@ class ScannerController {
       logger.info(
         `🎯 Barcode generation process completed. Returning ${isVerified ? "barcodeData" : "null"}`
       );
-      return isVerified ? { barcodeText, serialString } : null;
+      return isVerified ? { text: barcodeText, serialNo: serialString } : null;
     } catch (error) {
       logger.error("❌ Error in file writing process:", error);
       // Save error state to MongoDB
