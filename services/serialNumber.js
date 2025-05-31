@@ -127,11 +127,20 @@ class SerialNumberGeneratorService {
           );
         }
         this.lastResetDate = new Date(lastDocument.Timestamp);
+
+        // Validate the date and fallback if invalid
+        if (isNaN(this.lastResetDate.getTime())) {
+          logger.warn("Invalid Timestamp in last document, using current date");
+          this.lastResetDate = new Date();
+        }
+
         logger.info(
           `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
         );
       } else {
         this.currentSerialNumber = modelStartingSerial;
+        // Set lastResetDate to current date if no documents
+        this.lastResetDate = new Date();
         logger.info(
           `No previous documents found, starting with model-based serial number: ${modelStartingSerial}`
         );
@@ -198,6 +207,13 @@ class SerialNumberGeneratorService {
 
       this.currentSerialNumber = nextSerialNumber;
       this.lastResetDate = new Date(lastDocument.Timestamp);
+
+      // Validate the date and fallback if invalid
+      if (isNaN(this.lastResetDate.getTime())) {
+        logger.warn("Invalid Timestamp in last document, using current date");
+        this.lastResetDate = new Date();
+      }
+
       logger.info(
         `Initialized serial number to ${this.currentSerialNumber} from MongoDB document`
       );
@@ -230,6 +246,12 @@ class SerialNumberGeneratorService {
 
   checkAndResetSerialNumber() {
     const now = new Date();
+
+    // Ensure lastResetDate is valid, fallback to current date if not
+    if (!this.lastResetDate || isNaN(this.lastResetDate.getTime())) {
+      logger.warn("Invalid lastResetDate detected, resetting to current date");
+      this.lastResetDate = new Date();
+    }
 
     // Set resetTime to 6:00 AM today
     const resetTime = new Date(
