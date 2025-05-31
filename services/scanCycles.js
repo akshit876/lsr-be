@@ -640,6 +640,12 @@ class ScannerController {
       this.cycleCount++;
       logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
       logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
+
+      // Add 2-second delay after cycle completion
+      logger.info(
+        "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
+      );
+      await sleep(2000);
     } else {
       logger.warn(`❌ Cycle completion failed:`);
       logger.warn(`   - Final checks: ${finalChecksResult}`);
@@ -647,6 +653,10 @@ class ScannerController {
         `   - Verification success: ${verificationScanResult.success}`
       );
       logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
+
+      // Add 2-second delay even for failed cycles
+      logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
+      await sleep(2000);
     }
   }
 
