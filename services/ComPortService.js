@@ -91,14 +91,14 @@ class BufferedComPortService extends EventEmitter {
   }
 
   setupListeners() {
-    this.log("Setting up simple data listeners (Hercules-style)");
+    this.log("Setting up improved data listeners with smart buffering");
 
     // Buffer scanner data since it comes character by character
     this.port.on("data", (buffer) => {
       const newData = buffer.toString().trim();
 
       if (newData) {
-        this.log(`Raw char received: "${newData}"`, "debug");
+        this.log(`Raw data chunk received: "${newData}"`, "debug");
 
         // Add to buffer
         this.dataBuffer += newData;
@@ -108,14 +108,27 @@ class BufferedComPortService extends EventEmitter {
           clearTimeout(this.bufferTimeout);
         }
 
-        // Set timeout to emit buffered data after 100ms of no new data
-        this.bufferTimeout = setTimeout(() => {
-          if (this.dataBuffer) {
-            this.log(`Complete scanner data: "${this.dataBuffer}"`, "info");
-            this.emit("dataGot", this.dataBuffer);
-            this.dataBuffer = ""; // Clear buffer
-          }
-        }, 100); // 100ms buffer timeout
+        // Check if we have what looks like a complete scanner message
+        // Scanner messages typically end with numbers after letters/semicolons
+        const isCompleteMessage = this.isCompleteMessage(this.dataBuffer);
+
+        if (isCompleteMessage) {
+          // Emit immediately if we detect a complete message
+          this.log(`Complete scanner message detected: "${this.dataBuffer}"`);
+          this.emit("dataGot", this.dataBuffer);
+          this.dataBuffer = ""; // Clear buffer
+        } else {
+          // Set longer timeout to wait for more data (500ms instead of 100ms)
+          this.bufferTimeout = setTimeout(() => {
+            if (this.dataBuffer) {
+              this.log(
+                `Buffered scanner data timeout reached: "${this.dataBuffer}"`
+              );
+              this.emit("dataGot", this.dataBuffer);
+              this.dataBuffer = ""; // Clear buffer
+            }
+          }, 500); // Increased to 500ms for better buffering
+        }
       }
     });
 
@@ -143,6 +156,38 @@ class BufferedComPortService extends EventEmitter {
         this.bufferTimeout = null;
       }
     });
+  }
+
+  // Helper method to detect if we have a complete scanner message
+  isCompleteMessage(data) {
+    // Check for common scanner message patterns
+    // Pattern 1: P followed by numbers, semicolons, letters, and ending with numbers
+    // Example: "P5314775;S0001;1TA;D25150;VR00031510012"
+
+    if (data.length < 10) {
+      return false; // Too short to be complete
+    }
+
+    // Look for patterns that suggest a complete message:
+    // 1. Starts with 'P' and has semicolons and ends with digits
+    if (data.startsWith("P") && data.includes(";") && /\d+$/.test(data)) {
+      // Check if it has multiple semicolon-separated segments
+      const segments = data.split(";");
+      if (segments.length >= 3) {
+        return true;
+      }
+    }
+
+    // 2. Contains multiple pattern segments (letters followed by numbers)
+    // Pattern like: letters;numbers;letters;numbers;lettersNumbers
+    const hasMultipleSegments = (data.match(/[A-Z]+\d+/g) || []).length >= 2;
+    const hasEnoughSemicolons = (data.match(/;/g) || []).length >= 2;
+
+    if (hasMultipleSegments && hasEnoughSemicolons) {
+      return true;
+    }
+
+    return false;
   }
 
   async closePort() {

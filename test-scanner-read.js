@@ -36,7 +36,7 @@ class ScannerReader {
         path: "COM3",
         baudRate: 115200,
         dataBits: 8,
-        parity: "none",
+        parity: "none",  
         stopBits: 1,
         flowControl: false,
         // Additional settings to match Hercules exactly

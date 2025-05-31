@@ -105,6 +105,47 @@ class MongoDBService {
     }
   }
 
+  async updateLastRecord(filter, updateData, dbName, collectionName) {
+    try {
+      // If we need to use a different database/collection, connect to it
+      let targetCollection = this.collection;
+      if (
+        dbName &&
+        collectionName &&
+        (this.db.databaseName !== dbName ||
+          this.collection.collectionName !== collectionName)
+      ) {
+        await this.connect(dbName, collectionName);
+        targetCollection = this.collection;
+      }
+
+      // Find the most recent record matching the filter and update it
+      const result = await targetCollection.findOneAndUpdate(
+        filter,
+        updateData,
+        {
+          sort: { Timestamp: -1 }, // Sort by timestamp descending to get the most recent
+          returnDocument: "after", // Return the updated document
+        }
+      );
+
+      if (result) {
+        logger.info(
+          `Updated last record for filter: ${JSON.stringify(filter)}`
+        );
+        return result;
+      } else {
+        logger.warn(
+          `No record found to update for filter: ${JSON.stringify(filter)}`
+        );
+        return null;
+      }
+    } catch (error) {
+      logger.error("Error updating last record:", error);
+      throw error;
+    }
+  }
+
   async sendMongoDbDataToClient(socket, dbName, collectionName) {
     try {
       // Check if we're connected to the database, if not, try to connect
