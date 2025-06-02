@@ -264,6 +264,69 @@ io.on("connection", (socket) => {
       });
     }
   });
+
+  // New event for paginated data (for smooth scroll UI with 500 records)
+  socket.on("request-paginated-data", (requestData) => {
+    const options = {
+      limit: requestData?.limit || 500,
+      skip: requestData?.skip || 0,
+      modelNumber: requestData?.modelNumber || null,
+      startDate: requestData?.startDate || null,
+      endDate: requestData?.endDate || null,
+      sortBy: requestData?.sortBy || "Timestamp",
+      sortOrder: requestData?.sortOrder || -1,
+      includeFields: requestData?.includeFields || null,
+    };
+
+    mongoDbService
+      .sendPaginatedDataToClient(socket, "main-data", "records", options)
+      .catch((error) => {
+        console.error("Error in sendPaginatedDataToClient:", error);
+        socket.emit("error", {
+          message: "Failed to fetch paginated data",
+          details: error.message,
+        });
+      });
+  });
+
+  // New event for getting recent records (real-time updates)
+  socket.on("request-recent-records", (requestData) => {
+    const limit = requestData?.limit || 50;
+    const modelNumber = requestData?.modelNumber || null;
+
+    mongoDbService
+      .connect("main-data", "records")
+      .then(() => mongoDbService.getRecentRecords(limit, modelNumber))
+      .then((records) => {
+        const transformedData = records.map((item) => ({
+          _id: item._id,
+          Timestamp: item?.Timestamp,
+          SerialNumber: item?.SerialNumber,
+          MarkingData: item?.MarkingData,
+          ScannerData: item?.ScannerData,
+          ModelNumber: item?.ModelNumber,
+          User: item?.User,
+          Grade: item?.Grade,
+          CurrentId: item?.CurrentId,
+          Shift: item?.Shift,
+          Result: item?.Result,
+          Date: item?.Date,
+        }));
+
+        socket.emit("recent-records", {
+          data: transformedData,
+          count: transformedData.length,
+          timestamp: new Date().toISOString(),
+        });
+      })
+      .catch((error) => {
+        console.error("Error fetching recent records:", error);
+        socket.emit("error", {
+          message: "Failed to fetch recent records",
+          details: error.message,
+        });
+      });
+  });
 });
 
 const PORT = process.env.PORT || 3002;

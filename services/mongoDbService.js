@@ -222,6 +222,179 @@ class MongoDBService {
       socket.emit("error", { message: "Error fetching data from database" });
     }
   }
+
+  // Enhanced method for fetching records with pagination and filtering
+  async getRecordsForUI(options = {}) {
+    try {
+      const {
+        limit = 500, // Number of records to fetch
+        skip = 0, // Number of records to skip (for pagination)
+        modelNumber = null, // Filter by specific model
+        startDate = null, // Date range start
+        endDate = null, // Date range end
+        sortBy = "Timestamp", // Field to sort by
+        sortOrder = -1, // -1 for descending, 1 for ascending
+        includeFields = null, // Specific fields to include (for performance)
+      } = options;
+
+      // Build query filter
+      const query = {};
+
+      if (modelNumber) {
+        query.ModelNumber = modelNumber;
+      }
+
+      if (startDate || endDate) {
+        query.Timestamp = {};
+        if (startDate) {
+          query.Timestamp.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          query.Timestamp.$lte = new Date(endDate);
+        }
+      }
+
+      // Build projection (field selection) for performance
+      const projection = {};
+      if (includeFields && Array.isArray(includeFields)) {
+        includeFields.forEach((field) => {
+          projection[field] = 1;
+        });
+      }
+
+      logger.info(
+        `🔍 Fetching records for UI: limit=${limit}, skip=${skip}, query=${JSON.stringify(query)}`
+      );
+
+      // Execute query with optimizations
+      const cursor = this.collection
+        .find(query, Object.keys(projection).length > 0 ? { projection } : {})
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit);
+
+      const records = await cursor.toArray();
+
+      // Get total count for pagination info (separate query for performance)
+      const totalCount = await this.collection.countDocuments(query);
+
+      logger.info(
+        `✅ Fetched ${records.length} records out of ${totalCount} total`
+      );
+
+      return {
+        data: records,
+        pagination: {
+          total: totalCount,
+          limit: limit,
+          skip: skip,
+          hasMore: skip + records.length < totalCount,
+          currentPage: Math.floor(skip / limit) + 1,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+      };
+    } catch (error) {
+      logger.error("❌ Error fetching records for UI:", error);
+      throw error;
+    }
+  }
+
+  // Optimized method for real-time updates (get recent records)
+  async getRecentRecords(limit = 50, modelNumber = null) {
+    try {
+      const query = {};
+      if (modelNumber) {
+        query.ModelNumber = modelNumber;
+      }
+
+      const records = await this.collection
+        .find(query)
+        .sort({ Timestamp: -1 })
+        .limit(limit)
+        .toArray();
+
+      logger.info(`📊 Fetched ${records.length} recent records`);
+      return records;
+    } catch (error) {
+      logger.error("❌ Error fetching recent records:", error);
+      throw error;
+    }
+  }
+
+  // Enhanced method for sending data to client with better pagination support
+  async sendPaginatedDataToClient(
+    socket,
+    dbName,
+    collectionName,
+    options = {}
+  ) {
+    try {
+      // Always ensure we're connected to the correct database and collection
+      if (!dbName || !collectionName) {
+        throw new Error("Database name and collection name are required");
+      }
+
+      // Check if we need to connect/reconnect to the correct database/collection
+      if (
+        !this.db ||
+        this.db.databaseName !== dbName ||
+        !this.collection ||
+        this.collection.collectionName !== collectionName
+      ) {
+        logger.info(
+          `Connecting to ${dbName}.${collectionName} for paginated client data...`
+        );
+        await this.connect(dbName, collectionName);
+      }
+
+      // Use the enhanced getRecordsForUI method
+      const result = await this.getRecordsForUI(options);
+
+      if (result.data.length === 0) {
+        logger.info(`No data found in ${dbName}.${collectionName} collection.`);
+        socket.emit("paginated-data", {
+          data: [],
+          pagination: result.pagination,
+          query: options,
+        });
+        return;
+      }
+
+      // Transform the data for UI consumption
+      const transformedData = result.data.map((item) => ({
+        _id: item._id,
+        Timestamp: item?.Timestamp,
+        SerialNumber: item?.SerialNumber,
+        MarkingData: item?.MarkingData,
+        ScannerData: item?.ScannerData,
+        ModelNumber: item?.ModelNumber,
+        User: item?.User,
+        Grade: item?.Grade,
+        CurrentId: item?.CurrentId,
+        Shift: item?.Shift,
+        Result: item?.Result,
+        Date: item?.Date,
+      }));
+
+      // Send the paginated data to the client
+      socket.emit("paginated-data", {
+        data: transformedData,
+        pagination: result.pagination,
+        query: options,
+        timestamp: new Date().toISOString(),
+      });
+
+      logger.info(
+        `✅ Emitted ${transformedData.length} paginated records from ${dbName}.${collectionName} to client: ${socket.id}`
+      );
+    } catch (error) {
+      logger.error("❌ Error in sendPaginatedDataToClient: ", error.message);
+      socket.emit("error", {
+        message: "Error fetching paginated data from database",
+        details: error.message,
+      });
+    }
+  }
 }
 
 export default new MongoDBService();
