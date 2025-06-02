@@ -1,4 +1,4 @@
-import { format, isAfter, isSameDay, isBefore } from "date-fns";
+import { format, isAfter, isBefore } from "date-fns";
 import MongoDBService from "./mongoDbService.js";
 import logger from "../logger.js";
 
@@ -311,10 +311,33 @@ class SerialNumberGeneratorService {
   async checkAndResetSerialNumber() {
     const now = new Date();
 
-    // Ensure lastResetDate is valid, fallback to current date if not
-    if (!this.lastResetDate || isNaN(this.lastResetDate.getTime())) {
-      logger.warn("Invalid lastResetDate detected, resetting to current date");
-      this.lastResetDate = new Date();
+    // Get current model to show in logs
+    const currentModel = await this.getCurrentModelNumber();
+
+    // CRITICAL: Always get model-specific reset date from database, never use cached global value
+    // This ensures each model tracks its reset independently
+    let modelSpecificLastResetDate = null;
+
+    try {
+      // Connect to model-wise serial tracking collection
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+
+      const modelConfig = await MongoDBService.collection.findOne({
+        modelNumber: currentModel || "default",
+      });
+
+      if (modelConfig && modelConfig.lastReset) {
+        modelSpecificLastResetDate = new Date(modelConfig.lastReset);
+        logger.info(
+          `📅 Model ${currentModel} last reset: ${format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss")}`
+        );
+      } else {
+        logger.info(`📅 Model ${currentModel} has never been reset`);
+        modelSpecificLastResetDate = null;
+      }
+    } catch (error) {
+      logger.error("❌ Error fetching model-specific reset date:", error);
+      modelSpecificLastResetDate = this.lastResetDate; // Fallback to global if DB fetch fails
     }
 
     // Set resetTime to 6:00 AM today
@@ -326,37 +349,83 @@ class SerialNumberGeneratorService {
       this.resetMinute
     );
 
-    console.log({
-      now: format(now, "yyyy-MM-dd HH:mm:ss"),
-      resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
-      lastResetDate: format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss"),
-      isAfterResetTime: isAfter(now, resetTime), // True if now is past 6:00 AM today
-      isSameDayAsLastReset: isSameDay(now, this.lastResetDate), // True if last reset was today
-      isLastResetBeforeResetTime: isBefore(this.lastResetDate, resetTime), // Check if last reset was before reset time today
-    });
+    const debugInfo = {
+      currentTime: format(now, "yyyy-MM-dd HH:mm:ss"),
+      resetTimeToday: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
+      modelSpecificLastResetDate: modelSpecificLastResetDate
+        ? format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss")
+        : "Never",
+      currentModel: currentModel || "Unknown",
+      currentSerialNumber: this.currentSerialNumber,
+      isAfterResetTimeToday: isAfter(now, resetTime),
+      wasModelLastResetBeforeResetTimeToday: modelSpecificLastResetDate
+        ? isBefore(modelSpecificLastResetDate, resetTime)
+        : true,
+    };
 
-    // If it's past the reset time and either:
-    // 1. The last reset was on a different day, or
-    // 2. The last reset was on the same day but before today's reset time
-    if (
+    logger.info(
+      `🕐 RESET CHECK (${currentModel || "Unknown"}): ${JSON.stringify(debugInfo, null, 2)}`
+    );
+
+    // RESET LOGIC: "First run after 6:00 AM each day FOR EACH MODEL INDEPENDENTLY"
+    // Reset behavior applies to ALL models (CMB-877, CMB-778, etc.) but each model tracks its own reset
+    // Reset should happen if:
+    // 1. Current time is after 6:00 AM today (machine is running after reset time)
+    // 2. THIS MODEL'S last reset was before 6:00 AM today (this model hasn't reset today yet)
+    //
+    // IMPORTANT: Each model resets independently!
+    // - CMB-877 can reset at 7:00 AM → doesn't affect CMB-778
+    // - CMB-778 can still reset at 8:00 AM on the same day → independent of CMB-877's reset
+    //
+    // Each model will reset to its specific starting serial:
+    // - CMB-877 → resets to 7001 (S7001)
+    // - CMB-778 → resets to 1 (S0001)
+    // - Other models → reset to 1 (S0001)
+    //
+    // This ensures reset happens exactly once per day per model on the first machine operation after 6:00 AM
+    const isFirstRunAfter6AMForThisModel =
       isAfter(now, resetTime) &&
-      (!isSameDay(now, this.lastResetDate) ||
-        isBefore(this.lastResetDate, resetTime))
-    ) {
-      // Get model-based starting serial for reset
+      (!modelSpecificLastResetDate ||
+        isBefore(modelSpecificLastResetDate, resetTime));
+
+    if (isFirstRunAfter6AMForThisModel) {
+      // This is the first machine operation after 6:00 AM today FOR THIS SPECIFIC MODEL - time to reset!
       const modelStartingSerial = await this.getModelStartingSerial();
+      const oldSerial = this.currentSerialNumber;
+
       this.currentSerialNumber = modelStartingSerial;
+      // Update the global lastResetDate for this service instance
       this.lastResetDate = now;
 
-      // Update the serialNoconfig collection with the reset information
+      logger.info(
+        `🔄 FIRST RUN AFTER 6:00 AM RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+      );
+      logger.info(
+        `📅 Reset trigger: This is the first machine operation after ${format(resetTime, "HH:mm:ss")} today for model ${currentModel}. Previous reset for this model: ${modelSpecificLastResetDate ? format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss") : "Never"}`
+      );
+      logger.info(
+        `🔑 IMPORTANT: This reset is model-specific. Other models can still reset independently today.`
+      );
+
+      // Update the database with the reset information (model-specific)
       await this.updateSerialConfigOnReset();
 
-      logger.info(
-        `Serial number reset to ${modelStartingSerial.toString().padStart(4, "0")} at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
-      );
       return true;
+    } else {
+      if (isBefore(now, resetTime)) {
+        logger.info(
+          `✅ NO RESET (${currentModel}): Current time ${format(now, "HH:mm:ss")} is before reset time ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+        );
+      } else {
+        logger.info(
+          `✅ NO RESET (${currentModel}): Model ${currentModel} already reset today after ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+        );
+        logger.info(
+          `🔑 NOTE: Other models can still reset independently if they haven't reset today yet.`
+        );
+      }
+      return false;
     }
-    return false;
   }
 
   async getModelStartingSerial() {
@@ -365,22 +434,32 @@ class SerialNumberGeneratorService {
       const modelNumber = await this.getCurrentModelNumber();
 
       if (modelNumber) {
-        // Specific model configurations
+        // Model-specific starting serial configurations for ALL models
         if (modelNumber === "CMB-877") {
-          logger.info(`Model ${modelNumber} starting serial: 7001`);
+          logger.info(
+            `✅ Model ${modelNumber} → starting serial: 7001 (S7001)`
+          );
           return 7001;
+        } else if (modelNumber === "CMB-778") {
+          // CMB-778 starts from 1
+          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S0001)`);
+          return 1;
         } else {
-          // All other models (including CMB-778) start from 1
-          logger.info(`Model ${modelNumber} starting serial: 1`);
+          // All other models start from 1
+          logger.info(
+            `✅ Model ${modelNumber} → starting serial: 1 (S0001) [default for this model]`
+          );
           return 1;
         }
       } else {
-        logger.warn("No model number found, using default starting serial");
+        logger.warn(
+          "⚠️ No model number found, using default starting serial: 1 (S0001)"
+        );
         return this.modelStartingSerials["default"];
       }
     } catch (error) {
-      logger.error("Error fetching model starting serial:", error);
-      logger.warn("Defaulting to serial number 1 due to error");
+      logger.error("❌ Error fetching model starting serial:", error);
+      logger.warn("⚠️ Defaulting to serial number 1 (S0001) due to error");
       return this.modelStartingSerials["default"];
     }
   }
@@ -435,7 +514,10 @@ class SerialNumberGeneratorService {
 
   async updateSerialConfigOnReset() {
     try {
-      const modelNumber = this.currentModelNumber || "default";
+      // CRITICAL FIX: Always get fresh model number instead of using fallback to "default"
+      const modelNumber = (await this.getCurrentModelNumber()) || "default";
+
+      logger.info(`🔄 RESET: Updating serial config for model: ${modelNumber}`);
 
       // Connect to a new collection for model-wise serial tracking
       await MongoDBService.connect("main-data", "modelSerialConfig");
@@ -619,6 +701,11 @@ class SerialNumberGeneratorService {
       await MongoDBService.connect("main-data", "modelSerialConfig");
       logger.info("✅ Connected to main-data.modelSerialConfig collection");
 
+      // CRITICAL: Get existing model config to preserve lastReset field
+      const existingConfig = await MongoDBService.collection.findOne({
+        modelNumber: modelNumber,
+      });
+
       // Get the correct starting serial using our dynamic calculation
       // NOTE: This call will change connection to config, so we need to reconnect after
       const dynamicStartingSerial = await this.getModelStartingSerial();
@@ -630,12 +717,26 @@ class SerialNumberGeneratorService {
       );
 
       // Update or create model-specific serial configuration with the USED serial number
+      // IMPORTANT: Preserve existing lastReset field if it exists
       const updateData = {
         modelNumber: modelNumber,
         currentValue: usedSerialNumber.toString(), // Last used, not next
         lastUpdated: new Date(),
         startingSerial: dynamicStartingSerial, // Use dynamic calculation
       };
+
+      // CRITICAL FIX: Only add lastReset if it exists in the existing config
+      // This preserves reset history without overwriting it during normal operations
+      if (existingConfig && existingConfig.lastReset) {
+        updateData.lastReset = existingConfig.lastReset;
+        logger.info(
+          `📅 Preserving existing lastReset: ${existingConfig.lastReset}`
+        );
+      } else {
+        logger.info(
+          `📅 No existing lastReset found for model ${modelNumber} - will be set on first reset`
+        );
+      }
 
       logger.info(
         `📝 Upserting data to modelSerialConfig: ${JSON.stringify(updateData)}`
@@ -661,7 +762,7 @@ class SerialNumberGeneratorService {
       }
 
       logger.info(
-        `Model-wise serial number saved to modelSerialConfig: Model=${modelNumber}, lastUsed=${updateData.currentValue}, startingSerial=${updateData.startingSerial}`
+        `Model-wise serial number saved to modelSerialConfig: Model=${modelNumber}, lastUsed=${updateData.currentValue}, startingSerial=${updateData.startingSerial}, lastReset=${updateData.lastReset || "Not set yet"}`
       );
     } catch (error) {
       logger.error("❌ Error saving used serial number:", error);
@@ -690,6 +791,8 @@ class SerialNumberGeneratorService {
 
       for (const config of allModelConfigs) {
         const modelNumber = config.modelNumber;
+        let needsUpdate = false;
+        const updateFields = {};
 
         // Calculate the correct starting serial for this model
         const tempCurrentModel = this.currentModelNumber;
@@ -697,24 +800,46 @@ class SerialNumberGeneratorService {
         const correctStartingSerial = await this.getModelStartingSerial();
         this.currentModelNumber = tempCurrentModel; // Restore
 
-        // Only update if the starting serial is different
+        // Check if starting serial needs fixing
         if (config.startingSerial !== correctStartingSerial) {
           logger.info(
             `🔄 Updating model ${modelNumber}: startingSerial ${config.startingSerial} → ${correctStartingSerial}`
           );
-
-          await MongoDBService.collection.updateOne(
-            { modelNumber: modelNumber },
-            {
-              $set: {
-                startingSerial: correctStartingSerial,
-                lastUpdated: new Date(),
-              },
-            }
-          );
+          updateFields.startingSerial = correctStartingSerial;
+          needsUpdate = true;
         } else {
           logger.info(
             `✅ Model ${modelNumber} already has correct startingSerial: ${correctStartingSerial}`
+          );
+        }
+
+        // Check if lastReset field is missing (for models that have been used but never reset)
+        if (
+          !config.lastReset &&
+          config.currentValue &&
+          parseInt(config.currentValue) > 0
+        ) {
+          logger.info(
+            `📅 Model ${modelNumber} is missing lastReset field but has been used (currentValue: ${config.currentValue}). This suggests it hasn't reset yet.`
+          );
+          // Don't add a fake lastReset - it will be set when the model actually resets
+        } else if (config.lastReset) {
+          logger.info(
+            `✅ Model ${modelNumber} has lastReset: ${config.lastReset}`
+          );
+        }
+
+        // Apply updates if needed
+        if (needsUpdate) {
+          updateFields.lastUpdated = new Date();
+
+          await MongoDBService.collection.updateOne(
+            { modelNumber: modelNumber },
+            { $set: updateFields }
+          );
+
+          logger.info(
+            `🔄 Updated model ${modelNumber} configuration: ${JSON.stringify(updateFields)}`
           );
         }
       }
@@ -722,6 +847,82 @@ class SerialNumberGeneratorService {
       logger.info("✅ Finished fixing model serial configurations");
     } catch (error) {
       logger.error("❌ Error fixing model serial configurations:", error);
+      throw error;
+    }
+  }
+
+  // Utility method to check and report model configuration status
+  async checkAllModelsStatus() {
+    try {
+      logger.info("📊 Checking status of all model configurations...");
+
+      // Connect to model-wise serial tracking collection
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+
+      // Get all existing model configurations
+      const allModelConfigs = await MongoDBService.collection
+        .find({})
+        .toArray();
+
+      const statusReport = {
+        totalModels: allModelConfigs.length,
+        models: [],
+        summary: {
+          withReset: 0,
+          withoutReset: 0,
+          correctStartingSerial: 0,
+          incorrectStartingSerial: 0,
+        },
+      };
+
+      for (const config of allModelConfigs) {
+        const modelNumber = config.modelNumber;
+
+        // Calculate expected starting serial
+        const tempCurrentModel = this.currentModelNumber;
+        this.currentModelNumber = modelNumber;
+        const expectedStartingSerial = await this.getModelStartingSerial();
+        this.currentModelNumber = tempCurrentModel;
+
+        const modelStatus = {
+          modelNumber: modelNumber,
+          currentValue: config.currentValue,
+          startingSerial: config.startingSerial,
+          expectedStartingSerial: expectedStartingSerial,
+          startingSerialCorrect:
+            config.startingSerial === expectedStartingSerial,
+          hasLastReset: !!config.lastReset,
+          lastReset: config.lastReset
+            ? new Date(config.lastReset).toISOString()
+            : null,
+          lastUpdated: config.lastUpdated
+            ? new Date(config.lastUpdated).toISOString()
+            : null,
+          hasBeenUsed: config.currentValue && parseInt(config.currentValue) > 0,
+        };
+
+        statusReport.models.push(modelStatus);
+
+        // Update summary
+        if (modelStatus.hasLastReset) {
+          statusReport.summary.withReset++;
+        } else {
+          statusReport.summary.withoutReset++;
+        }
+
+        if (modelStatus.startingSerialCorrect) {
+          statusReport.summary.correctStartingSerial++;
+        } else {
+          statusReport.summary.incorrectStartingSerial++;
+        }
+      }
+
+      logger.info(
+        `📊 MODEL STATUS REPORT: ${JSON.stringify(statusReport, null, 2)}`
+      );
+      return statusReport;
+    } catch (error) {
+      logger.error("❌ Error checking all models status:", error);
       throw error;
     }
   }
@@ -762,6 +963,78 @@ class SerialNumberGeneratorService {
       logger.info("✅ FORCE REFRESH: Completed successfully");
     } catch (error) {
       logger.error("❌ FORCE REFRESH: Failed", error);
+      throw error;
+    }
+  }
+
+  // Utility method to check if a reset is needed without performing it
+  async checkResetStatus() {
+    try {
+      const now = new Date();
+      const resetTime = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        this.resetHour,
+        this.resetMinute
+      );
+
+      const status = {
+        currentTime: format(now, "yyyy-MM-dd HH:mm:ss"),
+        resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
+        lastResetDate: this.lastResetDate
+          ? format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss")
+          : "Never",
+        currentSerialNumber: this.currentSerialNumber,
+        resetHour: this.resetHour,
+        resetMinute: this.resetMinute,
+        isAfterResetTime: isAfter(now, resetTime),
+        needsReset:
+          isAfter(now, resetTime) &&
+          (!this.lastResetDate || isBefore(this.lastResetDate, resetTime)),
+        currentModel: await this.getCurrentModelNumber(),
+        modelStartingSerial: await this.getModelStartingSerial(),
+      };
+
+      logger.info(`📊 RESET STATUS: ${JSON.stringify(status, null, 2)}`);
+      return status;
+    } catch (error) {
+      logger.error("❌ Error checking reset status:", error);
+      throw error;
+    }
+  }
+
+  // Force a reset regardless of timing (for manual reset or testing)
+  async forceReset() {
+    try {
+      logger.info("🔄 FORCE RESET: Manually triggering serial number reset...");
+
+      const modelStartingSerial = await this.getModelStartingSerial();
+      const oldSerial = this.currentSerialNumber;
+      const oldLastResetDate = this.lastResetDate;
+
+      this.currentSerialNumber = modelStartingSerial;
+      this.lastResetDate = new Date();
+
+      logger.info(
+        `🔄 FORCE RESET: Serial number reset from ${oldSerial} to ${modelStartingSerial} at ${format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss")}`
+      );
+      logger.info(
+        `📅 Previous reset was: ${oldLastResetDate ? format(oldLastResetDate, "yyyy-MM-dd HH:mm:ss") : "Never"}`
+      );
+
+      // Update the database with the reset information
+      await this.updateSerialConfigOnReset();
+
+      logger.info("✅ FORCE RESET: Completed successfully");
+      return {
+        success: true,
+        oldSerial: oldSerial,
+        newSerial: modelStartingSerial,
+        resetTime: this.lastResetDate,
+      };
+    } catch (error) {
+      logger.error("❌ FORCE RESET: Failed", error);
       throw error;
     }
   }
