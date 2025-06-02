@@ -532,13 +532,16 @@ class SerialNumberGeneratorService {
         "✅ Reconnected to main-data.modelSerialConfig collection after getModelStartingSerial"
       );
 
+      const now = new Date();
+
       // Update or create model-specific serial configuration
       const updateData = {
         modelNumber: modelNumber,
         currentValue: this.currentSerialNumber.toString(),
-        lastReset: new Date(),
+        lastUpdated: now, // ← Latest activity timestamp
         startingSerial: dynamicStartingSerial, // Use dynamic calculation
-        updatedAt: new Date(),
+        lastReset: now, // ← When reset happened
+        updatedAt: now, // ← Should match lastUpdated for reset operations
       };
 
       // Upsert the model-specific configuration
@@ -549,7 +552,7 @@ class SerialNumberGeneratorService {
       );
 
       logger.info(
-        `Model-wise serial reset updated in modelSerialConfig: Model=${modelNumber}, currentValue=${updateData.currentValue}, startingSerial=${updateData.startingSerial}`
+        `Model-wise serial reset updated in modelSerialConfig: Model=${modelNumber}, currentValue=${updateData.currentValue}, startingSerial=${updateData.startingSerial}, lastReset=${updateData.lastReset.toISOString()}`
       );
 
       // Also update the global serialNoconfig for backward compatibility
@@ -562,7 +565,7 @@ class SerialNumberGeneratorService {
           {
             $set: {
               currentValue: this.currentSerialNumber.toString(),
-              lastReset: new Date(),
+              lastReset: now,
             },
           }
         );
@@ -718,11 +721,14 @@ class SerialNumberGeneratorService {
 
       // Update or create model-specific serial configuration with the USED serial number
       // IMPORTANT: Preserve existing lastReset field if it exists
+      const now = new Date();
+
       const updateData = {
         modelNumber: modelNumber,
         currentValue: usedSerialNumber.toString(), // Last used, not next
-        lastUpdated: new Date(),
+        lastUpdated: now, // ← Latest activity timestamp
         startingSerial: dynamicStartingSerial, // Use dynamic calculation
+        updatedAt: now, // ← Should match lastUpdated for normal operations
       };
 
       // CRITICAL FIX: Only add lastReset if it exists in the existing config
@@ -762,7 +768,7 @@ class SerialNumberGeneratorService {
       }
 
       logger.info(
-        `Model-wise serial number saved to modelSerialConfig: Model=${modelNumber}, lastUsed=${updateData.currentValue}, startingSerial=${updateData.startingSerial}, lastReset=${updateData.lastReset || "Not set yet"}`
+        `Model-wise serial number saved to modelSerialConfig: Model=${modelNumber}, lastUsed=${updateData.currentValue}, startingSerial=${updateData.startingSerial}, lastReset=${updateData.lastReset ? new Date(updateData.lastReset).toISOString() : "Not set yet"}, lastUpdated=${updateData.lastUpdated.toISOString()}, updatedAt=${updateData.updatedAt.toISOString()}`
       );
     } catch (error) {
       logger.error("❌ Error saving used serial number:", error);
@@ -829,10 +835,25 @@ class SerialNumberGeneratorService {
           );
         }
 
+        // Check if updatedAt field is missing (should match lastUpdated for consistency)
+        if (!config.updatedAt && config.lastUpdated) {
+          logger.info(
+            `📅 Model ${modelNumber} is missing updatedAt field, adding it to match lastUpdated`
+          );
+          updateFields.updatedAt = new Date(config.lastUpdated);
+          needsUpdate = true;
+        } else if (!config.updatedAt && !config.lastUpdated) {
+          logger.info(
+            `📅 Model ${modelNumber} is missing both updatedAt and lastUpdated fields`
+          );
+          const now = new Date();
+          updateFields.updatedAt = now;
+          updateFields.lastUpdated = now;
+          needsUpdate = true;
+        }
+
         // Apply updates if needed
         if (needsUpdate) {
-          updateFields.lastUpdated = new Date();
-
           await MongoDBService.collection.updateOne(
             { modelNumber: modelNumber },
             { $set: updateFields }
