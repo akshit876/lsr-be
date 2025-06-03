@@ -1,5 +1,6 @@
 import { MongoClient } from "mongodb";
 import logger from "../logger.js";
+import process from "process";
 // import logger from "./logger.js";
 
 class MongoDBService {
@@ -31,6 +32,42 @@ class MongoDBService {
     }
   }
 
+  async checkMarkingDataExists(markingData, dbName, collectionName) {
+    try {
+      // If database and collection parameters are provided, ensure we're connected to the right one
+      let targetCollection = this.collection;
+      if (dbName && collectionName) {
+        // Check if we need to switch to a different database/collection
+        if (
+          !this.db ||
+          this.db.databaseName !== dbName ||
+          !this.collection ||
+          this.collection.collectionName !== collectionName
+        ) {
+          await this.connect(dbName, collectionName);
+          targetCollection = this.collection;
+        }
+      }
+
+      const existingRecord = await targetCollection.findOne({
+        MarkingData: markingData,
+      });
+
+      if (existingRecord) {
+        logger.warn(`⚠️ Duplicate marking data detected: ${markingData}`);
+        return {
+          exists: true,
+          record: existingRecord,
+        };
+      }
+
+      return { exists: false, record: null };
+    } catch (error) {
+      logger.error("Error checking for duplicate marking data:", error);
+      throw error;
+    }
+  }
+
   async insertRecord(data, dbName, collectionName) {
     try {
       // If database and collection parameters are provided, ensure we're connected to the right one
@@ -45,6 +82,28 @@ class MongoDBService {
         ) {
           await this.connect(dbName, collectionName);
           targetCollection = this.collection;
+        }
+      }
+
+      // Check for duplicate marking data before insertion
+      if (data.MarkingData && data.MarkingData.trim() !== "") {
+        const duplicateCheck = await this.checkMarkingDataExists(
+          data.MarkingData,
+          dbName,
+          collectionName
+        );
+
+        if (duplicateCheck.exists) {
+          logger.warn(
+            `🚫 Preventing duplicate insertion - MarkingData already exists: ${data.MarkingData}`
+          );
+          logger.warn(`📋 Existing record ID: ${duplicateCheck.record._id}`);
+          logger.warn(
+            `📅 Existing record timestamp: ${duplicateCheck.record.Timestamp}`
+          );
+
+          // Return the existing record's ID instead of inserting
+          return duplicateCheck.record._id;
         }
       }
 
@@ -163,7 +222,8 @@ class MongoDBService {
     }
   }
 
-  async sendMongoDbDataToClient(socket, dbName, collectionName) {
+  // Method to broadcast data to all connected clients
+  async broadcastDataToAllClients(io, dbName, collectionName) {
     try {
       // Always ensure we're connected to the correct database and collection
       if (!dbName || !collectionName) {
@@ -178,7 +238,7 @@ class MongoDBService {
         this.collection.collectionName !== collectionName
       ) {
         logger.info(
-          `Connecting to ${dbName}.${collectionName} for client data...`
+          `Connecting to ${dbName}.${collectionName} for broadcast data...`
         );
         await this.connect(dbName, collectionName);
       }
@@ -192,7 +252,7 @@ class MongoDBService {
 
       if (data.length === 0) {
         logger.info(`No data found in ${dbName}.${collectionName} collection.`);
-        socket.emit("mongodb-data", { data: [] });
+        io.emit("mongodb-data", { data: [] });
         return;
       }
 
@@ -211,15 +271,21 @@ class MongoDBService {
         Date: item?.Date,
       }));
 
-      // Send the data to the client
-      socket.emit("csv-data", { data: transformedData });
+      // Broadcast the data to ALL connected clients
+      io.emit("csv-data", { data: transformedData });
+      io.emit("cycle-completed", {
+        timestamp: new Date().toISOString(),
+        latestRecord: transformedData[0] || null,
+        totalRecords: transformedData.length,
+      });
+
       logger.info(
-        `Emitted data from ${dbName}.${collectionName} to client: ${socket.id}`
+        `📡 Broadcasted data from ${dbName}.${collectionName} to all connected clients (${transformedData.length} records)`
       );
     } catch (error) {
       console.error({ error });
-      logger.error("Error in sendMongoDbDataToClient: ", error.message);
-      socket.emit("error", { message: "Error fetching data from database" });
+      logger.error("Error in broadcastDataToAllClients: ", error.message);
+      io.emit("error", { message: "Error fetching data from database" });
     }
   }
 
@@ -393,6 +459,200 @@ class MongoDBService {
         message: "Error fetching paginated data from database",
         details: error.message,
       });
+    }
+  }
+
+  async removeDuplicateMarkingData(dbName, collectionName) {
+    try {
+      // If database and collection parameters are provided, ensure we're connected to the right one
+      let targetCollection = this.collection;
+      if (dbName && collectionName) {
+        // Check if we need to switch to a different database/collection
+        if (
+          !this.db ||
+          this.db.databaseName !== dbName ||
+          !this.collection ||
+          this.collection.collectionName !== collectionName
+        ) {
+          await this.connect(dbName, collectionName);
+          targetCollection = this.collection;
+        }
+      }
+
+      logger.info("🔍 Finding duplicate MarkingData entries...");
+
+      // Find duplicates using aggregation pipeline
+      const duplicates = await targetCollection
+        .aggregate([
+          {
+            $match: {
+              MarkingData: { $nin: [null, ""], $exists: true },
+            },
+          },
+          {
+            $group: {
+              _id: "$MarkingData",
+              docs: { $push: { id: "$_id", timestamp: "$Timestamp" } },
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $match: {
+              count: { $gt: 1 },
+            },
+          },
+        ])
+        .toArray();
+
+      if (duplicates.length === 0) {
+        logger.info("✅ No duplicate MarkingData entries found");
+        return { removedCount: 0, duplicateGroups: 0 };
+      }
+
+      let totalRemoved = 0;
+      logger.warn(
+        `⚠️ Found ${duplicates.length} groups of duplicate MarkingData`
+      );
+
+      for (const duplicate of duplicates) {
+        const markingData = duplicate._id;
+        const docs = duplicate.docs;
+
+        // Sort by timestamp to keep the most recent one
+        docs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // Keep the first (most recent) and remove the rest
+        const toKeep = docs[0];
+        const toRemove = docs.slice(1);
+
+        logger.warn(`📋 MarkingData: ${markingData}`);
+        logger.warn(
+          `  🔄 Keeping most recent (${toKeep.timestamp}): ${toKeep.id}`
+        );
+        logger.warn(`  🗑️ Removing ${toRemove.length} older duplicate(s)`);
+
+        // Remove the older duplicates
+        for (const doc of toRemove) {
+          await targetCollection.deleteOne({ _id: doc.id });
+          totalRemoved++;
+        }
+      }
+
+      logger.info(
+        `✅ Removed ${totalRemoved} duplicate records from ${duplicates.length} groups`
+      );
+      return { removedCount: totalRemoved, duplicateGroups: duplicates.length };
+    } catch (error) {
+      logger.error("Error removing duplicate MarkingData:", error);
+      throw error;
+    }
+  }
+
+  async createUniqueIndexForMarkingData(dbName, collectionName) {
+    try {
+      // If database and collection parameters are provided, ensure we're connected to the right one
+      let targetCollection = this.collection;
+      if (dbName && collectionName) {
+        // Check if we need to switch to a different database/collection
+        if (
+          !this.db ||
+          this.db.databaseName !== dbName ||
+          !this.collection ||
+          this.collection.collectionName !== collectionName
+        ) {
+          await this.connect(dbName, collectionName);
+          targetCollection = this.collection;
+        }
+      }
+
+      // Create unique index on MarkingData field
+      const indexResult = await targetCollection.createIndex(
+        { MarkingData: 1 },
+        {
+          unique: true,
+          name: "unique_marking_data_index",
+          sparse: true, // Only enforce uniqueness for non-null/non-empty values
+        }
+      );
+
+      logger.info(
+        `✅ Created unique index for MarkingData in ${dbName}.${collectionName}: ${indexResult}`
+      );
+      return indexResult;
+    } catch (error) {
+      if (error.code === 11000) {
+        logger.warn("⚠️ Unique index already exists or duplicate data found");
+        // If there are existing duplicates, we need to clean them first
+        await this.removeDuplicateMarkingData(dbName, collectionName);
+        // Try creating the index again
+        return await this.createUniqueIndexForMarkingData(
+          dbName,
+          collectionName
+        );
+      } else {
+        logger.error("Error creating unique index for MarkingData:", error);
+        throw error;
+      }
+    }
+  }
+
+  async sendMongoDbDataToClient(socket, dbName, collectionName) {
+    try {
+      // Always ensure we're connected to the correct database and collection
+      if (!dbName || !collectionName) {
+        throw new Error("Database name and collection name are required");
+      }
+
+      // Check if we need to connect/reconnect to the correct database/collection
+      if (
+        !this.db ||
+        this.db.databaseName !== dbName ||
+        !this.collection ||
+        this.collection.collectionName !== collectionName
+      ) {
+        logger.info(
+          `Connecting to ${dbName}.${collectionName} for client data...`
+        );
+        await this.connect(dbName, collectionName);
+      }
+
+      // Fetch data from MongoDB, sorted in descending order by Timestamp
+      const data = await this.collection
+        .find({})
+        .sort({ Timestamp: -1 })
+        .limit(100)
+        .toArray();
+
+      if (data.length === 0) {
+        logger.info(`No data found in ${dbName}.${collectionName} collection.`);
+        socket.emit("mongodb-data", { data: [] });
+        return;
+      }
+
+      // Transform the data
+      const transformedData = data.map((item) => ({
+        Timestamp: item?.Timestamp,
+        SerialNumber: item?.SerialNumber,
+        MarkingData: item?.MarkingData,
+        ScannerData: item?.ScannerData,
+        ModelNumber: item?.ModelNumber,
+        User: item?.User,
+        Grade: item?.Grade,
+        CurrentId: item?.CurrentId,
+        Shift: item?.Shift,
+        Result: item?.Result,
+        Date: item?.Date,
+      }));
+
+      // Send the data to the client
+      socket.emit("csv-data", { data: transformedData });
+      logger.info(
+        `Emitted data from ${dbName}.${collectionName} to client: ${socket.id}`
+      );
+    } catch (error) {
+      console.error({ error });
+      logger.error("Error in sendMongoDbDataToClient: ", error.message);
+      socket.emit("error", { message: "Error fetching data from database" });
     }
   }
 }

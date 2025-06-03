@@ -512,7 +512,8 @@ class ScannerController {
       }
 
       if (io) {
-        mongoDbService.sendMongoDbDataToClient(io, "main-data", "records");
+        // Use broadcast method to refresh all connected clients
+        mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
       }
     } catch (error) {
       console.error({ error });
@@ -654,6 +655,24 @@ class ScannerController {
       logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
       logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
 
+      // Trigger UI refresh on successful cycle completion
+      if (this.io) {
+        logger.info("📡 Broadcasting cycle completion to UI...");
+        await mongoDbService.broadcastDataToAllClients(
+          this.io,
+          "main-data",
+          "records"
+        );
+
+        // Also emit a specific cycle completion event
+        this.io.emit("scan-cycle-completed", {
+          cycleNumber: this.cycleCount,
+          timestamp: new Date().toISOString(),
+          success: true,
+          result: verificationScanResult.success ? "OK" : "NG",
+        });
+      }
+
       // Add 2-second delay after cycle completion
       logger.info(
         "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
@@ -666,6 +685,25 @@ class ScannerController {
         `   - Verification success: ${verificationScanResult.success}`
       );
       logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
+
+      // Trigger UI refresh even for failed cycles
+      if (this.io) {
+        logger.info("📡 Broadcasting failed cycle data to UI...");
+        await mongoDbService.broadcastDataToAllClients(
+          this.io,
+          "main-data",
+          "records"
+        );
+
+        // Emit failed cycle event
+        this.io.emit("scan-cycle-completed", {
+          cycleNumber: this.cycleCount,
+          timestamp: new Date().toISOString(),
+          success: false,
+          result: "NG",
+          error: "Cycle completion failed",
+        });
+      }
 
       // Add 2-second delay even for failed cycles
       logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
