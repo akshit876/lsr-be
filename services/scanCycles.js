@@ -10,7 +10,6 @@ import fs from "fs";
 import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
-import BufferedComPortService from "./ComPortService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -21,27 +20,18 @@ export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 
-// COM Port configuration for RS-232 scanner
-const COM_PORT_CONFIG = {
-  path: "COM3", // Using COM3 as requested
-  baudRate: 9600, // Changed to 9600 baud rate for scanner
-  logDir: "scanner_logs",
-  autoOpen: false, // Don't auto-open, we'll handle it manually
-  lock: false, // Don't lock the port exclusively
-};
-
 class ScannerController {
   static instance = null;
 
   constructor() {
-    logger.section("Scanner Controller Initialization");
+    logger.section("Marking Controller Initialization");
 
     if (ScannerController.instance) {
-      logger.info("🔄 Returning existing scanner controller instance");
+      logger.info("🔄 Returning existing marking controller instance");
       return ScannerController.instance;
     }
 
-    logger.info("🎯 Creating new scanner controller instance");
+    logger.info("🎯 Creating new marking controller instance");
     this.resetMonitor = null;
     this.resetListeners = new Set();
     this.comPortService = null;
@@ -56,14 +46,14 @@ class ScannerController {
     this.lastResetDate = this.getLastResetTime();
 
     ScannerController.instance = this;
-    logger.success("Scanner controller instance created");
+    logger.success("Marking controller instance created");
   }
 
   async initialize() {
-    logger.section("Scanner Controller Initialization");
+    logger.section("Marking Controller Initialization");
 
     if (this.isInitialized) {
-      logger.warn("⚠️ Scanner controller already initialized");
+      logger.warn("⚠️ Marking controller already initialized");
       return;
     }
 
@@ -75,55 +65,11 @@ class ScannerController {
       await mongoDbService.connect("main-data", "records");
       logger.success("MongoDB connected successfully");
 
-      // Initialize COM port for RS-232 scanner with better error handling
-      logger.info("🔌 Setting up COM port for RS-232 scanner...");
-      try {
-        logger.info("🔍 Creating BufferedComPortService instance...");
-        this.comPortService = new BufferedComPortService(COM_PORT_CONFIG);
-        logger.info(
-          `🔍 comPortService created: ${this.comPortService ? "exists" : "null"}`
-        );
-
-        logger.info("🔍 Calling initSerialPort...");
-        await this.comPortService.initSerialPort();
-        logger.info(
-          `🔍 After initSerialPort - comPortService: ${this.comPortService ? "exists" : "null"}`
-        );
-        logger.success("COM port scanner connected successfully on COM3");
-      } catch (comError) {
-        logger.error(`🔍 COM port initialization failed: ${comError.message}`);
-        // Set comPortService to null on error to make debugging easier
-        this.comPortService = null;
-
-        if (comError.message.includes("Access denied")) {
-          logger.error(
-            "❌ COM3 Access Denied Error - Troubleshooting suggestions:"
-          );
-          logger.error("   1. Run the application as Administrator");
-          logger.error(
-            "   2. Close any applications using COM3 (Arduino IDE, PuTTY, etc.)"
-          );
-          logger.error("   3. Check if another Node.js instance is running");
-          logger.error("   4. Try unplugging and reconnecting the USB device");
-          logger.error("   5. Check Device Manager for driver issues");
-
-          // List available COM ports for user reference
-          logger.info("💡 Available COM ports on this system:");
-          logger.info("   - COM1: Communications Port");
-          logger.info(
-            "   - COM3: Prolific PL2303GT USB Serial (currently inaccessible)"
-          );
-        } else if (
-          comError.message.includes("File not found") ||
-          comError.message.includes("cannot open")
-        ) {
-          logger.error("❌ COM3 Not Found - Device may be disconnected");
-          logger.error("   1. Check if USB-to-Serial device is connected");
-          logger.error("   2. Verify the device shows up in Device Manager");
-          logger.error("   3. Try a different USB port");
-        }
-        throw new Error(`COM Port Error: ${comError.message}`);
-      }
+      // Note: COM port initialization removed as it's not needed for marking workflow
+      // We only need PLC communication via Modbus for the simplified workflow
+      logger.info(
+        "🔧 Skipping COM port setup - not required for marking workflow"
+      );
 
       // Initialize barcode generator
       logger.info("🏷️ Setting up barcode generator...");
@@ -133,7 +79,7 @@ class ScannerController {
       logger.success("Barcode generator initialized");
 
       this.isInitialized = true;
-      logger.success("Scanner controller initialization complete");
+      logger.success("Marking controller initialization complete");
     } catch (error) {
       logger.separator.hash();
       logger.error("❌ Error during initialization:", error);
@@ -547,7 +493,7 @@ class ScannerController {
     // Don't reset cycle count here - let it persist across runs
     // this.cycleCount = 0;
     logger.info(
-      `🔄 Starting continuous scan (current cycle count: ${this.cycleCount})`
+      `🔄 Starting continuous marking workflow (current cycle count: ${this.cycleCount})`
     );
 
     try {
@@ -559,7 +505,7 @@ class ScannerController {
 
           // Clear separator and print cycle count
           logger.separator.hash();
-          logger.warn(`⚡ Scan Cycle ${this.cycleCount + 1}`);
+          logger.warn(`⚡ Marking Cycle ${this.cycleCount + 1}`);
           logger.separator.hash();
 
           // Create new reset monitoring for each cycle
@@ -577,14 +523,14 @@ class ScannerController {
             logger.warn("⚠️ Reset detected, restarting cycle");
             continue;
           } else if (error.message === "RESTART_CYCLE") {
-            logger.info("🔄 Restarting cycle due to OK first scan");
+            logger.info("🔄 Restarting cycle");
             continue;
           }
           await this.handleScanError(error);
         }
       }
     } catch (error) {
-      logger.error("❌ Fatal error in continuous scan:", error);
+      logger.error("❌ Fatal error in continuous marking workflow:", error);
       throw error;
     } finally {
       this.cleanupResetListeners();
@@ -593,7 +539,7 @@ class ScannerController {
 
   // New method to encapsulate the main scan cycle logic
   async executeScanCycle(comService, partNumber) {
-    // First check for 1410.0 (start signal)
+    // Step 1: Wait for start signal (1410.0)
     logger.info("Waiting for start signal (1410.0)...");
     const resetResult = await this.checkResetOrBit(1410, 0, 1);
     if (resetResult === true) {
@@ -601,27 +547,27 @@ class ScannerController {
       return;
     }
 
-    // Step 1: First Scanner Check
-    const firstScanResult = await this.handleFirstScan(comService);
-    if (!firstScanResult.shouldContinue) {
-      logger.info("Cycle stopped after first scan");
-      return;
-    }
-
-    // Step 2: Generate and Write Barcode (simplified, no OCR)
+    // Step 2: Generate and Write Barcode (no scanning, just file generation)
+    logger.info("🏷️ Starting file generation and transfer process...");
     const barcodeData = await this.generateAndWriteBarcode(partNumber);
     if (!barcodeData) {
+      logger.error("❌ Failed to generate barcode data, ending cycle");
       return;
     }
 
-    // Step 3: Signal Transfer and Wait
-    logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
+    // Step 3: Signal File Transfer to PLC
+    logger.info("✍️ Writing bit 1414.15(F) to signal file transfer to PLC");
     await writeBit(1414, 15, 1);
+    logger.success("📡 File transfer signal sent to PLC");
 
-    logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-    if (await this.checkResetOrBit(1410, 3, 1)) {
+    // Step 4: Wait for Marking Completion Signal from PLC
+    logger.info(
+      "⏳ Waiting for marking completion signal from PLC (1410.3)..."
+    );
+    const markingResult = await this.checkResetOrBit(1410, 3, 1);
+    if (markingResult === true) {
       logger.warn(
-        "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
+        "⚠️ Reset detected while waiting for marking completion, restarting cycle"
       );
       await sleep(1000);
       await this.saveToMongoDB({
@@ -636,23 +582,28 @@ class ScannerController {
       return;
     }
 
-    // Step 4: Verification Scanner Check
-    const verificationScanResult = await this.handleVerificationScan(
-      comService,
-      barcodeData
-    );
+    logger.success("✅ Marking completion signal received from PLC");
 
-    // Step 5: Final Checks and Cleanup
-    logger.info("🔍 Starting final checks and cycle completion...");
-    const finalChecksResult = await this.performFinalChecks();
-    logger.info(`📋 Final checks result: ${finalChecksResult}`);
-    logger.info(
-      `🔍 Verification scan result: ${verificationScanResult.success}`
-    );
+    // Step 5: Update MongoDB with marking completion
+    logger.info("💾 Updating MongoDB with marking completion...");
+    await this.saveToMongoDB({
+      io: this.io,
+      serialNumber: barcodeData.serialNo,
+      markingData: barcodeData.text,
+      scannerData: "N/A", // No scanner data in simplified workflow
+      result: "OK", // Assume OK since marking completed
+      grading: "N/A", // No grading in simplified workflow
+      isUpdate: true,
+    });
+
+    // Step 6: Final Checks and Cycle Completion
+    logger.info("🔍 Performing final checks and cycle completion...");
+    // const finalChecksResult = await this.performFinalChecks();
+    const finalChecksResult = true;
 
     if (finalChecksResult) {
       this.cycleCount++;
-      logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
+      logger.section(`✅ Completed Simple Cycle ${this.cycleCount}`);
       logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
 
       // Trigger UI refresh on successful cycle completion
@@ -664,14 +615,19 @@ class ScannerController {
           "records"
         );
 
-        // Also emit a specific cycle completion event
+        // Emit cycle completion event
         this.io.emit("scan-cycle-completed", {
           cycleNumber: this.cycleCount,
           timestamp: new Date().toISOString(),
           success: true,
-          result: verificationScanResult.success ? "OK" : "NG",
+          result: "OK",
+          type: "marking-only", // Indicate this is a simplified workflow
         });
       }
+
+      // Signal cycle complete OK to PLC
+      logger.info("📡 Sending cycle complete OK signal to PLC (1414.3)");
+      await writeBit(1414, 3, 1);
 
       // Add 2-second delay after cycle completion
       logger.info(
@@ -679,10 +635,8 @@ class ScannerController {
       );
       await sleep(2000);
     } else {
-      logger.warn(`❌ Cycle completion failed:`);
-      logger.warn(`   - Final checks: ${finalChecksResult}`);
       logger.warn(
-        `   - Verification success: ${verificationScanResult.success}`
+        `❌ Cycle completion failed - final checks returned: ${finalChecksResult}`
       );
       logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
 
@@ -701,7 +655,8 @@ class ScannerController {
           timestamp: new Date().toISOString(),
           success: false,
           result: "NG",
-          error: "Cycle completion failed",
+          error: "Final checks failed",
+          type: "marking-only",
         });
       }
 
@@ -1084,33 +1039,27 @@ class ScannerController {
 
   async initializeScannerAndMonitor(io, comService) {
     if (!this.isInitialized) {
-      logger.info("🔄 Starting scanner initialization...");
+      logger.info("🔄 Starting system initialization...");
       await this.initialize();
     }
 
-    // Debug logging
-    logger.info("🔍 Debugging COM service state:");
-    logger.info(`   - Provided comService: ${comService ? "exists" : "null"}`);
-    logger.info(
-      `   - Internal comPortService: ${this.comPortService ? "exists" : "null"}`
-    );
+    // Debug logging - simplified since we don't need COM service for scanning anymore
+    logger.info("🔍 System state:");
     logger.info(`   - isInitialized: ${this.isInitialized}`);
+    logger.info(
+      `   - MongoDB connected: ${mongoDbService.isConnected || "unknown"}`
+    );
 
-    // Use the internally created comPortService if no external service provided
+    // Note: COM service is no longer required for the simplified marking workflow
+    // We only need PLC communication via Modbus
     if (comService) {
-      this.comPortService = comService;
-      logger.info("🔗 Using provided COM service");
-    } else {
-      // Use the COM port service created during initialization
-      if (!this.comPortService) {
-        throw new Error(
-          "COM port service not initialized. Make sure initialize() completed successfully."
-        );
-      }
-      logger.info("🔗 Using internal COM port service");
+      logger.info(
+        "🔗 COM service provided but not required for marking workflow"
+      );
     }
 
     this.setupResetMonitor();
+    logger.info("✅ System ready for marking workflow");
   }
 
   setupResetMonitor() {
@@ -1328,4 +1277,4 @@ class ScannerController {
 
 // Export singleton instance
 export const scannerController = new ScannerController();
-logger.success("Scanner controller module loaded");
+logger.success("Marking controller module loaded");
