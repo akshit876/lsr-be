@@ -37,8 +37,8 @@ import { tcpClient } from "./tcp.js";
 import { REGISTERS_TO_MONITOR } from "../server.js";
 
 const TCP_CONFIG = {
-  PORT: 5024,
-  HOST: "192.168.3.147",
+  PORT: 502,
+  HOST: "192.168.3.146",
 };
 
 // import logger from "your-logger-module"; // Replace with your logger module
