@@ -6,7 +6,7 @@ class SerialNumberGeneratorService {
   constructor() {
     this.currentSerialNumber = 1;
     this.lastResetDate = new Date();
-    this.resetHour = 6;
+    this.resetHour = 0; // Changed to midnight (12:00 AM)
     this.resetMinute = 0;
     this.isInitialized = false;
     this.currentModelNumber = null; // Track current model for separate sequences
@@ -14,6 +14,7 @@ class SerialNumberGeneratorService {
       "CMB-877": 7001,
       default: 1,
     };
+    this.maxSerialNumber = 999; // Maximum serial number before wrapping back to starting serial
   }
 
   //   async initialize(dbName, collectionName) {
@@ -270,11 +271,21 @@ class SerialNumberGeneratorService {
       // Model config exists - continue from currentValue + 1
       const existingValue = parseInt(modelConfig.currentValue, 10);
       if (!isNaN(existingValue)) {
-        this.currentSerialNumber = existingValue + 1;
+        let nextSerial = existingValue + 1;
+
+        // Check if we've exceeded the maximum serial number (999)
+        if (nextSerial > this.maxSerialNumber) {
+          logger.info(
+            `🔄 WRAP AROUND: Serial ${nextSerial} exceeds maximum (${this.maxSerialNumber}), wrapping back to starting serial ${modelStartingSerial}`
+          );
+          nextSerial = modelStartingSerial;
+        }
+
+        this.currentSerialNumber = nextSerial;
         serialToUse = this.currentSerialNumber;
 
         logger.info(
-          `✅ CONTINUING: Model ${this.currentModelNumber} from ${existingValue} to ${serialToUse}`
+          `✅ CONTINUING: Model ${this.currentModelNumber} from ${existingValue} to ${serialToUse} (max: ${this.maxSerialNumber})`
         );
       } else {
         this.currentSerialNumber = modelStartingSerial;
@@ -286,14 +297,27 @@ class SerialNumberGeneratorService {
       }
     }
 
-    // Format the serial number
-    const serialNumber = serialToUse.toString().padStart(4, "0");
+    // Validate that serial number is within the valid range (1-999)
+    if (serialToUse < 1 || serialToUse > this.maxSerialNumber) {
+      logger.warn(
+        `⚠️ Serial number ${serialToUse} is out of range (1-${this.maxSerialNumber}), resetting to starting serial`
+      );
+      serialToUse = modelStartingSerial;
+      this.currentSerialNumber = serialToUse;
+    }
+
+    // Format the serial number with leading zeros (001-999)
+    const serialNumber = serialToUse.toString().padStart(3, "0");
 
     // Save the USED serial number to modelSerialConfig
     await this.saveUsedSerialNumber(serialToUse);
 
-    // Increment for next call
-    this.currentSerialNumber++;
+    // Increment for next call, but don't exceed max
+    let nextSerial = this.currentSerialNumber + 1;
+    if (nextSerial > this.maxSerialNumber) {
+      nextSerial = modelStartingSerial;
+    }
+    this.currentSerialNumber = nextSerial;
 
     logger.info(
       `🎯 FINAL: Using serial ${serialNumber} for model: ${this.currentModelNumber} (next will be: ${this.currentSerialNumber}) - saved to modelSerialConfig`
@@ -340,7 +364,7 @@ class SerialNumberGeneratorService {
       modelSpecificLastResetDate = this.lastResetDate; // Fallback to global if DB fetch fails
     }
 
-    // Set resetTime to 6:00 AM today
+    // Set resetTime to midnight (12:00 AM) today
     const resetTime = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -367,29 +391,30 @@ class SerialNumberGeneratorService {
       `🕐 RESET CHECK (${currentModel || "Unknown"}): ${JSON.stringify(debugInfo, null, 2)}`
     );
 
-    // RESET LOGIC: "First run after 6:00 AM each day FOR EACH MODEL INDEPENDENTLY"
+    // RESET LOGIC: "First run after 12:00 AM (midnight) each day FOR EACH MODEL INDEPENDENTLY"
     // Reset behavior applies to ALL models (CMB-877, CMB-778, etc.) but each model tracks its own reset
     // Reset should happen if:
-    // 1. Current time is after 6:00 AM today (machine is running after reset time)
-    // 2. THIS MODEL'S last reset was before 6:00 AM today (this model hasn't reset today yet)
+    // 1. Current time is after 12:00 AM today (machine is running after reset time)
+    // 2. THIS MODEL'S last reset was before 12:00 AM today (this model hasn't reset today yet)
     //
     // IMPORTANT: Each model resets independently!
-    // - CMB-877 can reset at 7:00 AM → doesn't affect CMB-778
-    // - CMB-778 can still reset at 8:00 AM on the same day → independent of CMB-877's reset
+    // - CMB-877 can reset at 1:00 AM → doesn't affect CMB-778
+    // - CMB-778 can still reset at 2:00 AM on the same day → independent of CMB-877's reset
     //
     // Each model will reset to its specific starting serial:
     // - CMB-877 → resets to 7001 (S7001)
-    // - CMB-778 → resets to 1 (S0001)
-    // - Other models → reset to 1 (S0001)
+    // - CMB-778 → resets to 1 (S001)
+    // - Other models → reset to 1 (S001)
     //
-    // This ensures reset happens exactly once per day per model on the first machine operation after 6:00 AM
-    const isFirstRunAfter6AMForThisModel =
+    // Serial numbers are limited to 001-999 range and wrap around automatically
+    // This ensures reset happens exactly once per day per model on the first machine operation after 12:00 AM
+    const isFirstRunAfterMidnightForThisModel =
       isAfter(now, resetTime) &&
       (!modelSpecificLastResetDate ||
         isBefore(modelSpecificLastResetDate, resetTime));
 
-    if (isFirstRunAfter6AMForThisModel) {
-      // This is the first machine operation after 6:00 AM today FOR THIS SPECIFIC MODEL - time to reset!
+    if (isFirstRunAfterMidnightForThisModel) {
+      // This is the first machine operation after 12:00 AM today FOR THIS SPECIFIC MODEL - time to reset!
       const modelStartingSerial = await this.getModelStartingSerial();
       const oldSerial = this.currentSerialNumber;
 
@@ -398,13 +423,16 @@ class SerialNumberGeneratorService {
       this.lastResetDate = now;
 
       logger.info(
-        `🔄 FIRST RUN AFTER 6:00 AM RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+        `🔄 FIRST RUN AFTER MIDNIGHT RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(3, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
       );
       logger.info(
         `📅 Reset trigger: This is the first machine operation after ${format(resetTime, "HH:mm:ss")} today for model ${currentModel}. Previous reset for this model: ${modelSpecificLastResetDate ? format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss") : "Never"}`
       );
       logger.info(
         `🔑 IMPORTANT: This reset is model-specific. Other models can still reset independently today.`
+      );
+      logger.info(
+        `📊 Serial range: 001-999 with automatic wrap-around to starting serial when exceeding 999`
       );
 
       // Update the database with the reset information (model-specific)
@@ -414,11 +442,11 @@ class SerialNumberGeneratorService {
     } else {
       if (isBefore(now, resetTime)) {
         logger.info(
-          `✅ NO RESET (${currentModel}): Current time ${format(now, "HH:mm:ss")} is before reset time ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+          `✅ NO RESET (${currentModel}): Current time ${format(now, "HH:mm:ss")} is before reset time ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
         );
       } else {
         logger.info(
-          `✅ NO RESET (${currentModel}): Model ${currentModel} already reset today after ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+          `✅ NO RESET (${currentModel}): Model ${currentModel} already reset today after ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
         );
         logger.info(
           `🔑 NOTE: Other models can still reset independently if they haven't reset today yet.`
@@ -479,7 +507,7 @@ class SerialNumberGeneratorService {
 
         // Only apply if reset is enabled (daily interval)
         if (serialConfig.resetInterval === "daily") {
-          this.resetHour = hour || 6;
+          this.resetHour = hour || 0;
           this.resetMinute = minute || 0;
           logger.info(
             `Reset time updated from serialNoconfig: ${this.resetHour}:${this.resetMinute}`
@@ -488,7 +516,7 @@ class SerialNumberGeneratorService {
           logger.info(
             `Reset interval is '${serialConfig.resetInterval}', using default reset time`
           );
-          this.resetHour = 6;
+          this.resetHour = 0;
           this.resetMinute = 0;
         }
 
@@ -499,15 +527,15 @@ class SerialNumberGeneratorService {
         }
       } else {
         logger.warn(
-          "No serial number reset configuration found, using defaults (6:00)"
+          "No serial number reset configuration found, using defaults (00:00)"
         );
-        this.resetHour = 6;
+        this.resetHour = 0;
         this.resetMinute = 0;
       }
     } catch (error) {
       logger.error("Error fetching serial number reset configuration:", error);
-      logger.warn("Using default reset time (6:00) due to error");
-      this.resetHour = 6;
+      logger.warn("Using default reset time (00:00) due to error");
+      this.resetHour = 0;
       this.resetMinute = 0;
     }
   }

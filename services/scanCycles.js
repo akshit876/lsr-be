@@ -965,7 +965,7 @@ class ScannerController {
 
     // Use the reset time from SerialNumberGeneratorService if available
     const resetHour =
-      this.barcodeGenerator?.serialNumberService?.resetHour || 6;
+      this.barcodeGenerator?.serialNumberService?.resetHour || 0;
     const resetMinute =
       this.barcodeGenerator?.serialNumberService?.resetMinute || 0;
 

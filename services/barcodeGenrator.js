@@ -244,8 +244,8 @@ class BarcodeGenerator {
 // // Initialize the barcode generator
 // await barcodeGenerator.initialize("your_db_name", "your_collection_name");
 
-// // Set reset time if different from default (6:00 AM)
-// barcodeGenerator.setResetTime(6, 0);
+// // Set reset time if different from default (00:00 midnight)
+// barcodeGenerator.setResetTime(0, 0);
 
 // // Generate barcode data for current date and time
 // console.log(barcodeGenerator.generateBarcodeData());
