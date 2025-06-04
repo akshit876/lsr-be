@@ -668,7 +668,7 @@ class ScannerController {
   // New method to encapsulate the main scan cycle logic
   async executeScanCycle(comService, partNumber) {
     try {
-      await writeBit(1300, 0, 1);
+      // await writeBit(1300, 0, 1);
       // First check for 1410.0
       logger.info("Waiting for start signal (1410.0)...");
       const resetResult = await this.checkResetOrBit(1410, 0, 1);
