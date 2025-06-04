@@ -16,6 +16,8 @@ class ModbusConnection {
     this.isConnected = false;
     this.reconnectInterval = 5000; // 5 seconds
     this.socket = null;
+    this.operationLock = false; // Add operation lock
+    this.pendingOperations = []; // Queue for pending operations
   }
 
   async connect() {
@@ -50,6 +52,20 @@ class ModbusConnection {
     }
   }
 
+  async withOperationLock(operation) {
+    // Wait for lock to be available
+    while (this.operationLock) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    this.operationLock = true;
+    try {
+      return await operation();
+    } finally {
+      this.operationLock = false;
+    }
+  }
+
   handleDisconnect() {
     logger.warn("Modbus connection closed. Attempting to reconnect...");
     this.isConnected = false;
@@ -73,29 +89,31 @@ class ModbusConnection {
   }
 
   async readRegister(address, len, conti = null, bit = null, isPrint = true) {
-    await this.ensureConnection();
-    try {
-      const { data } = await this.client.readHoldingRegisters(address, len);
-      if (isPrint)
-        if (!conti && !bit)
-          logger.info(
-            `Read registers starting at address ${address} (length: ${len}): ${data}`
-          );
-        else {
-          logger.info(
-            `Read registers starting at address ${address} (length: ${len}) (bit : ${bit}): ${data}`
-          );
-        }
-      return data;
-    } catch (error) {
-      emitErrorEvent(
-        this.socket,
-        "MODBUS_READ_ERROR",
-        `Error reading registers at address ${address}: ${error.message}`
-      );
-      this.handleError(error);
-      throw error;
-    }
+    return this.withOperationLock(async () => {
+      await this.ensureConnection();
+      try {
+        const { data } = await this.client.readHoldingRegisters(address, len);
+        if (isPrint)
+          if (!conti && !bit)
+            logger.info(
+              `Read registers starting at address ${address} (length: ${len}): ${data}`
+            );
+          else {
+            logger.info(
+              `Read registers starting at address ${address} (length: ${len}) (bit : ${bit}): ${data}`
+            );
+          }
+        return data;
+      } catch (error) {
+        emitErrorEvent(
+          this.socket,
+          "MODBUS_READ_ERROR",
+          `Error reading registers at address ${address}: ${error.message}`
+        );
+        this.handleError(error);
+        throw error;
+      }
+    });
   }
 
   convertToASCII(registerValues) {
@@ -205,58 +223,62 @@ class ModbusConnection {
   }
 
   async writeRegister(address, value) {
-    await this.ensureConnection();
-    try {
-      await this.client.writeRegister(address, value);
-      logger.info(
-        `Successfully wrote value ${value} to register at address ${address}`
-      );
-    } catch (error) {
-      emitErrorEvent(
-        this.socket,
-        "MODBUS_WRITE_ERROR",
-        `Error writing to register at address ${address}: ${error.message}`
-      );
-      this.handleError(error);
-      throw error;
-    }
+    return this.withOperationLock(async () => {
+      await this.ensureConnection();
+      try {
+        await this.client.writeRegister(address, value);
+        logger.info(
+          `Successfully wrote value ${value} to register at address ${address}`
+        );
+      } catch (error) {
+        emitErrorEvent(
+          this.socket,
+          "MODBUS_WRITE_ERROR",
+          `Error writing to register at address ${address}: ${error.message}`
+        );
+        this.handleError(error);
+        throw error;
+      }
+    });
   }
 
   async readBit(address, bitPosition, conti = true) {
-    await this.ensureConnection();
-    try {
-      // console.log({ address, bitPosition });
-      const result = await this.client.readHoldingRegisters(address, 1);
-      const registerValue = result.data[0];
-      // console.log({ result: [...result] });
-      // console.log({ registerValue });
-      const bitValue = (registerValue & (1 << bitPosition)) !== 0;
-      // console.log({ registerValue, bitValue, conti });
+    return this.withOperationLock(async () => {
+      await this.ensureConnection();
+      try {
+        // console.log({ address, bitPosition });
+        const result = await this.client.readHoldingRegisters(address, 1);
+        const registerValue = result.data[0];
+        // console.log({ result: [...result] });
+        // console.log({ registerValue });
+        const bitValue = (registerValue & (1 << bitPosition)) !== 0;
+        // console.log({ registerValue, bitValue, conti });
 
-      const binaryString = registerValue.toString(2).padStart(16, "0");
+        const binaryString = registerValue.toString(2).padStart(16, "0");
 
-      // Convert binary string to an array of bits for better readability
-      const bitArray = binaryString.split("").map((bit) => parseInt(bit, 10));
+        // Convert binary string to an array of bits for better readability
+        const bitArray = binaryString.split("").map((bit) => parseInt(bit, 10));
 
-      // console.log(
-      //   `16-bit register value for register ${address}: ${binaryString}`
-      // );
-      // console.log(`Bit array for register ${address}:`, bitArray);
-      if (conti)
-        logger.info(
-          `Read bit ${bitPosition} from register ${address}: ${bitValue}`
+        // console.log(
+        //   `16-bit register value for register ${address}: ${binaryString}`
+        // );
+        // console.log(`Bit array for register ${address}:`, bitArray);
+        if (conti)
+          logger.info(
+            `Read bit ${bitPosition} from register ${address}: ${bitValue}`
+          );
+        return bitValue;
+      } catch (error) {
+        console.log({ error });
+        emitErrorEvent(
+          this.socket,
+          "MODBUS_READ_BIT_ERROR",
+          `Error reading bit ${bitPosition} from register ${address}: ${error.message}`
         );
-      return bitValue;
-    } catch (error) {
-      console.log({ error });
-      emitErrorEvent(
-        this.socket,
-        "MODBUS_READ_BIT_ERROR",
-        `Error reading bit ${bitPosition} from register ${address}: ${error.message}`
-      );
-      this.handleError(error);
-      throw error;
-    }
+        this.handleError(error);
+        throw error;
+      }
+    });
   }
 
   async readBits(address, bitPositions) {
@@ -286,27 +308,29 @@ class ModbusConnection {
   }
 
   async writeBit(address, bitPosition, value) {
-    await this.ensureConnection();
-    try {
-      const result = await this.client.readHoldingRegisters(address, 1);
-      const currentValue = result.data[0];
-      const newValue = value
-        ? currentValue | (1 << bitPosition)
-        : currentValue & ~(1 << bitPosition);
-      await this.client.writeRegister(address, newValue);
-      logger.info(
-        `Successfully wrote bit ${bitPosition} with value ${value} to register ${address}`
-      );
-    } catch (error) {
-      console.log({ error });
-      emitErrorEvent(
-        this.socket,
-        "MODBUS_WRITE_BIT_ERROR",
-        `Error writing bit ${bitPosition} to register ${address}: ${error.message}`
-      );
-      this.handleError(error);
-      throw error;
-    }
+    return this.withOperationLock(async () => {
+      await this.ensureConnection();
+      try {
+        const result = await this.client.readHoldingRegisters(address, 1);
+        const currentValue = result.data[0];
+        const newValue = value
+          ? currentValue | (1 << bitPosition)
+          : currentValue & ~(1 << bitPosition);
+        await this.client.writeRegister(address, newValue);
+        logger.info(
+          `Successfully wrote bit ${bitPosition} with value ${value} to register ${address}`
+        );
+      } catch (error) {
+        console.log({ error });
+        emitErrorEvent(
+          this.socket,
+          "MODBUS_WRITE_BIT_ERROR",
+          `Error writing bit ${bitPosition} to register ${address}: ${error.message}`
+        );
+        this.handleError(error);
+        throw error;
+      }
+    });
   }
 
   async writeRegistersFull(address, values) {
