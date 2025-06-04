@@ -1,17 +1,8 @@
 import { createServer } from "http";
-import fs from "fs";
 import morgan from "morgan";
 import { Server } from "socket.io";
 import logger from "./logger.js";
-import {
-  handleFirstScan,
-  handleSecondScan,
-  watchCodeFile,
-} from "./services/serialPortService.js";
-import { MockSerialPort } from "./services/mockSerialPort.js";
-import { fileURLToPath } from "url";
-import path, { dirname } from "path";
-import { getCurrentDate } from "./services/scanUtils.js";
+import process from "process";
 import {
   connect,
   readBit,
@@ -21,16 +12,9 @@ import {
 } from "./services/modbus.js";
 import { manualRun } from "./services/manualRunService.js";
 import mongoDbService from "./services/mongoDbService.js";
-import { runContinuousScan } from "./services/testCycle.js";
 import cronService from "./services/cronService.js";
-import ShiftUtility from "./services/ShiftUtility.js";
-import BufferedComPortService from "./services/ComPortService.js";
-import BarcodeGenerator from "./services/barcodeGenrator.js";
 import { MongoClient } from "mongodb";
 import { scannerController } from "./services/scanCycles.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const MODBUS_IP = process.env.MODBUS_IP;
 const MODBUS_PORT = parseInt(process.env.MODBUS_PORT, 10);
@@ -80,27 +64,19 @@ const server = createServer((req, res) => {
 
 async function fetchPartNumberAndData() {
   try {
-    // Connect to the MongoDB if not already connected
-
     const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
     const client = new MongoClient(uri);
     await client.connect();
     const db = client.db("main-data");
-    // console.log({ db });
     const collection = db.collection("config");
     logger.info("Connected successfully to MongoDB database: main-data");
 
-    // Fetch part number from the 'configs' collection
     const configData = await collection.findOne({});
-    // console.log({ configData });
-    const partNumber = configData?.partNo || "Unknown Part No"; // Default value if part no is not found
+    const partNumber = configData?.partNo || "Unknown Part No";
 
-    // Fetch records from 'main-data' collection (or any other collection as needed)
-    // const mainDataRecords = await mongoDbService.collection.find({}).toArray();
+    logger.info(`Fetched part number: ${partNumber}`);
 
-    logger.info(`Fetched part number: ${partNumber} and main data records`);
-
-    return { partNumber, mainDataRecords: [] };
+    return { partNumber };
   } catch (error) {
     logger.error("Error fetching part number or data:", error);
     throw error;
@@ -128,16 +104,13 @@ io.on("connection", (socket) => {
       });
   });
 
-  socket.on(
-    "request-modbus-data",
-    async ({ register, bits, interval = 1000 }) => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-
-      await sendModbusDataToClientBits(socket, register, bits);
+  socket.on("request-modbus-data", async ({ register, bits }) => {
+    if (intervalId) {
+      clearInterval(intervalId);
     }
-  );
+
+    await sendModbusDataToClientBits(socket, register, bits);
+  });
 
   socket.on("stop-modbus-data", () => {
     if (intervalId) {
@@ -198,54 +171,41 @@ io.on("connection", (socket) => {
             register = 550;
             intValue = floatToInt(value.position);
           } else {
-            register = 560;
-            intValue = floatToInt(value.speed, true);
+            throw new Error("Missing position value for homePosition");
           }
           break;
-        case "scannerPosition":
+        case "firstPosition":
+          if (value.position !== undefined) {
+            register = 551;
+            intValue = floatToInt(value.position);
+          } else {
+            throw new Error("Missing position value for firstPosition");
+          }
+          break;
+        case "secondPosition":
           if (value.position !== undefined) {
             register = 552;
             intValue = floatToInt(value.position);
           } else {
-            register = 562;
-            intValue = floatToInt(value.speed, true);
+            throw new Error("Missing position value for secondPosition");
           }
           break;
-        case "ocrPosition":
-          if (value.position !== undefined) {
-            register = 554;
-            intValue = floatToInt(value.position);
+        case "speed":
+          if (value.speed !== undefined) {
+            register = 553;
+            intValue = floatToInt(value.speed, true);
           } else {
-            register = 564;
-            intValue = floatToInt(value.speed, true);
+            throw new Error("Missing speed value for speed setting");
           }
-          break;
-        case "markPosition":
-          if (value.position !== undefined) {
-            register = 556;
-            intValue = floatToInt(value.position);
-          } else {
-            register = 566;
-            intValue = floatToInt(value.speed, true);
-          }
-          break;
-        case "fwdEndLimit":
-          register = 574;
-          intValue = floatToInt(value.position);
-          break;
-        case "revEndLimit":
-          register = 578;
-          intValue = floatToInt(value.position);
           break;
         default:
-          throw new Error("Invalid setting");
+          throw new Error(`Unknown servo setting: ${setting}`);
       }
 
       await writeRegister(register, intValue);
+
       logger.info(
-        `Client ${socket.id} updated ${setting} to ${JSON.stringify(
-          value
-        )} (written as ${intValue})`
+        `Client ${socket.id} updated servo setting ${setting} to ${value.position !== undefined ? value.position : value.speed} (written as ${intValue})`
       );
 
       socket.emit("servo-setting-change-response", {
@@ -338,7 +298,6 @@ server.listen(PORT, async (err) => {
   }
   logger.info(`> Server ready on http://localhost:${PORT}`);
 
-  let comService = null;
   try {
     await connect();
     logger.info("Modbus connection initialized");
@@ -351,30 +310,16 @@ server.listen(PORT, async (err) => {
 
     cronService.startAllJobs();
 
-    // const shiftUtility = new ShiftUtility();
-    // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
-    // barcodeGenerator.initialize('main-data', 'records');
-    // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-    // comService = new BufferedComPortService({
-    //   path: 'COM3',
-    //   baudRate: 9600,
-    //   logDir: 'com_port_logs',
-    // });
-    // await comService.initSerialPort();
     await connect();
-    // Fetch part number and pass it to runContinuousScan
-    const { partNumber, mainDataRecords } = await fetchPartNumberAndData();
+    // Fetch part number and pass to the marking workflow
+    const { partNumber } = await fetchPartNumberAndData();
 
-    // runContinuousScan(io, null, { partNumber }).catch((error) => {
-    //   logger.error('Failed to start continuous scan:', error);
-    //   process.exit(1);
-    // });
+    // Start the simplified marking workflow
     await scannerController.runContinuousScan(io, null, { partNumber });
   } catch (error) {
     console.log({ error });
     emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
     logger.error("Failed to initialize Modbus connection:", error);
-    // await comService.closePort();
   }
 });
 
@@ -386,28 +331,6 @@ server.on("error", (err) => {
 server.on("close", () => {
   logger.info("Server closed");
 });
-
-async function sendModbusDataToClient(socket, readRange) {
-  try {
-    const [start, length] = readRange;
-    logger.info(
-      `Client ${socket.id} requested read: start=${start}, length=${length}`
-    );
-
-    const registers = await readRegister(start, length - start + 1);
-
-    logger.info(
-      `Read successful for client ${socket.id}: ${JSON.stringify(registers)}`
-    );
-    socket.emit("modbus-data", { registers });
-  } catch (error) {
-    logger.error(`Error reading registers for client ${socket.id}:`, error);
-    socket.emit("error", {
-      message: "Failed to read registers",
-      details: error.message,
-    });
-  }
-}
 
 async function writeModbusBit(address, bit, value) {
   await writeBit(address, bit, value);

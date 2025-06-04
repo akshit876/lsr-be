@@ -2,12 +2,11 @@ import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
 import mongoDbService from "./mongoDbService.js";
-import { readBit, readRegister, writeBit, writeRegister } from "./modbus.js";
+import { writeBit, writeRegister } from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
 import { promisify } from "util";
 import fs from "fs";
-import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
 
@@ -115,6 +114,7 @@ class ScannerController {
         throw new Error("Invalid bits array. Must be an array of numbers 0-15");
       }
 
+      const { readRegister } = await import("./modbus.js");
       const [currentValue] = await readRegister(register, 1);
       const mask = bitsToReset.reduce(
         (mask, bit) => mask & ~(1 << bit),
@@ -191,492 +191,6 @@ class ScannerController {
     }
   }
 
-  async checkResetOrBit(register, bit, value, timeout = null) {
-    if (timeout === null) {
-      logger.info(
-        `🔄 Waiting indefinitely for PLC bit ${register}.${bit} to become ${value} (no timeout)`
-      );
-    } else {
-      logger.info(
-        `🧹 Waiting for bit ${register}.${bit} to become ${value} (timeout: ${timeout / 1000}s)`
-      );
-    }
-
-    logger.info(
-      "-----------------------------------------------------------------------------------------------------------"
-    );
-
-    // For PLC bit monitoring, wait indefinitely until proper signals arrive
-    // No timeout or retry limits - let PLC workflow control the timing
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      try {
-        const result = await this.singleCheckAttempt(
-          register,
-          bit,
-          value,
-          timeout
-        );
-        if (result !== "timeout") {
-          return result;
-        }
-        // If we get a timeout from singleCheckAttempt, just continue the loop
-        // This ensures we keep waiting for PLC signals indefinitely
-        logger.info(
-          `🔄 Continuing to wait for PLC bit ${register}.${bit} = ${value}...`
-        );
-      } catch (error) {
-        logger.error(`Error in bit check: ${error.message}`);
-        await sleep(1000);
-        // Continue the loop even on errors
-      }
-    }
-  }
-
-  async singleCheckAttempt(register, bit, value, timeout) {
-    return new Promise((resolve) => {
-      let timeoutId = null;
-
-      // Only set timeout if a timeout value is provided
-      if (timeout !== null && timeout > 0) {
-        timeoutId = setTimeout(() => {
-          cleanup();
-          logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
-          resolve("timeout");
-        }, timeout);
-      }
-
-      let checkCount = 0;
-      const CHECK_INTERVAL = 100;
-
-      const cleanup = () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        if (resetCheckInterval) {
-          clearInterval(resetCheckInterval);
-        }
-        if (bitCheckInterval) {
-          clearInterval(bitCheckInterval);
-        }
-      };
-
-      // Reset check interval
-      const resetCheckInterval = setInterval(async () => {
-        try {
-          const resetSignal = await readBit(1600, 0);
-          if (resetSignal) {
-            cleanup();
-            logger.info("Reset signal (1600.0) detected");
-            try {
-              await writeBit(1500, 3, 1);
-              logger.info("Reset bits completed, restarting cycle");
-              resolve(true);
-            } catch (error) {
-              logger.error("Error during reset bits:", error);
-              resolve("timeout");
-            }
-          }
-        } catch (error) {
-          logger.error(`Error checking reset signal: ${error.message}`);
-        }
-      }, CHECK_INTERVAL);
-
-      // Bit check interval
-      const bitCheckInterval = setInterval(async () => {
-        try {
-          checkCount++;
-          const bitValue = await readBit(register, bit);
-          const currentValue = Number(bitValue);
-          const expectedValue = Number(value);
-
-          if (currentValue === expectedValue) {
-            cleanup();
-            logger.info(
-              `✅ Target bit ${register}.${bit} is now ${value}, proceeding`
-            );
-            resolve(false);
-            return;
-          }
-
-          // Log status every 5 seconds
-          if (checkCount % 10 === 0) {
-            logger.info(
-              `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
-            );
-            const resetSignal = await readBit(1600, 0);
-            logger.info(
-              `Current state: Reset(1600.0): ${resetSignal}, ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
-            );
-          }
-        } catch (error) {
-          logger.error(`Error checking bit value: ${error.message}`);
-        }
-      }, CHECK_INTERVAL);
-
-      // Initial checks
-      const performInitialCheck = async () => {
-        try {
-          const [resetSignal, bitValue] = await Promise.all([
-            readBit(1600, 0),
-            readBit(register, bit),
-          ]);
-
-          if (resetSignal) {
-            cleanup();
-            logger.info("Reset signal detected on initial check");
-            await this.resetBits();
-            resolve(true);
-            return;
-          }
-
-          if (Number(bitValue) === Number(value)) {
-            cleanup();
-            logger.info(`Target bit matched on initial check`);
-            resolve(false);
-            return;
-          }
-        } catch (error) {
-          logger.error(`Error in initial checks: ${error.message}`);
-        }
-      };
-
-      performInitialCheck();
-    });
-  }
-
-  async writeOCRDataToFile(ocrDataString) {
-    try {
-      await this.clearCodeFile(CODE_FILE_PATH);
-      fs.writeFileSync(CODE_FILE_PATH, ocrDataString, "utf8");
-      logger.info("OCR data written to code.txt");
-    } catch (error) {
-      logger.error(`Error writing OCR data to file: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async clearCodeFile(path) {
-    try {
-      fs.writeFileSync(path, "", "utf8");
-      logger.info("Code file cleared.");
-    } catch (error) {
-      logger.error(`Error clearing code file: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async compareScannerDataWithCode(scannerData) {
-    try {
-      const codeData = fs.readFileSync(CODE_FILE_PATH, "utf8").trim();
-      const isMatch = scannerData === codeData;
-      logger.info(`Comparison result: ${isMatch ? "Match" : "No match"}`);
-      return isMatch;
-    } catch (error) {
-      logger.error(
-        `Error comparing scanner data with code file: ${error.message}`
-      );
-      throw error;
-    }
-  }
-
-  async saveToMongoDB({
-    io,
-    serialNumber,
-    markingData,
-    scannerData,
-    grading,
-    result,
-    isUpdate = false,
-  }) {
-    const now = new Date();
-    const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
-
-    try {
-      const userDetails = (await mongoDbService.getUserDetails?.()) || {
-        email: "Unknown",
-      };
-      const currentId = await this.getCurrentDayId();
-      const modelNumber = await this.getCurrentModelNumber();
-
-      const data = {
-        Timestamp: new Date(timestamp),
-        SerialNumber: serialNumber,
-        MarkingData: markingData,
-        ScannerData: scannerData,
-        ModelNumber: modelNumber,
-        Result: result
-          ? result === "N/A"
-            ? "N/A"
-            : result === "OK" || result === true
-              ? "OK"
-              : "NG"
-          : "NG",
-        User: userDetails?.email || "Unknown",
-        Grade: grading?.toUpperCase(),
-        CurrentId: currentId,
-      };
-
-      if (isUpdate) {
-        // Find and update the most recent record for this serial number AND model
-        logger.info(
-          `🔄 Attempting to update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
-        );
-        logger.info(
-          `📊 Update data: ScannerData=${scannerData}, Result=${result}`
-        );
-
-        const updateResult = await mongoDbService.updateLastRecord(
-          { SerialNumber: serialNumber, ModelNumber: modelNumber },
-          { $set: data },
-          "main-data",
-          "records"
-        );
-
-        if (updateResult) {
-          logger.info(
-            `✅ Successfully updated MongoDB record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
-          );
-          logger.info(`📋 Updated fields: ${JSON.stringify(data)}`);
-        } else {
-          logger.warn(
-            `⚠️ Failed to find/update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
-          );
-          logger.warn(`🔍 Trying to insert as new record instead`);
-          await mongoDbService.insertRecord(data, "main-data", "records");
-        }
-      } else {
-        // Insert new record
-        logger.info(
-          `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
-        );
-        await mongoDbService.insertRecord(data, "main-data", "records");
-        logger.info(
-          `✅ Data saved to MongoDB with CurrentId: ${currentId}, Model: ${modelNumber}`
-        );
-      }
-
-      if (io) {
-        // Use broadcast method to refresh all connected clients
-        mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
-      }
-    } catch (error) {
-      console.error({ error });
-      logger.error("Error saving data:", error);
-      throw error;
-    }
-  }
-
-  async verifyAndRetryWrite(expectedData, retriesLeft) {
-    for (let attempt = 1; attempt <= retriesLeft + 1; attempt++) {
-      const actualData = await fs.readFileSync(CODE_FILE_PATH, "utf8");
-      if (actualData === expectedData) {
-        return true;
-      }
-
-      if (attempt <= retriesLeft) {
-        logger.warn(
-          `Verification attempt ${attempt} failed. Retrying write operation...`
-        );
-        await fs.writeFileSync(CODE_FILE_PATH, expectedData, "utf8");
-      }
-    }
-
-    return false;
-  }
-
-  async runContinuousScan(io = null, comService, { partNumber }) {
-    this.io = io;
-    this.currentPartNumber = partNumber;
-    this.isRunning = true;
-    // Don't reset cycle count here - let it persist across runs
-    // this.cycleCount = 0;
-    logger.info(
-      `🔄 Starting continuous marking workflow (current cycle count: ${this.cycleCount})`
-    );
-
-    try {
-      await this.initializeScannerAndMonitor(io, comService);
-
-      while (this.isRunning) {
-        try {
-          await sleep(1200);
-
-          // Clear separator and print cycle count
-          logger.separator.hash();
-          logger.warn(`⚡ Marking Cycle ${this.cycleCount + 1}`);
-          logger.separator.hash();
-
-          // Create new reset monitoring for each cycle
-          const resetMonitoring = this.startResetMonitoring();
-
-          await Promise.race([
-            this.executeScanCycle(comService, partNumber),
-            resetMonitoring,
-          ]);
-
-          // Cleanup monitoring after cycle
-          this.cleanupResetListeners();
-        } catch (error) {
-          if (error.message === "RESET_DETECTED") {
-            logger.warn("⚠️ Reset detected, restarting cycle");
-            continue;
-          } else if (error.message === "RESTART_CYCLE") {
-            logger.info("🔄 Restarting cycle");
-            continue;
-          }
-          await this.handleScanError(error);
-        }
-      }
-    } catch (error) {
-      logger.error("❌ Fatal error in continuous marking workflow:", error);
-      throw error;
-    } finally {
-      this.cleanupResetListeners();
-    }
-  }
-
-  // New method to encapsulate the main scan cycle logic
-  async executeScanCycle(comService, partNumber) {
-    // Step 1: Wait for start signal (1410.0)
-    logger.info("Waiting for start signal (1410.0)...");
-    const resetResult = await this.checkResetOrBit(1410, 0, 1);
-    if (resetResult === true) {
-      logger.info("Reset detected, restarting cycle");
-      return;
-    }
-
-    // Step 2: Generate and Write Barcode (no scanning, just file generation)
-    logger.info("🏷️ Starting file generation and transfer process...");
-    const barcodeData = await this.generateAndWriteBarcode(partNumber);
-    if (!barcodeData) {
-      logger.error("❌ Failed to generate barcode data, ending cycle");
-      return;
-    }
-
-    // Step 3: Signal File Transfer to PLC
-    logger.info("✍️ Writing bit 1414.15(F) to signal file transfer to PLC");
-    await writeBit(1414, 15, 1);
-    logger.success("📡 File transfer signal sent to PLC");
-
-    // Step 4: Wait for Marking Completion Signal from PLC
-    logger.info(
-      "⏳ Waiting for marking completion signal from PLC (1410.3)..."
-    );
-    const markingResult = await this.checkResetOrBit(1410, 3, 1);
-    if (markingResult === true) {
-      logger.warn(
-        "⚠️ Reset detected while waiting for marking completion, restarting cycle"
-      );
-      await sleep(1000);
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
-        scannerData: "N/A",
-        result: "NG",
-        grading: "N/A",
-        isUpdate: true,
-      });
-      return;
-    }
-
-    logger.success("✅ Marking completion signal received from PLC");
-
-    // Step 5: Update MongoDB with marking completion
-    logger.info("💾 Updating MongoDB with marking completion...");
-    await this.saveToMongoDB({
-      io: this.io,
-      serialNumber: barcodeData.serialNo,
-      markingData: barcodeData.text,
-      scannerData: "N/A", // No scanner data in simplified workflow
-      result: "OK", // Assume OK since marking completed
-      grading: "N/A", // No grading in simplified workflow
-      isUpdate: true,
-    });
-
-    // Step 6: Final Checks and Cycle Completion
-    logger.info("🔍 Performing final checks and cycle completion...");
-    // const finalChecksResult = await this.performFinalChecks();
-    const finalChecksResult = true;
-
-    if (finalChecksResult) {
-      this.cycleCount++;
-      logger.section(`✅ Completed Simple Cycle ${this.cycleCount}`);
-      logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
-
-      // Trigger UI refresh on successful cycle completion
-      if (this.io) {
-        logger.info("📡 Broadcasting cycle completion to UI...");
-        await mongoDbService.broadcastDataToAllClients(
-          this.io,
-          "main-data",
-          "records"
-        );
-
-        // Emit cycle completion event
-        this.io.emit("scan-cycle-completed", {
-          cycleNumber: this.cycleCount,
-          timestamp: new Date().toISOString(),
-          success: true,
-          result: "OK",
-          type: "marking-only", // Indicate this is a simplified workflow
-        });
-      }
-
-      // Signal cycle complete OK to PLC
-      logger.info("📡 Sending cycle complete OK signal to PLC (1414.3)");
-      await writeBit(1414, 3, 1);
-
-      // Add 2-second delay after cycle completion
-      logger.info(
-        "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
-      );
-      await sleep(2000);
-    } else {
-      logger.warn(
-        `❌ Cycle completion failed - final checks returned: ${finalChecksResult}`
-      );
-      logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
-
-      // Trigger UI refresh even for failed cycles
-      if (this.io) {
-        logger.info("📡 Broadcasting failed cycle data to UI...");
-        await mongoDbService.broadcastDataToAllClients(
-          this.io,
-          "main-data",
-          "records"
-        );
-
-        // Emit failed cycle event
-        this.io.emit("scan-cycle-completed", {
-          cycleNumber: this.cycleCount,
-          timestamp: new Date().toISOString(),
-          success: false,
-          result: "NG",
-          error: "Final checks failed",
-          type: "marking-only",
-        });
-      }
-
-      // Add 2-second delay even for failed cycles
-      logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
-      await sleep(2000);
-    }
-  }
-
-  async handleError(error) {
-    logger.section("Error Handler");
-    logger.error("❌ Processing error:", error);
-
-    try {
-      logger.info("🔄 Attempting error recovery...");
-    } catch (secondaryError) {
-      logger.error("❌ Error during error handling:", secondaryError);
-    }
-  }
-
   async checkReset() {
     return new Promise((resolve) => {
       // If resetEmitter is not available, resolve immediately with false
@@ -696,149 +210,6 @@ class ScannerController {
         resolve(false);
       }, 50);
     });
-  }
-
-  async fetchScannerData(comService, options = {}) {
-    const {
-      scanType = options.scanType || "first",
-      timeout = 30 * 1000, // Reduced timeout for faster debugging
-      scannerLabel = this.getScanLabel(scanType),
-    } = options;
-
-    logger.section(`${scannerLabel} Scanner Data Acquisition`);
-
-    // Prevent multiple triggers
-    if (this.isScanning) {
-      logger.warn("Scanner already in progress, skipping new trigger");
-      return null;
-    }
-    this.isScanning = true;
-
-    try {
-      logger.info(
-        `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
-      );
-
-      const scannerData = await new Promise((resolve, reject) => {
-        const dataHandler = (data) => {
-          logger.success(
-            `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-          );
-          resolve(data);
-          this.comPortService.off("dataGot", dataHandler);
-        };
-
-        // Set up event listener
-        logger.info("👂 Adding event listener for scanner data");
-        this.comPortService.on("dataGot", dataHandler);
-
-        // Configure timeout with better debugging
-        const timeoutId = setTimeout(() => {
-          logger.error(
-            `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
-          );
-          logger.error("🔍 Troubleshooting suggestions:");
-          logger.error(
-            "   1. Check if scanner is physically connected to COM3"
-          );
-          logger.error("   2. Verify scanner is powered on");
-          logger.error("   3. Check if barcode is present for scanner to read");
-          logger.error(
-            "   4. Verify scanner is configured for correct baud rate (9600)"
-          );
-          logger.error("   5. Test scanner with a simple terminal program");
-
-          this.comPortService.off("dataGot", dataHandler);
-
-          // Return "NG" on timeout and ensure proper bit handling
-          logger.warn(
-            "🔧 Scanner timeout - treating as NG to continue workflow"
-          );
-          resolve("NG");
-        }, timeout);
-
-        // Trigger scanner based on scan type
-        const register = this.getScanRegister(scanType);
-        const bit = this.getScanBit(scanType);
-
-        logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
-
-        writeBit(register, bit, 1)
-          .then(() => {
-            logger.success(`${scannerLabel} scanner triggered successfully`);
-            logger.info(
-              `⏳ Waiting for scanner data on COM3... (timeout: ${timeout / 1000}s)`
-            );
-          })
-          .catch((err) => {
-            logger.error(
-              `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-              err
-            );
-            clearTimeout(timeoutId);
-            reject(err);
-          });
-      });
-
-      logger.success(
-        `📊 ${scannerLabel} scanner data received: ${scannerData}`
-      );
-
-      // Emit scanner read event to UI
-      if (this.io) {
-        this.io.emit("scanner_read", {
-          timestamp: new Date(),
-          scannerType: scannerLabel,
-          data: scannerData,
-        });
-      }
-
-      return scannerData;
-    } catch (error) {
-      logger.separator.hash();
-      logger.error(
-        `❌ Error acquiring ${scannerLabel.toLowerCase()} scanner data:`,
-        error
-      );
-      throw error;
-    } finally {
-      this.isScanning = false;
-    }
-  }
-
-  // Helper methods for scan configuration
-  getScanRegister(scanType) {
-    switch (scanType) {
-      case "first":
-        return 1415;
-      case "verification":
-        return 1416;
-      default:
-        return 1415;
-    }
-  }
-
-  getScanBit(scanType) {
-    switch (scanType) {
-      case "first":
-        return 0;
-      case "verification":
-        return 15;
-      default:
-        return 0;
-    }
-  }
-
-  getScanLabel(scanType) {
-    switch (scanType) {
-      case "first":
-        return "First";
-      case "verification":
-        return "Verification";
-      default:
-        return "Scanner";
-    }
   }
 
   async generateAndWriteBarcode(partNumber) {
@@ -993,48 +364,26 @@ class ScannerController {
     return this.currentDayId++;
   }
 
-  async handleFirstScan(comService) {
-    logger.info("Starting first scan handler");
+  async getCurrentModelNumber() {
+    try {
+      // Get current model from config collection
+      await mongoDbService.connect("main-data", "config");
+      const configData = await mongoDbService.collection.findOne({});
 
-    const scannerData = await this.fetchScannerData(comService, {
-      scanType: "first",
-    });
-
-    // Check for reset signal before proceeding
-    if (await this.checkReset()) {
-      logger.warn("⚠️ Reset detected during first scan, restarting cycle");
-      return { shouldContinue: false };
-    }
-
-    // Handle timeout/null/undefined or explicit "NG" response
-    if (!scannerData || scannerData.trim().toUpperCase() === "NG") {
-      logger.warn(
-        "⚠️ First scan data is NG or timeout, proceeding with workflow"
-      );
-      logger.info("✍️ Writing bit 1414.7 to signal NG scan");
-      await writeBit(1414, 7, 1);
-      return { shouldContinue: true };
-    }
-
-    // If we get here and have valid scanner data, it means the part is already marked
-    if (scannerData && scannerData.trim() !== "") {
-      logger.warn("⚠️ Part appears to be already marked");
-
-      // Emit the "part_already_marked" event to the UI
-      if (this.io) {
-        this.io.emit("first_scan_ok", {
-          timestamp: new Date(),
-          scannerData: scannerData,
-          message:
-            "Part detected with existing marking. Please use an unmarked part.",
-        });
+      if (
+        configData &&
+        configData.currentModelConfig &&
+        configData.currentModelConfig.modelNumber
+      ) {
+        return configData.currentModelConfig.modelNumber;
+      } else {
+        logger.warn("No model configuration found");
+        return null;
       }
-
-      logger.info("✍️ Writing bit 1414.6 to signal OK scan");
-      await writeBit(1414, 6, 1);
+    } catch (error) {
+      logger.error("Error fetching current model number:", error);
+      return null;
     }
-
-    return { shouldContinue: false };
   }
 
   async initializeScannerAndMonitor(io, comService) {
@@ -1134,12 +483,6 @@ class ScannerController {
   async performFinalChecks() {
     try {
       logger.info("🔍 Performing final checks...");
-      if (await this.checkResetOrBit(1415, 7, 1)) {
-        logger.warn("⚠️ Reset detected at final step, restarting cycle");
-        await sleep(1000);
-        return false;
-      }
-
       await sleep(3 * 1000);
       return true;
     } catch (error) {
@@ -1148,129 +491,423 @@ class ScannerController {
     }
   }
 
-  async handleVerificationScan(comService, barcodeData) {
-    logger.info("Starting verification scan");
+  async checkResetOrBit(register, bit, value, timeout = null) {
+    if (timeout === null) {
+      logger.info(
+        `🔄 Waiting indefinitely for PLC bit ${register}.${bit} to become ${value} (no timeout)`
+      );
+    } else {
+      logger.info(
+        `🧹 Waiting for bit ${register}.${bit} to become ${value} (timeout: ${timeout / 1000}s)`
+      );
+    }
+
+    logger.info(
+      "-----------------------------------------------------------------------------------------------------------"
+    );
+
+    // For PLC bit monitoring, wait indefinitely until proper signals arrive
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        const result = await this.singleCheckAttempt(
+          register,
+          bit,
+          value,
+          timeout
+        );
+        if (result !== "timeout") {
+          return result;
+        }
+        logger.info(
+          `🔄 Continuing to wait for PLC bit ${register}.${bit} = ${value}...`
+        );
+      } catch (error) {
+        logger.error(`Error in bit check: ${error.message}`);
+        await sleep(1000);
+      }
+    }
+  }
+
+  async singleCheckAttempt(register, bit, value, timeout) {
+    const { readBit } = await import("./modbus.js");
+
+    return new Promise((resolve) => {
+      let timeoutId = null;
+
+      if (timeout !== null && timeout > 0) {
+        timeoutId = setTimeout(() => {
+          cleanup();
+          logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
+          resolve("timeout");
+        }, timeout);
+      }
+
+      let checkCount = 0;
+      const CHECK_INTERVAL = 100;
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        if (resetCheckInterval) {
+          clearInterval(resetCheckInterval);
+        }
+        if (bitCheckInterval) {
+          clearInterval(bitCheckInterval);
+        }
+      };
+
+      const resetCheckInterval = setInterval(async () => {
+        try {
+          const resetSignal = await readBit(1600, 0);
+          if (resetSignal) {
+            cleanup();
+            logger.info("Reset signal (1600.0) detected");
+            try {
+              await writeBit(1500, 3, 1);
+              logger.info("Reset bits completed, restarting cycle");
+              resolve(true);
+            } catch (error) {
+              logger.error("Error during reset bits:", error);
+              resolve("timeout");
+            }
+          }
+        } catch (error) {
+          logger.error(`Error checking reset signal: ${error.message}`);
+        }
+      }, CHECK_INTERVAL);
+
+      const bitCheckInterval = setInterval(async () => {
+        try {
+          checkCount++;
+          const bitValue = await readBit(register, bit);
+          const currentValue = Number(bitValue);
+          const expectedValue = Number(value);
+
+          if (currentValue === expectedValue) {
+            cleanup();
+            logger.info(
+              `✅ Target bit ${register}.${bit} is now ${value}, proceeding`
+            );
+            resolve(false);
+            return;
+          }
+
+          if (checkCount % 10 === 0) {
+            logger.info(
+              `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
+            );
+            const resetSignal = await readBit(1600, 0);
+            logger.info(
+              `Current state: Reset(1600.0): ${resetSignal}, ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
+            );
+          }
+        } catch (error) {
+          logger.error(`Error checking bit value: ${error.message}`);
+        }
+      }, CHECK_INTERVAL);
+
+      const performInitialCheck = async () => {
+        try {
+          const [resetSignal, bitValue] = await Promise.all([
+            readBit(1600, 0),
+            readBit(register, bit),
+          ]);
+
+          if (resetSignal) {
+            cleanup();
+            logger.info("Reset signal detected on initial check");
+            await this.resetBits();
+            resolve(true);
+            return;
+          }
+
+          if (Number(bitValue) === Number(value)) {
+            cleanup();
+            logger.info(`Target bit matched on initial check`);
+            resolve(false);
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error in initial checks: ${error.message}`);
+        }
+      };
+
+      performInitialCheck();
+    });
+  }
+
+  async saveToMongoDB({
+    io,
+    serialNumber,
+    markingData,
+    scannerData,
+    grading,
+    result,
+    isUpdate = false,
+  }) {
+    const { format } = await import("date-fns");
+    const now = new Date();
+    const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
 
     try {
-      const scannerData = await this.fetchScannerData(comService, {
-        scanType: "verification",
-      });
+      const userDetails = (await mongoDbService.getUserDetails?.()) || {
+        email: "Unknown",
+      };
+      const currentId = await this.getCurrentDayId();
+      const modelNumber = await this.getCurrentModelNumber();
 
-      // Handle timeout/null/undefined cases as NG
-      const effectiveScannerData = scannerData || "NG";
+      const data = {
+        Timestamp: new Date(timestamp),
+        SerialNumber: serialNumber,
+        MarkingData: markingData,
+        ScannerData: scannerData,
+        ModelNumber: modelNumber,
+        Result: result
+          ? result === "N/A"
+            ? "N/A"
+            : result === "OK" || result === true
+              ? "OK"
+              : "NG"
+          : "NG",
+        User: userDetails?.email || "Unknown",
+        Grade: grading?.toUpperCase(),
+        CurrentId: currentId,
+      };
 
-      if (effectiveScannerData !== "NG") {
-        logger.success("Verification scan OK");
-      } else {
-        logger.warn("⚠️ Verification scan NG or timeout");
-      }
-
-      const isDataMatching =
-        await this.compareScannerDataWithCode(effectiveScannerData);
-
-      logger.info(
-        `✍️ Writing bit 1414.${isDataMatching ? 3 : 4} to signal data match result`
-      );
-      await writeBit(1414, isDataMatching ? 3 : 4, 1);
-
-      if (isDataMatching) {
-        logger.success("Data matches ✅");
-      } else {
-        logger.warn("⚠️ Data does not match");
-      }
-
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
-        scannerData: effectiveScannerData,
-        grading: "N/A",
-        result: isDataMatching,
-        isUpdate: true,
-      });
-
-      return { success: isDataMatching };
-    } catch (error) {
-      if (error.message === "RESET_DETECTED") {
-        logger.warn(
-          "Reset detected during verification scan, restarting cycle"
+      if (isUpdate) {
+        logger.info(
+          `🔄 Attempting to update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
         );
-        await this.handleReset();
-        throw error;
+
+        const updateResult = await mongoDbService.updateLastRecord(
+          { SerialNumber: serialNumber, ModelNumber: modelNumber },
+          { $set: data },
+          "main-data",
+          "records"
+        );
+
+        if (updateResult) {
+          logger.info(
+            `✅ Successfully updated MongoDB record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+          );
+        } else {
+          logger.warn(`🔍 Trying to insert as new record instead`);
+          await mongoDbService.insertRecord(data, "main-data", "records");
+        }
+      } else {
+        logger.info(
+          `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+        );
+        await mongoDbService.insertRecord(data, "main-data", "records");
+        logger.info(
+          `✅ Data saved to MongoDB with CurrentId: ${currentId}, Model: ${modelNumber}`
+        );
       }
+
+      if (io) {
+        mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
+      }
+    } catch (error) {
+      console.error({ error });
+      logger.error("Error saving data:", error);
       throw error;
     }
   }
 
-  // Test method to verify COM port communication
-  async testComPortCommunication() {
-    logger.section("COM Port Communication Test");
+  async verifyAndRetryWrite(expectedData, retriesLeft) {
+    for (let attempt = 1; attempt <= retriesLeft + 1; attempt++) {
+      const actualData = await fs.readFileSync(CODE_FILE_PATH, "utf8");
+      if (actualData === expectedData) {
+        return true;
+      }
 
-    if (!this.comPortService) {
-      logger.error("❌ COM port service not available");
-      return false;
+      if (attempt <= retriesLeft) {
+        logger.warn(
+          `Verification attempt ${attempt} failed. Retrying write operation...`
+        );
+        await fs.writeFileSync(CODE_FILE_PATH, expectedData, "utf8");
+      }
     }
 
+    return false;
+  }
+
+  async runContinuousScan(io = null, comService, { partNumber }) {
+    this.io = io;
+    this.currentPartNumber = partNumber;
+    this.isRunning = true;
+    logger.info(
+      `🔄 Starting continuous marking workflow (current cycle count: ${this.cycleCount})`
+    );
+
     try {
-      logger.info("🔍 Testing COM port communication...");
-      logger.info("📡 Listening for any data on COM3 for 10 seconds...");
+      await this.initializeScannerAndMonitor(io, comService);
 
-      return new Promise((resolve) => {
-        let testComplete = false;
+      while (this.isRunning) {
+        try {
+          await sleep(1200);
 
-        const testHandler = (data) => {
-          if (!testComplete) {
-            logger.success(`✅ COM3 Data received: "${data}"`);
-            this.comPortService.off("dataGot", testHandler);
-            testComplete = true;
-            resolve(true);
+          logger.separator.hash();
+          logger.warn(`⚡ Marking Cycle ${this.cycleCount + 1}`);
+          logger.separator.hash();
+
+          const resetMonitoring = this.startResetMonitoring();
+
+          await Promise.race([
+            this.executeScanCycle(comService, partNumber),
+            resetMonitoring,
+          ]);
+
+          this.cleanupResetListeners();
+        } catch (error) {
+          if (error.message === "RESET_DETECTED") {
+            logger.warn("⚠️ Reset detected, restarting cycle");
+            continue;
+          } else if (error.message === "RESTART_CYCLE") {
+            logger.info("🔄 Restarting cycle");
+            continue;
           }
-        };
-
-        this.comPortService.on("dataGot", testHandler);
-
-        // 10 second timeout
-        setTimeout(() => {
-          if (!testComplete) {
-            logger.warn("⚠️ No data received on COM3 during test period");
-            logger.info("💡 This suggests:");
-            logger.info("   - Scanner may not be sending data automatically");
-            logger.info("   - Scanner may need manual trigger (scan button)");
-            logger.info(
-              "   - Scanner may be configured for different baud rate"
-            );
-            logger.info("   - Scanner may require specific trigger sequence");
-            this.comPortService.off("dataGot", testHandler);
-            testComplete = true;
-            resolve(false);
-          }
-        }, 10000);
-      });
+          await this.handleScanError(error);
+        }
+      }
     } catch (error) {
-      logger.error("❌ Error during COM port test:", error);
-      return false;
+      logger.error("❌ Fatal error in continuous marking workflow:", error);
+      throw error;
+    } finally {
+      this.cleanupResetListeners();
     }
   }
 
-  async getCurrentModelNumber() {
-    try {
-      // Get current model from config collection
-      await mongoDbService.connect("main-data", "config");
-      const configData = await mongoDbService.collection.findOne({});
+  async executeScanCycle(comService, partNumber) {
+    // Step 1: Wait for start signal (1410.0)
+    logger.info("Waiting for start signal (1410.0)...");
+    const resetResult = await this.checkResetOrBit(1410, 0, 1);
+    if (resetResult === true) {
+      logger.info("Reset detected, restarting cycle");
+      return;
+    }
 
-      if (
-        configData &&
-        configData.currentModelConfig &&
-        configData.currentModelConfig.modelNumber
-      ) {
-        return configData.currentModelConfig.modelNumber;
-      } else {
-        logger.warn("No model configuration found");
-        return null;
+    // Step 2: Generate and Write Barcode (no scanning, just file generation)
+    logger.info("🏷️ Starting file generation and transfer process...");
+    const barcodeData = await this.generateAndWriteBarcode(partNumber);
+    if (!barcodeData) {
+      logger.error("❌ Failed to generate barcode data, ending cycle");
+      return;
+    }
+
+    // Step 3: Signal File Transfer to PLC
+    logger.info("✍️ Writing bit 1414.15(F) to signal file transfer to PLC");
+    await writeBit(1414, 15, 1);
+    logger.success("📡 File transfer signal sent to PLC");
+
+    // Step 4: Wait for Marking Completion Signal from PLC
+    logger.info(
+      "⏳ Waiting for marking completion signal from PLC (1410.3)..."
+    );
+    const markingResult = await this.checkResetOrBit(1410, 3, 1);
+    if (markingResult === true) {
+      logger.warn(
+        "⚠️ Reset detected while waiting for marking completion, restarting cycle"
+      );
+      await sleep(1000);
+      await this.saveToMongoDB({
+        io: this.io,
+        serialNumber: barcodeData.serialNo,
+        markingData: barcodeData.text,
+        scannerData: "N/A",
+        result: "NG",
+        grading: "N/A",
+        isUpdate: true,
+      });
+      return;
+    }
+
+    logger.success("✅ Marking completion signal received from PLC");
+
+    // Step 5: Update MongoDB with marking completion
+    logger.info("💾 Updating MongoDB with marking completion...");
+    await this.saveToMongoDB({
+      io: this.io,
+      serialNumber: barcodeData.serialNo,
+      markingData: barcodeData.text,
+      scannerData: "N/A",
+      result: "OK",
+      grading: "N/A",
+      isUpdate: true,
+    });
+
+    // Step 6: Final Checks and Cycle Completion
+    logger.info("🔍 Performing final checks and cycle completion...");
+    const finalChecksResult = await this.performFinalChecks();
+
+    if (finalChecksResult) {
+      this.cycleCount++;
+      logger.section(`✅ Completed Simple Cycle ${this.cycleCount}`);
+      logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
+
+      if (this.io) {
+        logger.info("📡 Broadcasting cycle completion to UI...");
+        await mongoDbService.broadcastDataToAllClients(
+          this.io,
+          "main-data",
+          "records"
+        );
+
+        this.io.emit("scan-cycle-completed", {
+          cycleNumber: this.cycleCount,
+          timestamp: new Date().toISOString(),
+          success: true,
+          result: "OK",
+          type: "marking-only",
+        });
       }
-    } catch (error) {
-      logger.error("Error fetching current model number:", error);
-      return null;
+
+      logger.info("📡 Sending cycle complete OK signal to PLC (1414.3)");
+      await writeBit(1414, 3, 1);
+
+      logger.info(
+        "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
+      );
+      await sleep(2000);
+    } else {
+      logger.warn(
+        `❌ Cycle completion failed - final checks returned: ${finalChecksResult}`
+      );
+      logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
+
+      if (this.io) {
+        logger.info("📡 Broadcasting failed cycle data to UI...");
+        await mongoDbService.broadcastDataToAllClients(
+          this.io,
+          "main-data",
+          "records"
+        );
+
+        this.io.emit("scan-cycle-completed", {
+          cycleNumber: this.cycleCount,
+          timestamp: new Date().toISOString(),
+          success: false,
+          result: "NG",
+          error: "Final checks failed",
+          type: "marking-only",
+        });
+      }
+
+      logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
+      await sleep(2000);
+    }
+  }
+
+  async handleError(error) {
+    logger.section("Error Handler");
+    logger.error("❌ Processing error:", error);
+
+    try {
+      logger.info("🔄 Attempting error recovery...");
+    } catch (secondaryError) {
+      logger.error("❌ Error during error handling:", secondaryError);
     }
   }
 }
