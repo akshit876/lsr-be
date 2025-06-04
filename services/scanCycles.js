@@ -753,11 +753,7 @@ class ScannerController {
 
         if (this.io) {
           logger.info("📡 Broadcasting cycle completion to UI...");
-          await mongoDbService.broadcastDataToAllClients(
-            this.io,
-            "main-data",
-            "records"
-          );
+          mongoDbService.sendMongoDbDataToClient(this.io);
 
           this.io.emit("scan-cycle-completed", {
             cycleNumber: this.cycleCount,
@@ -783,11 +779,7 @@ class ScannerController {
 
         if (this.io) {
           logger.info("📡 Broadcasting failed cycle data to UI...");
-          await mongoDbService.broadcastDataToAllClients(
-            this.io,
-            "main-data",
-            "records"
-          );
+          mongoDbService.sendMongoDbDataToClient(this.io);
 
           this.io.emit("scan-cycle-completed", {
             cycleNumber: this.cycleCount,
