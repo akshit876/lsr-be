@@ -531,6 +531,7 @@ class ScannerController {
 
   async singleCheckAttempt(register, bit, value, timeout) {
     const { readBit } = await import("./modbus.js");
+    const { connect } = await import("./modbus.js");
 
     return new Promise((resolve) => {
       let timeoutId = null;
@@ -544,7 +545,9 @@ class ScannerController {
       }
 
       let checkCount = 0;
-      const CHECK_INTERVAL = 100;
+      const CHECK_INTERVAL = 500; // Increased from 100ms to 500ms to reduce load
+      let connectionRetryCount = 0;
+      const MAX_CONNECTION_RETRIES = 3;
 
       const cleanup = () => {
         if (timeoutId) {
@@ -558,6 +561,41 @@ class ScannerController {
         }
       };
 
+      const handleConnectionError = async (error, operation) => {
+        if (
+          error.message.includes("Port Not Open") ||
+          error.message.includes("ECONNREFUSED")
+        ) {
+          connectionRetryCount++;
+          if (connectionRetryCount <= MAX_CONNECTION_RETRIES) {
+            logger.warn(
+              `🔄 Connection lost during ${operation}, attempting to reconnect (${connectionRetryCount}/${MAX_CONNECTION_RETRIES})...`
+            );
+            try {
+              await connect();
+              logger.info("✅ Reconnection successful");
+              connectionRetryCount = 0; // Reset counter on successful reconnection
+              return true;
+            } catch (reconnectError) {
+              logger.error(`❌ Reconnection failed: ${reconnectError.message}`);
+              if (connectionRetryCount >= MAX_CONNECTION_RETRIES) {
+                logger.error("❌ Max connection retries reached, giving up");
+                cleanup();
+                resolve("connection_failed");
+                return false;
+              }
+            }
+          } else {
+            cleanup();
+            resolve("connection_failed");
+            return false;
+          }
+        } else {
+          logger.error(`Error during ${operation}: ${error.message}`);
+        }
+        return true;
+      };
+
       const resetCheckInterval = setInterval(async () => {
         try {
           const resetSignal = await readBit(1600, 0);
@@ -565,6 +603,7 @@ class ScannerController {
             cleanup();
             logger.info("Reset signal (1600.0) detected");
             try {
+              const { writeBit } = await import("./modbus.js");
               await writeBit(1500, 3, 1);
               logger.info("Reset bits completed, restarting cycle");
               resolve(true);
@@ -574,7 +613,13 @@ class ScannerController {
             }
           }
         } catch (error) {
-          logger.error(`Error checking reset signal: ${error.message}`);
+          const shouldContinue = await handleConnectionError(
+            error,
+            "reset signal check"
+          );
+          if (!shouldContinue) {
+            return;
+          }
         }
       }, CHECK_INTERVAL);
 
@@ -594,17 +639,28 @@ class ScannerController {
             return;
           }
 
-          if (checkCount % 10 === 0) {
+          if (checkCount % 4 === 0) {
+            // Reduced from every 10 to every 4 (since interval is now 500ms)
             logger.info(
               `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
             );
-            const resetSignal = await readBit(1600, 0);
-            logger.info(
-              `Current state: Reset(1600.0): ${resetSignal}, ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
-            );
+            try {
+              const resetSignal = await readBit(1600, 0);
+              logger.info(
+                `Current state: Reset(1600.0): ${resetSignal}, ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
+              );
+            } catch (resetError) {
+              await handleConnectionError(resetError, "status check");
+            }
           }
         } catch (error) {
-          logger.error(`Error checking bit value: ${error.message}`);
+          const shouldContinue = await handleConnectionError(
+            error,
+            "bit value check"
+          );
+          if (!shouldContinue) {
+            return;
+          }
         }
       }, CHECK_INTERVAL);
 
@@ -630,7 +686,13 @@ class ScannerController {
             return;
           }
         } catch (error) {
-          logger.error(`Error in initial checks: ${error.message}`);
+          const shouldContinue = await handleConnectionError(
+            error,
+            "initial check"
+          );
+          if (!shouldContinue) {
+            return;
+          }
         }
       };
 
