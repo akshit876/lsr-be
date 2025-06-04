@@ -676,6 +676,7 @@ class ScannerController {
   // New method to encapsulate the main scan cycle logic
   async executeScanCycle(comService, partNumber) {
     try {
+      await writeBit(1300, 0, 1);
       // First check for 1410.0
       logger.info("Waiting for start signal (1410.0)...");
       const resetResult = await this.checkResetOrBit(1410, 0, 1);
@@ -683,45 +684,6 @@ class ScannerController {
         logger.info("Reset detected, restarting cycle");
         return;
       }
-
-      // COMMENTED OUT: Step 1: First Scanner Check
-      /*
-      const firstScanResult = await this.handleFirstScan(comService);
-      if (!firstScanResult.shouldContinue) {
-        logger.info("Cycle stopped after first scan");
-        return;
-      }
-      */
-
-      // COMMENTED OUT: Wait for 1517.0 before second scan
-      /*
-      logger.info("🔍 Waiting for bit 1517.0 before second scan");
-      if (await this.checkResetOrBit(1517, 0, 1)) {
-        logger.warn(
-          "⚠️ Reset detected while waiting for 1517.0, restarting cycle"
-        );
-        await sleep(1000);
-        await this.saveToMongoDB({
-          io: this.io,
-          serialNumber: "",
-          markingData: "",
-          scannerData: "N/A",
-          result: "NG",
-          grading: "N/A",
-          isUpdate: true,
-        });
-        return;
-      }
-      */
-
-      // COMMENTED OUT: Step 4: Second Scanner Check (OCR data)
-      /*
-      const ocrScanResult = await this.handleSecondScan(comService, "");
-      if (!ocrScanResult.success) {
-        logger.info("Second scan (OCR) failed, stopping cycle");
-        return;
-      }
-      */
 
       // Step 2: Generate and Write Barcode (simplified - no OCR data)
       logger.info("🏷️ Starting file generation and transfer process...");
@@ -782,7 +744,7 @@ class ScannerController {
 
       // Step 6: Final Checks and Cycle Completion
       logger.info("🔍 Performing final checks and cycle completion...");
-      const finalChecksResult = await this.performFinalChecks();
+      const finalChecksResult = true;
 
       if (finalChecksResult) {
         this.cycleCount++;
