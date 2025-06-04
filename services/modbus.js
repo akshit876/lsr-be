@@ -22,25 +22,44 @@ class ModbusConnection {
     if (this.isConnected) return;
 
     try {
+      // Close any existing connection first
+      if (this.client && this.client.isOpen) {
+        try {
+          this.client.close();
+        } catch (closeError) {
+          // Ignore close errors
+        }
+      }
+
+      // Create a new client instance for fresh connection
+      this.client = new ModbusRTU();
+
       await this.client.connectTCP(MODBUS_IP, { port: MODBUS_PORT });
       this.client.setID(1); // Set the Modbus slave ID (adjust as needed)
       this.isConnected = true;
       logger.info(`Connected to Modbus device at ${MODBUS_IP}:${MODBUS_PORT}`);
     } catch (error) {
       console.log("connect", { error });
+      this.isConnected = false;
       emitErrorEvent(
         this.socket,
         "MODBUS_CONNECT_ERROR",
         `Error connecting to Modbus device: ${error.message}`
       );
-      // this.scheduleReconnect();
+      throw error; // Throw the error so reconnection logic can handle it
     }
   }
 
   handleDisconnect() {
     logger.warn("Modbus connection closed. Attempting to reconnect...");
     this.isConnected = false;
-    // this.scheduleReconnect();
+    if (this.client && this.client.isOpen) {
+      try {
+        this.client.close();
+      } catch (closeError) {
+        // Ignore close errors
+      }
+    }
   }
 
   scheduleReconnect() {
@@ -380,10 +399,23 @@ class ModbusConnection {
   }
 
   handleError(error) {
-    if (error.errno === "ETIMEDOUT" || error.errno === "ECONNRESET") {
-      logger.warn(`Connection error: ${error.errno}. Scheduling reconnect.`);
+    if (
+      error.errno === "ETIMEDOUT" ||
+      error.errno === "ECONNRESET" ||
+      error.errno === "ECONNREFUSED" ||
+      error.message.includes("Port Not Open")
+    ) {
+      logger.warn(
+        `Connection error: ${error.errno || error.message}. Marking as disconnected.`
+      );
       this.isConnected = false;
-      // this.scheduleReconnect();
+      if (this.client && this.client.isOpen) {
+        try {
+          this.client.close();
+        } catch (closeError) {
+          // Ignore close errors
+        }
+      }
     }
   }
 }
