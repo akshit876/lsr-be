@@ -289,10 +289,12 @@ class ScannerController {
   }
 
   async singleCheckAttempt(register, bit, value, timeout) {
+    const { readBit } = await import("./modbus.js");
+    const { connect } = await import("./modbus.js");
+
     return new Promise((resolve) => {
       let timeoutId = null;
 
-      // Only set timeout if a timeout value is provided
       if (timeout !== null && timeout > 0) {
         timeoutId = setTimeout(() => {
           cleanup();
@@ -302,74 +304,133 @@ class ScannerController {
       }
 
       let checkCount = 0;
-      const CHECK_INTERVAL = 100;
+      const CHECK_INTERVAL = 1000; // Increased to 1 second to reduce load
+      let connectionRetryCount = 0;
+      const MAX_CONNECTION_RETRIES = 3;
 
       const cleanup = () => {
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
-        if (resetCheckInterval) {
-          clearInterval(resetCheckInterval);
-        }
-        if (bitCheckInterval) {
-          clearInterval(bitCheckInterval);
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
         }
       };
 
-      // Reset check interval
-      const resetCheckInterval = setInterval(async () => {
-        try {
-          const resetSignal = await readBit(1600, 0);
-          if (resetSignal) {
-            cleanup();
-            logger.info("Reset signal (1600.0) detected");
+      const handleConnectionError = async (error, operation) => {
+        if (
+          error.message.includes("Port Not Open") ||
+          error.message.includes("ECONNREFUSED")
+        ) {
+          connectionRetryCount++;
+          if (connectionRetryCount <= MAX_CONNECTION_RETRIES) {
+            logger.warn(
+              `🔄 Connection lost during ${operation}, attempting to reconnect (${connectionRetryCount}/${MAX_CONNECTION_RETRIES})...`
+            );
             try {
-              await writeBit(1500, 3, 1);
-              logger.info("Reset bits completed, restarting cycle");
-              resolve(true);
-            } catch (error) {
-              logger.error("Error during reset bits:", error);
-              resolve("timeout");
+              await connect();
+              logger.info("✅ Reconnection successful");
+              connectionRetryCount = 0; // Reset counter on successful reconnection
+              return true;
+            } catch (reconnectError) {
+              logger.error(`❌ Reconnection failed: ${reconnectError.message}`);
+              if (connectionRetryCount >= MAX_CONNECTION_RETRIES) {
+                logger.error("❌ Max connection retries reached, giving up");
+                cleanup();
+                resolve("connection_failed");
+                return false;
+              }
+            }
+          } else {
+            cleanup();
+            resolve("connection_failed");
+            return false;
+          }
+        } else {
+          logger.error(`Error during ${operation}: ${error.message}`);
+        }
+        return true;
+      };
+
+      // Single polling loop instead of multiple intervals
+      const pollingInterval = setInterval(async () => {
+        try {
+          checkCount++;
+
+          // Check reset signal first
+          try {
+            const resetSignal = await readBit(1600, 0);
+            if (resetSignal) {
+              cleanup();
+              logger.info("Reset signal (1600.0) detected");
+              try {
+                const { writeBit } = await import("./modbus.js");
+                await writeBit(1500, 3, 1);
+                logger.info("Reset bits completed, restarting cycle");
+                resolve(true);
+                return;
+              } catch (error) {
+                logger.error("Error during reset bits:", error);
+                resolve("timeout");
+                return;
+              }
+            }
+          } catch (resetError) {
+            const shouldContinue = await handleConnectionError(
+              resetError,
+              "reset signal check"
+            );
+            if (!shouldContinue) {
+              return;
+            }
+          }
+
+          // Check target bit
+          try {
+            const bitValue = await readBit(register, bit);
+            const currentValue = Number(bitValue);
+            const expectedValue = Number(value);
+
+            if (currentValue === expectedValue) {
+              cleanup();
+              logger.info(
+                `✅ Target bit ${register}.${bit} is now ${value}, proceeding`
+              );
+              resolve(false);
+              return;
+            }
+
+            if (checkCount % 3 === 0) {
+              // Log every 3 seconds instead of more frequent
+              logger.info(
+                `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
+              );
+              logger.info(
+                `Current state: ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
+              );
+            }
+          } catch (bitError) {
+            const shouldContinue = await handleConnectionError(
+              bitError,
+              "bit value check"
+            );
+            if (!shouldContinue) {
+              return;
             }
           }
         } catch (error) {
-          logger.error(`Error checking reset signal: ${error.message}`);
-        }
-      }, CHECK_INTERVAL);
-
-      // Bit check interval
-      const bitCheckInterval = setInterval(async () => {
-        try {
-          checkCount++;
-          const bitValue = await readBit(register, bit);
-          const currentValue = Number(bitValue);
-          const expectedValue = Number(value);
-
-          if (currentValue === expectedValue) {
-            cleanup();
-            logger.info(
-              `✅ Target bit ${register}.${bit} is now ${value}, proceeding`
-            );
-            resolve(false);
+          logger.error(`Unexpected error in polling loop: ${error.message}`);
+          const shouldContinue = await handleConnectionError(
+            error,
+            "polling loop"
+          );
+          if (!shouldContinue) {
             return;
           }
-
-          // Log status every 5 seconds
-          if (checkCount % 10 === 0) {
-            logger.info(
-              `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
-            );
-            const resetSignal = await readBit(1600, 0);
-            logger.info(
-              `Current state: Reset(1600.0): ${resetSignal}, ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
-            );
-          }
-        } catch (error) {
-          logger.error(`Error checking bit value: ${error.message}`);
         }
       }, CHECK_INTERVAL);
 
-      // Initial checks
+      // Perform initial check
       const performInitialCheck = async () => {
         try {
           const [resetSignal, bitValue] = await Promise.all([
@@ -392,7 +453,13 @@ class ScannerController {
             return;
           }
         } catch (error) {
-          logger.error(`Error in initial checks: ${error.message}`);
+          const shouldContinue = await handleConnectionError(
+            error,
+            "initial check"
+          );
+          if (!shouldContinue) {
+            return;
+          }
         }
       };
 
