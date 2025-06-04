@@ -589,16 +589,8 @@ class ScannerController {
           logger.warn(`⚡ Scan Cycle ${this.cycleCount + 1}`);
           logger.separator.hash();
 
-          // Create new reset monitoring for each cycle
-          const resetMonitoring = this.startResetMonitoring();
-
-          await Promise.race([
-            this.executeScanCycle(comService, partNumber),
-            resetMonitoring,
-          ]);
-
-          // Cleanup monitoring after cycle
-          this.cleanupResetListeners();
+          // Execute the scan cycle directly without Promise.race
+          await this.executeScanCycle(comService, partNumber);
         } catch (error) {
           if (error.message === "RESET_DETECTED") {
             logger.warn("⚠️ Reset detected, restarting cycle");

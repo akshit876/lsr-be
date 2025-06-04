@@ -66,10 +66,10 @@ class SerialNumberGeneratorService {
       if (config) {
         this.initialSerialNumber = parseInt(config.initialValue, 10);
         this.currentSerialNumber = parseInt(config.initialValue, 10);
-        this.resetHour = config.resetTime.split(":")[0];
-        this.resetMinute = config.resetTime.split(":")[1];
+        this.resetHour = parseInt(config.resetTime.split(":")[0], 10);
+        this.resetMinute = parseInt(config.resetTime.split(":")[1], 10);
         logger.info(
-          `Initialized with config - Initial: ${this.initialSerialNumber}, Current: ${this.currentSerialNumber}`
+          `Initialized with config - Initial: ${this.initialSerialNumber}, Reset time: ${this.resetHour}:${this.resetMinute}`
         );
       } else {
         logger.info("No configuration found, using default values");
@@ -79,15 +79,50 @@ class SerialNumberGeneratorService {
       await MongoDBService.connect(dbName, collectionName);
       const lastDocument = await this.getLastDocumentFromMongoDB();
 
+      const now = new Date();
+      const todayResetTime = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        this.resetHour,
+        this.resetMinute
+      );
+
       if (lastDocument) {
-        this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
-        this.lastResetDate = new Date(lastDocument.Timestamp);
+        const lastDocumentTime = new Date(lastDocument.Timestamp);
+
+        // Check if the last document was created before today's reset time
+        const shouldResetToInitial =
+          isAfter(now, todayResetTime) &&
+          isBefore(lastDocumentTime, todayResetTime);
+
+        if (shouldResetToInitial) {
+          // Reset to initial value because we've passed today's reset time
+          this.currentSerialNumber = this.initialSerialNumber;
+          this.lastResetDate = todayResetTime;
+          logger.info(
+            `Reset serial number to ${this.initialSerialNumber} - system started after midnight reset time`
+          );
+        } else {
+          // Continue from last number
+          this.currentSerialNumber =
+            parseInt(lastDocument.SerialNumber, 10) + 1;
+          this.lastResetDate = lastDocumentTime;
+          logger.info(
+            `Continuing serial number from ${this.currentSerialNumber} based on last MongoDB document`
+          );
+        }
+      } else {
+        // No previous records, start with initial value
+        this.lastResetDate = new Date(
+          todayResetTime.getTime() - 24 * 60 * 60 * 1000
+        ); // Previous day
         logger.info(
-          `Updated serial number to ${this.currentSerialNumber} from last MongoDB document`
+          "No previous records found, starting with initial serial number"
         );
       }
 
-      // Check if a reset is needed when initializing
+      // Final check for any needed reset
       this.checkAndResetSerialNumber();
 
       this.isInitialized = true;
@@ -171,45 +206,50 @@ class SerialNumberGeneratorService {
   }
 
   checkAndResetSerialNumber() {
-    // const now = new Date();
-    // const resetTime = new Date(
-    //   now.getFullYear(),
-    //   now.getMonth(),
-    //   now.getDate(),
-    //   this.resetHour,
-    //   this.resetMinute
-    // );
+    const now = new Date();
+    const resetTime = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      this.resetHour,
+      this.resetMinute
+    );
 
-    // // console.log({
-    // //   now: format(now, "yyyy-MM-dd HH:mm:ss"),
-    // //   resetTime: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
-    // //   lastResetDate: format(this.lastResetDate, "yyyy-MM-dd HH:mm:ss"),
-    // //   isAfterResetTime: isAfter(now, resetTime),
-    // //   isSameDayAsLastReset: isSameDay(now, this.lastResetDate),
-    // //   isLastResetBeforeResetTime: isBefore(this.lastResetDate, resetTime),
-    // // });
+    // If current time is before reset time, set reset time to previous day
+    if (
+      now.getHours() < this.resetHour ||
+      (now.getHours() === this.resetHour && now.getMinutes() < this.resetMinute)
+    ) {
+      resetTime.setDate(resetTime.getDate() - 1);
+    }
 
-    // if (
-    //   isAfter(now, resetTime) &&
-    //   (!isSameDay(now, this.lastResetDate) ||
-    //     isBefore(this.lastResetDate, resetTime))
-    // ) {
-    //   this.currentSerialNumber = this.initialSerialNumber; // Use tracked initial value
-    //   this.lastResetDate = now;
-    //   logger.info(
-    //     `Serial number reset to ${this.initialSerialNumber.toString().padStart(4, "0")} at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
-    //   );
-    //   return true;
-    // }
-    // return false;
-    if (this.currentSerialNumber >= 999) {
+    // Initialize lastResetDate if not set
+    if (!this.lastResetDate) {
+      this.lastResetDate = new Date(resetTime.getTime() - 24 * 60 * 60 * 1000); // Previous day
+    }
+
+    // Check if we need to reset based on time (daily reset at midnight)
+    const shouldResetByTime =
+      isAfter(now, resetTime) &&
+      (!isSameDay(now, this.lastResetDate) ||
+        isBefore(this.lastResetDate, resetTime));
+
+    // Check if we need to reset based on reaching 999 (wrap-around)
+    const shouldResetByCount = this.currentSerialNumber > 999;
+
+    if (shouldResetByTime || shouldResetByCount) {
       this.currentSerialNumber = this.initialSerialNumber;
-      this.lastResetDate = new Date();
+      this.lastResetDate = now;
+
+      const resetReason = shouldResetByTime
+        ? "daily reset at midnight"
+        : "reaching 999";
       logger.info(
-        `Serial number reset to ${this.initialSerialNumber.toString().padStart(3, "0")} after reaching 999`
+        `Serial number reset to ${this.initialSerialNumber.toString().padStart(3, "0")} due to ${resetReason} at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
       );
       return true;
     }
+
     return false;
   }
 
