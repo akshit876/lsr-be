@@ -13,6 +13,7 @@ import {
   writeRegister,
 } from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
+import process from "process";
 
 import { promisify } from "util";
 import fs from "fs";
@@ -258,6 +259,7 @@ class ScannerController {
       "-----------------------------------------------------------------------------------------------------------"
     );
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       // Add continuous loop
       try {
@@ -280,13 +282,7 @@ class ScannerController {
   }
 
   async singleCheckAttempt(register, bit, value, timeout) {
-    return new Promise(async (resolve) => {
-      let timeoutId;
-      let resetCheckInterval;
-      let bitCheckInterval;
-      let checkCount = 0;
-      const CHECK_INTERVAL = 100;
-
+    return new Promise((resolve) => {
       const cleanup = () => {
         if (timeoutId) {
           clearTimeout(timeoutId);
@@ -298,6 +294,12 @@ class ScannerController {
           clearInterval(bitCheckInterval);
         }
       };
+
+      let timeoutId;
+      let resetCheckInterval;
+      let bitCheckInterval;
+      let checkCount = 0;
+      const CHECK_INTERVAL = 100;
 
       // Helper function to check and emit register bits
       const checkRegisterBits = async (registerConfig) => {
@@ -394,34 +396,39 @@ class ScannerController {
       }, CHECK_INTERVAL);
 
       // Initial checks
-      try {
-        const [resetSignal, bitValue] = await Promise.all([
-          readBit(1600, 0),
-          readBit(register, bit),
-        ]);
+      const performInitialChecks = async () => {
+        try {
+          const [resetSignal, bitValue] = await Promise.all([
+            readBit(1600, 0),
+            readBit(register, bit),
+          ]);
 
-        // Initial check of all monitored registers
-        for (const registerConfig of REGISTERS_TO_MONITOR) {
-          await checkRegisterBits(registerConfig);
-        }
+          // Initial check of all monitored registers
+          for (const registerConfig of REGISTERS_TO_MONITOR) {
+            await checkRegisterBits(registerConfig);
+          }
 
-        if (resetSignal) {
-          cleanup();
-          logger.info("Reset signal detected on initial check");
-          await this.resetBits();
-          resolve(true);
-          return;
-        }
+          if (resetSignal) {
+            cleanup();
+            logger.info("Reset signal detected on initial check");
+            await this.resetBits();
+            resolve(true);
+            return;
+          }
 
-        if (Number(bitValue) === Number(value)) {
-          cleanup();
-          logger.info(`Target bit matched on initial check`);
-          resolve(false);
-          return;
+          if (Number(bitValue) === Number(value)) {
+            cleanup();
+            logger.info(`Target bit matched on initial check`);
+            resolve(false);
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error in initial checks: ${error.message}`);
         }
-      } catch (error) {
-        logger.error(`Error in initial checks: ${error.message}`);
-      }
+      };
+
+      // Call initial checks
+      performInitialChecks();
     });
   }
 
@@ -490,9 +497,9 @@ class ScannerController {
         MarkingData: markingData,
         ScannerData: scannerData,
         Result: result
-          ? result == "N/A"
+          ? result === "N/A"
             ? "N/A"
-            : result == "OK" || result == true
+            : result === "OK" || result === true
               ? "OK"
               : "NG"
           : "NG",
@@ -677,26 +684,17 @@ class ScannerController {
         return;
       }
 
-      // Step 1: First Scanner Check
+      // COMMENTED OUT: Step 1: First Scanner Check
+      /*
       const firstScanResult = await this.handleFirstScan(comService);
       if (!firstScanResult.shouldContinue) {
         logger.info("Cycle stopped after first scan");
         return;
       }
-      /**
-       *  return {
-        isValid: true,
-        parsedData: {
-          dieNumber: dieNo,
-          date,
-          shift,
-          year: fullYear,
-          month,
-          monthLetter,
-        },
-       */
+      */
 
-      // NEW: Wait for 1517.0 before second scan
+      // COMMENTED OUT: Wait for 1517.0 before second scan
+      /*
       logger.info("🔍 Waiting for bit 1517.0 before second scan");
       if (await this.checkResetOrBit(1517, 0, 1)) {
         logger.warn(
@@ -714,36 +712,39 @@ class ScannerController {
         });
         return;
       }
+      */
 
-      // Step 4: Second Scanner Check (OCR data)
+      // COMMENTED OUT: Step 4: Second Scanner Check (OCR data)
+      /*
       const ocrScanResult = await this.handleSecondScan(comService, "");
       if (!ocrScanResult.success) {
         logger.info("Second scan (OCR) failed, stopping cycle");
         return;
       }
+      */
 
-      // Step 2: Generate and Write Barcode
-      const barcodeData = await this.generateAndWriteBarcode(
-        partNumber,
-        ocrScanResult.ocrData
-      );
+      // Step 2: Generate and Write Barcode (simplified - no OCR data)
+      logger.info("🏷️ Starting file generation and transfer process...");
+      const barcodeData = await this.generateAndWriteBarcode(partNumber, null); // No OCR data
       if (!barcodeData) {
-        // this.barcodeGenerator.decSerialNo();
+        logger.error("❌ Failed to generate barcode data, ending cycle");
         return;
       }
 
-      // Step 3: Signal Transfer and Wait
-      // await this.signalFileTransfer();
-
-      logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
+      // Step 3: Signal File Transfer to PLC
+      logger.info("✍️ Writing bit 1414.15(F) to signal file transfer to PLC");
       await writeBit(1414, 15, 1);
+      logger.success("📡 File transfer signal sent to PLC");
 
-      logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-      if (await this.checkResetOrBit(1410, 3, 1)) {
+      // Step 4: Wait for Marking Completion Signal from PLC
+      logger.info(
+        "⏳ Waiting for marking completion signal from PLC (1410.3)..."
+      );
+      const markingResult = await this.checkResetOrBit(1410, 3, 1);
+      if (markingResult === true) {
         logger.warn(
-          "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
+          "⚠️ Reset detected while waiting for marking completion, restarting cycle"
         );
-        // this.barcodeGenerator.decSerialNo();
         await sleep(1000);
         await this.saveToMongoDB({
           io: this.io,
@@ -757,16 +758,87 @@ class ScannerController {
         return;
       }
 
-      // Step 4: Second Scanner Check
+      logger.success("✅ Marking completion signal received from PLC");
+
+      // COMMENTED OUT: Step 4: Third Scanner Check
+      /*
       const thirdScanResult = await this.handleThirdScan(
         comService,
         barcodeData
       );
+      */
 
-      // Step 5: Final Checks and Cleanup
-      if (await this.performFinalChecks()) {
+      // Step 5: Update MongoDB with marking completion
+      logger.info("💾 Updating MongoDB with marking completion...");
+      await this.saveToMongoDB({
+        io: this.io,
+        serialNumber: barcodeData.serialNo,
+        markingData: barcodeData.text,
+        scannerData: "N/A",
+        result: "OK",
+        grading: "N/A",
+        isUpdate: true,
+      });
+
+      // Step 6: Final Checks and Cycle Completion
+      logger.info("🔍 Performing final checks and cycle completion...");
+      const finalChecksResult = await this.performFinalChecks();
+
+      if (finalChecksResult) {
         this.cycleCount++;
-        logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
+        logger.section(`✅ Completed Simple Marking Cycle ${this.cycleCount}`);
+        logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
+
+        if (this.io) {
+          logger.info("📡 Broadcasting cycle completion to UI...");
+          await mongoDbService.broadcastDataToAllClients(
+            this.io,
+            "main-data",
+            "records"
+          );
+
+          this.io.emit("scan-cycle-completed", {
+            cycleNumber: this.cycleCount,
+            timestamp: new Date().toISOString(),
+            success: true,
+            result: "OK",
+            type: "marking-only",
+          });
+        }
+
+        logger.info("📡 Sending cycle complete OK signal to PLC (1414.3)");
+        await writeBit(1414, 3, 1);
+
+        logger.info(
+          "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
+        );
+        await sleep(2000);
+      } else {
+        logger.warn(
+          `❌ Cycle completion failed - final checks returned: ${finalChecksResult}`
+        );
+        logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
+
+        if (this.io) {
+          logger.info("📡 Broadcasting failed cycle data to UI...");
+          await mongoDbService.broadcastDataToAllClients(
+            this.io,
+            "main-data",
+            "records"
+          );
+
+          this.io.emit("scan-cycle-completed", {
+            cycleNumber: this.cycleCount,
+            timestamp: new Date().toISOString(),
+            success: false,
+            result: "NG",
+            error: "Final checks failed",
+            type: "marking-only",
+          });
+        }
+
+        logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
+        await sleep(2000);
       }
     } catch (error) {
       throw error;
@@ -1049,12 +1121,12 @@ class ScannerController {
   async generateAndWriteBarcode(partNumber, ocrScanResult) {
     const { text, codeText, serialNo } =
       await this.barcodeGenerator.generateBarcodeData({
-        ocrDate: ocrScanResult.day,
-        ocrShift: ocrScanResult.shift,
-        ocrYear: ocrScanResult.year,
-        ocrMonth: ocrScanResult.month,
-        ocrMonthLetter: ocrScanResult.monthLetter,
-        ocrDieNumber: ocrScanResult.dieNo,
+        ocrDate: ocrScanResult?.day,
+        ocrShift: ocrScanResult?.shift,
+        ocrYear: ocrScanResult?.year,
+        ocrMonth: ocrScanResult?.month,
+        ocrMonthLetter: ocrScanResult?.monthLetter,
+        ocrDieNumber: ocrScanResult?.dieNo,
         mongoDbService,
         partNumber,
       });
