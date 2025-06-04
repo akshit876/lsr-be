@@ -146,7 +146,7 @@ const c = 0;
 const shiftUtility = new ShiftUtility();
 const barcodeGenerator = new BarcodeGenerator(shiftUtility);
 barcodeGenerator.initialize("main-data", "records");
-barcodeGenerator.setResetTime(6, 0);
+barcodeGenerator.setResetTime(0, 0);
 // const comService = new BufferedComPortService({
 //   path: "COM5", // Make sure this matches your actual COM port
 //   baudRate: 9600, // Adjust if needed

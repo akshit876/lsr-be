@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import SerialNumberGeneratorService from "./serialNumber.js";
 import logger from "../logger.js";
-import mongoDbService from "./mongoDbService.js";
 import { fetchPartNumberAndData } from "../server.js";
 
 // async function fetchPartNumberAndData(mongoDbService) {
@@ -72,7 +71,6 @@ class BarcodeGenerator {
     ocrShift,
     ocrYear,
     ocrMonth,
-    ocrMonthLetter,
     ocrDieNumber,
     mongoDbService,
     partNumber,
@@ -81,11 +79,17 @@ class BarcodeGenerator {
       // Use current date for all timestamp-based fields
       const now = new Date();
       const fullYear = now.getFullYear().toString();
-      // Use only the last digit of the year
-      const year = fullYear.slice(-1);
+      // Use the last two digits of the year (e.g., "25" for 2025)
+      const year = fullYear.slice(-2);
       const month = format(now, "MM");
       const day = format(now, "dd");
       const shift = this.shiftUtility.getCurrentShift(now);
+
+      // Calculate Julian Date (day of year)
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const dayOfYear =
+        Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
+      const julianDate = dayOfYear.toString().padStart(3, "0"); // 3-digit format
 
       // Convert month number to letter (1-12 to A-L)
       const monthToLetter = (monthNum) => {
@@ -109,11 +113,17 @@ class BarcodeGenerator {
       const serialString =
         await this.serialNumberService.getNextDecSerialNumber2();
 
-      // Map values to fields from config
+      // Map values to fields from config with comprehensive field handling
       const fields = configData.currentModelConfig.fields.map((field) => {
         switch (field.fieldName) {
-          // case "PART NO":
-          //   return { ...field, value: finalPartNumber };
+          case "PART NO":
+            return { ...field, value: field.value || finalPartNumber };
+          case "SUPPLIER CODE":
+            return { ...field, value: field.value || "" };
+          case "MACHINE NO":
+            return { ...field, value: field.value || "" };
+          case "Julian Date":
+            return { ...field, value: julianDate };
           case "Year":
             return { ...field, value: year };
           case "Month":
@@ -122,25 +132,56 @@ class BarcodeGenerator {
             return { ...field, value: day };
           case "Serial Number":
             return { ...field, value: serialString };
+          case "COMPANY CODE":
+            return { ...field, value: field.value || "" };
+          case "FOR STORE":
+            return { ...field, value: field.value || "" };
+          case "STORE":
+            return { ...field, value: field.value || "" };
           case "Shift":
             return { ...field, value: shift };
-          // case "SUPPLIER CODE":
-          //   return { ...field, value: "04101" }; // Hardcoded as per original
+          case "Model Number":
+            // Model number is typically not included in the final barcode
+            return { ...field, value: field.value || "" };
           default:
-            return field;
+            // For any other fields, use the stored value or empty string
+            return { ...field, value: field.value || "" };
         }
       });
 
-      // Generate barcode by combining fields in order
+      // Generate barcode by combining fields in order (excluding Model Number and unchecked fields)
       const barcodeText = fields
         .filter(
-          (field) => field.isChecked && field.fieldName !== "Model Number"
+          (field) =>
+            field.isChecked &&
+            field.fieldName !== "Model Number" &&
+            field.order < 999 // Exclude fields with order 999+ (typically unchecked fields)
         )
         .sort((a, b) => a.order - b.order)
         .map((field) => field.value || "")
         .join("");
-      logger.info(barcodeText);
-      logger.info(serialString);
+
+      logger.info("=== BARCODE GENERATION DETAILS ===");
+      logger.info("Configuration-based field mapping:");
+
+      const selectedFields = fields
+        .filter(
+          (field) =>
+            field.isChecked &&
+            field.fieldName !== "Model Number" &&
+            field.order < 999
+        )
+        .sort((a, b) => a.order - b.order);
+
+      selectedFields.forEach((field) => {
+        logger.info(
+          `  ${field.order}. ${field.fieldName}: "${field.value}" (checked: ${field.isChecked})`
+        );
+      });
+
+      logger.info(`Generated barcode: "${barcodeText}"`);
+      logger.info(`Serial number: ${serialString}`);
+      logger.info("=== END BARCODE DETAILS ===");
 
       // Get the current decade digit dynamically
       const currentYear = new Date().getFullYear().toString();
@@ -149,7 +190,18 @@ class BarcodeGenerator {
       const formattedOcrYear =
         ocrYear?.toString().slice(-1) || currentYear.slice(-1);
 
-      // Append OCR data to barcode text
+      // For simplified marking workflow (no OCR data), just return the barcode
+      if (!ocrDate && !ocrShift && !ocrDieNumber) {
+        logger.info("Simplified marking mode - no OCR data to append");
+        return {
+          text: barcodeText,
+          codeText: barcodeText, // Same as text for simplified mode
+          serialNo: serialString,
+          fields: fields,
+        };
+      }
+
+      // Append OCR data to barcode text (for scanning workflows)
       const ocrDateFormatted = `${ocrDate}${ocrMonth}${formattedOcrYear}`;
       const ocrData = `${ocrDieNumber}${ocrDateFormatted}${ocrShift}`;
       const finalText = barcodeText + ocrData;

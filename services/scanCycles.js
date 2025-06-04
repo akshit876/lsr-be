@@ -29,7 +29,7 @@ const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
 export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
-const BARCODE_RESET_HOUR = 6;
+const BARCODE_RESET_HOUR = 0;
 const BARCODE_RESET_MINUTE = 0;
 
 import { MongoClient } from "mongodb";
@@ -677,8 +677,8 @@ class ScannerController {
   async executeScanCycle(comService, partNumber) {
     try {
       // First check for 1410.0
-      logger.info("Waiting for start signal (1400.0)...");
-      const resetResult = await this.checkResetOrBit(1400, 0, 1);
+      logger.info("Waiting for start signal (1410.0)...");
+      const resetResult = await this.checkResetOrBit(1410, 0, 1);
       if (resetResult === true) {
         logger.info("Reset detected, restarting cycle");
         return;

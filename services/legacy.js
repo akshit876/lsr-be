@@ -243,7 +243,7 @@ export async function runContinuousScan(io = null) {
       await SerialNumberGen.initialize("main-data", "records");
 
       // Set a custom reset time if needed (optional)
-      SerialNumberGen.setResetTime(6, 0);
+      SerialNumberGen.setResetTime(0, 0);
 
       const serialNumber = SerialNumberGen.getNextSerialNumber();
 

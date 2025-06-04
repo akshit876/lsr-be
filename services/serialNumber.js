@@ -13,7 +13,7 @@ class SerialNumberGeneratorService {
   constructor() {
     this.currentSerialNumber = INITIAL_SERIAL_NUMBER;
     this.initialSerialNumber = INITIAL_SERIAL_NUMBER;
-    this.resetHour = 6;
+    this.resetHour = 0;
     this.resetMinute = 0;
     this.isInitialized = false;
     this.isManualReset = false;

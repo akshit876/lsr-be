@@ -24,7 +24,7 @@ const config = {
   },
 
   scanner: {
-    barcodeResetHour: parseInt(process.env.BARCODE_RESET_HOUR || "6", 10),
+    barcodeResetHour: parseInt(process.env.BARCODE_RESET_HOUR || "0", 10),
     barcodeResetMinute: parseInt(process.env.BARCODE_RESET_MINUTE || "0", 10),
     scanTimeout: parseInt(process.env.SCAN_TIMEOUT || "100000", 10),
     codeFilePath: process.env.CODE_FILE_PATH || "./data/code.txt",

@@ -133,7 +133,7 @@ async function monitorRegister(io, { register, bits }) {
 const MODBUS_IP = process.env.MODBUS_IP;
 const MODBUS_PORT = parseInt(process.env.MODBUS_PORT, 10);
 
-const BARCODE_RESET_HOUR = 6;
+const BARCODE_RESET_HOUR = 0;
 const BARCODE_RESET_MINUTE = 0;
 
 import { exec } from "child_process";
