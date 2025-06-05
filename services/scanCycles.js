@@ -273,6 +273,10 @@ class ScannerController {
         // If timeout occurred, continue the loop
         logger.info(`Retrying check for bit ${register}.${bit}`);
       } catch (error) {
+        if (error.message === "RESET_DETECTED") {
+          logger.warn("🔄 RESET_DETECTED exception caught - propagating up");
+          return true; // Return true to indicate reset detected
+        }
         logger.error(`Error in bit check: ${error.message}`);
         await sleep(1000); // Add small delay before retry
       }
@@ -280,7 +284,7 @@ class ScannerController {
   }
 
   async singleCheckAttempt(register, bit, value, timeout) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const cleanup = () => {
         if (timeoutId) {
           clearTimeout(timeoutId);
@@ -341,21 +345,16 @@ class ScannerController {
           const resetSignal = await readBit(1600, 0);
           if (resetSignal) {
             cleanup();
-            logger.warn("🔄 RESET SIGNAL DETECTED IN INTERVAL - STOPPING WAIT");
+            logger.warn("🔄 RESET SIGNAL DETECTED - THROWING EXCEPTION");
             try {
               await writeBit(1500, 3, 1);
-              logger.info("✅ Reset signal acknowledged to PLC (1500.3)");
-              logger.info("🔄 Resolving with reset=true to restart cycle");
-              resolve(true);
-              return;
+              logger.info("✅ Reset acknowledged to PLC (1500.3)");
             } catch (error) {
               logger.error("❌ Error acknowledging reset to PLC:", error);
-              logger.warn(
-                "🔄 Still resolving with reset=true despite PLC error"
-              );
-              resolve(true);
-              return;
             }
+            logger.info("🔄 REJECTING with RESET_DETECTED exception");
+            reject(new Error("RESET_DETECTED"));
+            return;
           }
         } catch (error) {
           logger.error(`❌ Error in reset check interval: ${error.message}`);
@@ -424,8 +423,8 @@ class ScannerController {
                 error
               );
             }
-            logger.info("🔄 Resolving with reset=true from initial check");
-            resolve(true);
+            logger.info("🔄 REJECTING with RESET_DETECTED from initial check");
+            reject(new Error("RESET_DETECTED"));
             return;
           }
 
