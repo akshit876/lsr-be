@@ -7,7 +7,6 @@ import mongoDbService from "./mongoDbService.js";
 import {
   readBit,
   readRegister,
-  readRegisterAndProvideASCII,
   writeBit,
   writeBitsWithRest,
   writeRegister,
@@ -28,7 +27,6 @@ const CODE_FILE_PATH = path.join(__dirname, "../data/code.txt");
 const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
 export const sleep = promisify(setTimeout);
 
-const TIMEOUT = 100 * 1000;
 const BARCODE_RESET_HOUR = 0;
 const BARCODE_RESET_MINUTE = 0;
 
@@ -631,6 +629,19 @@ class ScannerController {
         this.setupResetMonitor();
       }
     });
+
+    // Add message handler for reset detection
+    this.resetMonitor.on("message", async (message) => {
+      if (message === "reset") {
+        logger.warn("🔄 Reset signal detected from worker monitor");
+        const resetResult = await this.handleReset();
+        logger.info(`Reset handling result: ${resetResult}`);
+      }
+    });
+
+    // Start the worker monitoring
+    this.resetMonitor.postMessage("start");
+    logger.info("🔄 Reset monitor worker started");
   }
 
   // New method to clean up listeners
@@ -642,14 +653,14 @@ class ScannerController {
   }
 
   startResetMonitoring() {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       const messageHandler = async (message) => {
         if (message === "reset") {
           logger.warn("🔄 Reset signal detected from monitor");
           this.resetMonitor.removeListener("message", messageHandler);
           this.resetListeners.delete(messageHandler);
-          await this.handleReset();
-          resolve("RESET_DETECTED");
+          const resetResult = await this.handleReset();
+          resolve(resetResult);
         }
       };
 
@@ -1128,7 +1139,7 @@ class ScannerController {
     }
   }
 
-  async handleSecondScan(comService, barcodeData) {
+  async handleSecondScan(comService) {
     const secondScannerData = await this.fetchScannerData(comService, {
       scanType: "second",
     });
@@ -1210,7 +1221,6 @@ class ScannerController {
       // Check if scanner data is "NG"
       if (thirdScannerData.trim().toUpperCase() === "NG") {
         const grading = "F"; // Set grading to F for NG cases
-        const isDataMatching = false; // NG always means no match
 
         logger.info("🔄 Third scan resulted in NG");
         logger.info("🔄 Setting grade to F and marking as non-matching");
@@ -1262,7 +1272,8 @@ class ScannerController {
     } catch (error) {
       if (error.message === "RESET_DETECTED") {
         logger.warn("Reset detected during third scan, restarting cycle");
-        await this.handleReset();
+        const resetResult = await this.handleReset();
+        logger.info(`Reset handling result: ${resetResult}`);
         throw error; // Propagate to main cycle handler
       }
       throw error;
@@ -1288,18 +1299,19 @@ class ScannerController {
   }
 
   async checkReset() {
-    return new Promise((resolve) => {
-      const resetHandler = async () => {
+    try {
+      // Check for reset signal directly first
+      const resetSignal = await readBit(1600, 0);
+      if (resetSignal) {
+        logger.info("🔄 Direct reset signal detected (1600.0)");
         await this.handleReset();
-        this.resetMonitor.removeListener("reset", resetHandler);
-        resolve(true);
-      };
-      this.resetMonitor.once("reset", resetHandler);
-      setTimeout(() => {
-        this.resetMonitor.removeListener("reset", resetHandler);
-        resolve(false);
-      }, 50);
-    });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      logger.error("Error checking reset signal:", error);
+      return false;
+    }
   }
 
   async fetchScannerData(comService, options = {}) {
@@ -1307,7 +1319,6 @@ class ScannerController {
       scanType = options.scanType, // Can be 'first', 'second', or 'third'
       register = this.getScanRegister(scanType),
       bit = this.getScanBit(scanType),
-      timeout = 100 * 1000, // Same timeout for all scans
       scannerLabel = this.getScanLabel(scanType),
     } = options;
 
@@ -1456,10 +1467,10 @@ class ScannerController {
       await this.resetBits();
       this.barcodeGenerator.decSerialNo(); // Decrement serial number if needed
       // await this.clearCodeFile(CODE_FILE_PATH);
-      throw new Error("RESET_DETECTED");
+      return "RESET_DETECTED"; // Return instead of throwing
     } catch (error) {
       logger.error("❌ Error handling reset:", error);
-      throw error;
+      return "RESET_ERROR";
     }
   }
 
