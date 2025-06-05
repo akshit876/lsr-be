@@ -591,7 +591,12 @@ class ScannerController {
           await this.executeScanCycle(comService, partNumber);
         } catch (error) {
           if (error.message === "RESET_DETECTED") {
-            logger.warn("⚠️ Reset detected, restarting cycle");
+            logger.warn("⚠️ Reset detected, restarting cycle immediately");
+            logger.info(
+              "🔄 Clearing any pending operations and starting fresh cycle"
+            );
+            // Add a small delay to ensure reset processing is complete
+            await sleep(500);
             continue;
           } else if (error.message === "RESTART_CYCLE") {
             logger.info("🔄 Restarting cycle due to OK first scan");
@@ -684,8 +689,10 @@ class ScannerController {
       logger.info("Waiting for start signal (1410.0)...");
       const resetResult = await this.checkResetOrBit(1410, 0, 1);
       if (resetResult === true) {
-        logger.info("Reset detected, restarting cycle");
-        return;
+        logger.info(
+          "Reset detected while waiting for start signal, restarting cycle"
+        );
+        throw new Error("RESET_DETECTED");
       }
 
       // Step 2: Generate and Write Barcode (simplified - no OCR data)
@@ -720,7 +727,7 @@ class ScannerController {
           grading: "N/A",
           isUpdate: true,
         });
-        return;
+        throw new Error("RESET_DETECTED");
       }
 
       logger.success("✅ Marking completion signal received from PLC");
@@ -1013,7 +1020,7 @@ class ScannerController {
     // Check for reset signal before proceeding
     if (await this.checkReset()) {
       logger.warn("⚠️ Reset detected during first scan, restarting cycle");
-      return { shouldContinue: false };
+      throw new Error("RESET_DETECTED");
     }
 
     // If scannerData is "NG", proceed with workflow
@@ -1093,7 +1100,7 @@ class ScannerController {
       logger.warn(
         "⚠️ Reset detected during barcode generation, restarting cycle"
       );
-      return null;
+      throw new Error("RESET_DETECTED");
     }
 
     try {
@@ -1494,7 +1501,7 @@ class ScannerController {
       if (await this.checkResetOrBit(1415, 7, 1)) {
         logger.warn("⚠️ Reset detected at final step, restarting cycle");
         await sleep(1000);
-        return false;
+        throw new Error("RESET_DETECTED");
       }
 
       // logger.info("🧹 Clearing code file before next cycle");
