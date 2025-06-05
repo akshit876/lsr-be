@@ -634,8 +634,8 @@ class ScannerController {
     this.resetMonitor.on("message", async (message) => {
       if (message === "reset") {
         logger.warn("🔄 Reset signal detected from worker monitor");
-        const resetResult = await this.handleReset();
-        logger.info(`Reset handling result: ${resetResult}`);
+        // Don't call handleReset here - let the main cycle detect it
+        // The reset will be caught by checkResetOrBit intervals
       }
     });
 
@@ -1467,10 +1467,13 @@ class ScannerController {
       await this.resetBits();
       this.barcodeGenerator.decSerialNo(); // Decrement serial number if needed
       // await this.clearCodeFile(CODE_FILE_PATH);
-      return "RESET_DETECTED"; // Return instead of throwing
+      throw new Error("RESET_DETECTED"); // Throw to interrupt cycle
     } catch (error) {
+      if (error.message === "RESET_DETECTED") {
+        throw error; // Re-throw reset detection
+      }
       logger.error("❌ Error handling reset:", error);
-      return "RESET_ERROR";
+      throw new Error("RESET_DETECTED"); // Still throw to interrupt
     }
   }
 
