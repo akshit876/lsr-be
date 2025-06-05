@@ -341,18 +341,24 @@ class ScannerController {
           const resetSignal = await readBit(1600, 0);
           if (resetSignal) {
             cleanup();
-            logger.info("Reset signal (1600.0) detected");
+            logger.warn("🔄 RESET SIGNAL DETECTED IN INTERVAL - STOPPING WAIT");
             try {
               await writeBit(1500, 3, 1);
-              logger.info("Reset bits completed, restarting cycle");
+              logger.info("✅ Reset signal acknowledged to PLC (1500.3)");
+              logger.info("🔄 Resolving with reset=true to restart cycle");
               resolve(true);
+              return;
             } catch (error) {
-              logger.error("Error during reset bits:", error);
-              resolve("timeout");
+              logger.error("❌ Error acknowledging reset to PLC:", error);
+              logger.warn(
+                "🔄 Still resolving with reset=true despite PLC error"
+              );
+              resolve(true);
+              return;
             }
           }
         } catch (error) {
-          logger.error(`Error checking reset signal: ${error.message}`);
+          logger.error(`❌ Error in reset check interval: ${error.message}`);
         }
       }, CHECK_INTERVAL);
 
@@ -408,8 +414,17 @@ class ScannerController {
 
           if (resetSignal) {
             cleanup();
-            logger.info("Reset signal detected on initial check");
-            await this.resetBits();
+            logger.warn("🔄 RESET SIGNAL DETECTED ON INITIAL CHECK");
+            try {
+              await writeBit(1500, 3, 1);
+              logger.info("✅ Reset acknowledged to PLC on initial check");
+            } catch (error) {
+              logger.error(
+                "❌ Error acknowledging reset on initial check:",
+                error
+              );
+            }
+            logger.info("🔄 Resolving with reset=true from initial check");
             resolve(true);
             return;
           }
