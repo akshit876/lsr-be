@@ -289,16 +289,12 @@ class ScannerController {
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
-        if (resetCheckInterval) {
-          clearInterval(resetCheckInterval);
-        }
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
       };
 
       let timeoutId;
-      let resetCheckInterval;
       let bitCheckInterval;
       let checkCount = 0;
       const CHECK_INTERVAL = 100;
@@ -339,9 +335,12 @@ class ScannerController {
         resolve("timeout");
       }, timeout);
 
-      // Reset check interval
-      resetCheckInterval = setInterval(async () => {
+      // Combined bit and reset check interval
+      bitCheckInterval = setInterval(async () => {
         try {
+          checkCount++;
+
+          // FIRST: Check for reset signal every cycle
           const resetSignal = await readBit(1600, 0);
           if (resetSignal) {
             cleanup();
@@ -356,15 +355,8 @@ class ScannerController {
             reject(new Error("RESET_DETECTED"));
             return;
           }
-        } catch (error) {
-          logger.error(`❌ Error in reset check interval: ${error.message}`);
-        }
-      }, CHECK_INTERVAL);
 
-      // Bit check interval
-      bitCheckInterval = setInterval(async () => {
-        try {
-          checkCount++;
+          // SECOND: Check target bit
           const bitValue = await readBit(register, bit);
           const currentValue = Number(bitValue);
           const expectedValue = Number(value);
@@ -388,7 +380,6 @@ class ScannerController {
             logger.info(
               `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
             );
-            const resetSignal = await readBit(1600, 0);
             logger.info(
               `Current state: Reset(1600.0): ${resetSignal}, ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
             );
