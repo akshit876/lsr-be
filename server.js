@@ -24,7 +24,7 @@ import mongoDbService from "./services/mongoDbService.js";
 import { runContinuousScan } from "./services/testCycle.js";
 import cronService from "./services/cronService.js";
 import ShiftUtility from "./services/ShiftUtility.js";
-import BufferedComPortService from "./services/ComPortService.js";
+import TcpScannerService from "./services/TcpScannerService.js";
 import BarcodeGenerator from "./services/barcodeGenrator.js";
 import { MongoClient } from "mongodb";
 import { scannerController } from "./services/scanCycles.js";
@@ -338,7 +338,7 @@ server.listen(PORT, async (err) => {
   }
   logger.info(`> Server ready on http://localhost:${PORT}`);
 
-  let comService = null;
+  let tcpScannerService = null;
   try {
     await connect();
     logger.info("Modbus connection initialized");
@@ -355,12 +355,12 @@ server.listen(PORT, async (err) => {
     // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
     // barcodeGenerator.initialize('main-data', 'records');
     // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-    // comService = new BufferedComPortService({
-    //   path: 'COM3',
-    //   baudRate: 9600,
-    //   logDir: 'com_port_logs',
+    // tcpScannerService = new TcpScannerService({
+    //   host: process.env.SCANNER_HOST || '192.168.1.100',
+    //   port: parseInt(process.env.SCANNER_PORT, 10) || 8080,
+    //   logDir: 'scanner_logs',
     // });
-    // await comService.initSerialPort();
+    // await tcpScannerService.initTcpConnection();
     await connect();
     // Fetch part number and pass it to runContinuousScan
     const { partNumber, mainDataRecords } = await fetchPartNumberAndData();
@@ -374,7 +374,7 @@ server.listen(PORT, async (err) => {
     console.log({ error });
     emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
     logger.error("Failed to initialize Modbus connection:", error);
-    // await comService.closePort();
+    // await tcpScannerService.closeConnection();
   }
 });
 
