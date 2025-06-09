@@ -1,0 +1,25 @@
+// 1. Get a handle on main-data.records
+const coll = db.getSiblingDB("main-data").getCollection("records");
+
+// 2. Check how many documents you have
+const total = coll.countDocuments();
+print("Total docs in main-data.records:", total);
+
+// 3. If there are at least 10, delete everything older than the 10th-newest Timestamp
+if (total < 10) {
+  print("Fewer than 10 docs—nothing to delete.");
+} else {
+  // Pull the 10 newest timestamps
+  const newestTen = coll
+    .find({}, { Timestamp: 1 })
+    .sort({ Timestamp: -1 })
+    .limit(10)
+    .toArray();
+
+  // The cutoff is the Timestamp of the 10th entry
+  const cutoff = newestTen[9].Timestamp;
+
+  // Delete all docs with Timestamp less than that
+  const { deletedCount } = coll.deleteMany({ Timestamp: { $lt: cutoff } });
+  print(`Deleted ${deletedCount} document(s).`);
+}
