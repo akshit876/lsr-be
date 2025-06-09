@@ -10,7 +10,7 @@ import fs from "fs";
 import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
-import BufferedComPortService from "./ComPortService.js";
+import TcpScannerService from "./TcpScannerService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -21,13 +21,13 @@ export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 
-// COM Port configuration for RS-232 scanner
-const COM_PORT_CONFIG = {
-  path: "COM3", // Using COM3 as requested
-  baudRate: 9600, // Changed to 9600 baud rate for scanner
+// TCP Scanner configuration
+const TCP_SCANNER_CONFIG = {
+  host: process.env.SCANNER_HOST || "192.168.1.100", // TCP scanner IP address
+  port: parseInt(process.env.SCANNER_PORT, 10) || 4001, // TCP scanner port
+  timeout: 10000, // 10 second connection timeout
+  reconnectInterval: 5000, // 5 second reconnection interval
   logDir: "scanner_logs",
-  autoOpen: false, // Don't auto-open, we'll handle it manually
-  lock: false, // Don't lock the port exclusively
 };
 
 class ScannerController {
@@ -44,7 +44,7 @@ class ScannerController {
     logger.info("🎯 Creating new scanner controller instance");
     this.resetMonitor = null;
     this.resetListeners = new Set();
-    this.comPortService = null;
+    this.tcpScannerService = null;
     this.isInitialized = false;
     this.shiftUtility = new ShiftUtility();
     this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
@@ -75,54 +75,51 @@ class ScannerController {
       await mongoDbService.connect("main-data", "records");
       logger.success("MongoDB connected successfully");
 
-      // Initialize COM port for RS-232 scanner with better error handling
-      logger.info("🔌 Setting up COM port for RS-232 scanner...");
+      // Initialize TCP scanner with better error handling
+      logger.info("🔌 Setting up TCP scanner connection...");
       try {
-        logger.info("🔍 Creating BufferedComPortService instance...");
-        this.comPortService = new BufferedComPortService(COM_PORT_CONFIG);
+        logger.info("🔍 Creating TcpScannerService instance...");
+        this.tcpScannerService = new TcpScannerService(TCP_SCANNER_CONFIG);
         logger.info(
-          `🔍 comPortService created: ${this.comPortService ? "exists" : "null"}`
+          `🔍 tcpScannerService created: ${this.tcpScannerService ? "exists" : "null"}`
         );
 
-        logger.info("🔍 Calling initSerialPort...");
-        await this.comPortService.initSerialPort();
+        logger.info("🔍 Calling initTcpConnection...");
+        await this.tcpScannerService.initTcpConnection();
         logger.info(
-          `🔍 After initSerialPort - comPortService: ${this.comPortService ? "exists" : "null"}`
+          `🔍 After initTcpConnection - tcpScannerService: ${this.tcpScannerService ? "exists" : "null"}`
         );
-        logger.success("COM port scanner connected successfully on COM3");
-      } catch (comError) {
-        logger.error(`🔍 COM port initialization failed: ${comError.message}`);
-        // Set comPortService to null on error to make debugging easier
-        this.comPortService = null;
+        logger.success(
+          `TCP scanner connected successfully to ${TCP_SCANNER_CONFIG.host}:${TCP_SCANNER_CONFIG.port}`
+        );
+      } catch (tcpError) {
+        logger.error(
+          `🔍 TCP scanner initialization failed: ${tcpError.message}`
+        );
+        // Set tcpScannerService to null on error to make debugging easier
+        this.tcpScannerService = null;
 
-        if (comError.message.includes("Access denied")) {
+        if (tcpError.message.includes("ECONNREFUSED")) {
           logger.error(
-            "❌ COM3 Access Denied Error - Troubleshooting suggestions:"
+            "❌ TCP Connection Refused - Troubleshooting suggestions:"
           );
-          logger.error("   1. Run the application as Administrator");
-          logger.error(
-            "   2. Close any applications using COM3 (Arduino IDE, PuTTY, etc.)"
-          );
-          logger.error("   3. Check if another Node.js instance is running");
-          logger.error("   4. Try unplugging and reconnecting the USB device");
-          logger.error("   5. Check Device Manager for driver issues");
-
-          // List available COM ports for user reference
-          logger.info("💡 Available COM ports on this system:");
-          logger.info("   - COM1: Communications Port");
-          logger.info(
-            "   - COM3: Prolific PL2303GT USB Serial (currently inaccessible)"
-          );
-        } else if (
-          comError.message.includes("File not found") ||
-          comError.message.includes("cannot open")
-        ) {
-          logger.error("❌ COM3 Not Found - Device may be disconnected");
-          logger.error("   1. Check if USB-to-Serial device is connected");
-          logger.error("   2. Verify the device shows up in Device Manager");
-          logger.error("   3. Try a different USB port");
+          logger.error("   1. Check if scanner device is powered on");
+          logger.error("   2. Verify the IP address and port configuration");
+          logger.error("   3. Check network connectivity to the scanner");
+          logger.error("   4. Ensure firewall is not blocking the connection");
+          logger.error("   5. Check if scanner is configured for TCP mode");
+        } else if (tcpError.message.includes("ENETUNREACH")) {
+          logger.error("❌ Network unreachable - Check network configuration");
+          logger.error("   1. Verify scanner IP address is correct");
+          logger.error("   2. Check if scanner is on the same network");
+          logger.error("   3. Test network connectivity with ping");
+        } else if (tcpError.message.includes("Connection timeout")) {
+          logger.error("❌ Connection timeout - Scanner may be unresponsive");
+          logger.error("   1. Check if scanner device is responsive");
+          logger.error("   2. Verify network latency to scanner");
+          logger.error("   3. Try increasing timeout value");
         }
-        throw new Error(`COM Port Error: ${comError.message}`);
+        throw new Error(`TCP Scanner Error: ${tcpError.message}`);
       }
 
       // Initialize barcode generator
@@ -226,9 +223,9 @@ class ScannerController {
         this.resetMonitor.terminate();
       }
 
-      if (this.comPortService) {
-        logger.info("🔌 Closing COM port...");
-        await this.comPortService.closePort();
+      if (this.tcpScannerService) {
+        logger.info("🔌 Closing TCP scanner connection...");
+        await this.tcpScannerService.closeConnection();
       }
 
       logger.info("📦 Disconnecting from MongoDB...");
@@ -540,7 +537,7 @@ class ScannerController {
     return false;
   }
 
-  async runContinuousScan(io = null, comService, { partNumber }) {
+  async runContinuousScan(io = null, tcpScannerService, { partNumber }) {
     this.io = io;
     this.currentPartNumber = partNumber;
     this.isRunning = true;
@@ -743,7 +740,7 @@ class ScannerController {
     });
   }
 
-  async fetchScannerData(comService, options = {}) {
+  async fetchScannerData(tcpScannerService, options = {}) {
     const {
       scanType = options.scanType || "first",
       timeout = 30 * 1000, // Reduced timeout for faster debugging
@@ -770,12 +767,12 @@ class ScannerController {
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
           resolve(data);
-          this.comPortService.off("dataGot", dataHandler);
+          this.tcpScannerService.off("dataGot", dataHandler);
         };
 
         // Set up event listener
         logger.info("👂 Adding event listener for scanner data");
-        this.comPortService.on("dataGot", dataHandler);
+        this.tcpScannerService.on("dataGot", dataHandler);
 
         // Configure timeout with better debugging
         const timeoutId = setTimeout(() => {
@@ -783,17 +780,13 @@ class ScannerController {
             `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
           );
           logger.error("🔍 Troubleshooting suggestions:");
-          logger.error(
-            "   1. Check if scanner is physically connected to COM3"
-          );
-          logger.error("   2. Verify scanner is powered on");
+          logger.error("   1. Check if scanner is connected to the network");
+          logger.error("   2. Verify scanner is powered on and responsive");
           logger.error("   3. Check if barcode is present for scanner to read");
-          logger.error(
-            "   4. Verify scanner is configured for correct baud rate (9600)"
-          );
-          logger.error("   5. Test scanner with a simple terminal program");
+          logger.error("   4. Verify scanner TCP configuration and IP address");
+          logger.error("   5. Test scanner with network tools (ping, telnet)");
 
-          this.comPortService.off("dataGot", dataHandler);
+          this.tcpScannerService.off("dataGot", dataHandler);
 
           // Return "NG" on timeout and ensure proper bit handling
           logger.warn(
@@ -813,7 +806,7 @@ class ScannerController {
           .then(() => {
             logger.success(`${scannerLabel} scanner triggered successfully`);
             logger.info(
-              `⏳ Waiting for scanner data on COM3... (timeout: ${timeout / 1000}s)`
+              `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
             );
           })
           .catch((err) => {
