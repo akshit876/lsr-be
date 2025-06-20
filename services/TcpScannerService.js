@@ -9,10 +9,12 @@ class TcpScannerService extends EventEmitter {
   constructor(options = {}) {
     super(); // Initialize EventEmitter
     this.options = {
-      host: options.host || process.env.SCANNER_HOST || "192.168.1.100",
-      port: parseInt(options.port || process.env.SCANNER_PORT, 10) || 8080,
+      host: options.host || process.env.SCANNER_HOST || "192.168.3.145",
+      port: parseInt(options.port || process.env.SCANNER_PORT, 10) || 502,
       timeout: options.timeout || 5000,
       reconnectInterval: options.reconnectInterval || 3000,
+      keepAlive: options.keepAlive !== false, // Enable keep-alive by default
+      keepAliveInitialDelay: options.keepAliveInitialDelay || 1000,
       logDir: options.logDir || "scanner_logs",
     };
     this.client = null;
@@ -64,7 +66,18 @@ class TcpScannerService extends EventEmitter {
       );
 
       this.client = new net.Socket();
+
+      // Don't set a timeout on the socket itself - let it stay open
+      // The timeout is only for the initial connection
       this.client.setTimeout(this.options.timeout);
+
+      // Enable keep-alive to prevent idle connection timeouts
+      if (this.options.keepAlive) {
+        this.client.setKeepAlive(true, this.options.keepAliveInitialDelay);
+        this.log(
+          `Keep-alive enabled with initial delay: ${this.options.keepAliveInitialDelay}ms`
+        );
+      }
 
       // Set up event listeners before connecting
       this.setupListeners();
@@ -73,6 +86,9 @@ class TcpScannerService extends EventEmitter {
         this.log("TCP scanner connected successfully");
         this.isConnected = true;
         this.isInitialized = true;
+
+        // Clear the connection timeout once connected
+        this.client.setTimeout(0);
 
         // Clear any existing reconnect timer
         if (this.reconnectTimer) {
@@ -152,7 +168,10 @@ class TcpScannerService extends EventEmitter {
     });
 
     this.client.on("timeout", () => {
-      this.log("TCP scanner connection timeout", "warn");
+      this.log(
+        "TCP scanner connection timeout during initial connection",
+        "warn"
+      );
       this.client.destroy();
     });
 

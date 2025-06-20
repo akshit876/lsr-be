@@ -5,10 +5,12 @@ async function testTcpScanner() {
   logger.info("🧪 Starting TCP Scanner Service Test");
 
   const tcpScannerService = new TcpScannerService({
-    host: process.env.SCANNER_HOST || "192.168.1.100",
-    port: parseInt(process.env.SCANNER_PORT, 10) || 8080,
+    host: process.env.SCANNER_HOST || "192.168.3.145",
+    port: parseInt(process.env.SCANNER_PORT, 10) || 502,
     timeout: 5000,
     reconnectInterval: 3000,
+    keepAlive: true,
+    keepAliveInitialDelay: 1000,
     logDir: "scanner_logs",
   });
 
