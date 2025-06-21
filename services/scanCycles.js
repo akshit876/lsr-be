@@ -819,21 +819,26 @@ class ScannerController {
         logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
         logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
 
-        writeBit(register, bit, 1)
-          .then(() => {
-            logger.success(`${scannerLabel} scanner triggered successfully`);
-            logger.info(
-              `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
-            );
-          })
-          .catch((err) => {
-            logger.error(
-              `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-              err
-            );
-            clearTimeout(timeoutId);
-            reject(err);
-          });
+        // Add 200ms delay before triggering scanner ON
+        setTimeout(() => {
+          logger.info(`⏳ 200ms delay completed, now triggering scanner...`);
+
+          writeBit(register, bit, 1)
+            .then(() => {
+              logger.success(`${scannerLabel} scanner triggered successfully`);
+              logger.info(
+                `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
+              );
+            })
+            .catch((err) => {
+              logger.error(
+                `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
+                err
+              );
+              clearTimeout(timeoutId);
+              reject(err);
+            });
+        }, 200);
       });
 
       logger.success(
