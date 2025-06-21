@@ -140,7 +140,12 @@ class SerialNumberGeneratorService {
       }
 
       // Check if a reset is needed when initializing
-      await this.checkAndResetSerialNumber();
+      // SKIP reset check during initialization to prevent unwanted resets on server restart
+      // Reset will be checked on first actual serial number generation instead
+      logger.info(
+        "⏭️ Skipping reset check during initialization - will check on first serial generation"
+      );
+      // await this.checkAndResetSerialNumber();
 
       this.isInitialized = true;
       logger.info(
@@ -323,30 +328,60 @@ class SerialNumberGeneratorService {
     // Get current model to show in logs
     const currentModel = await this.getCurrentModelNumber();
 
-    // CRITICAL: Always get model-specific reset date from database, never use cached global value
-    // This ensures each model tracks its reset independently
-    let modelSpecificLastResetDate = null;
+    // NEW APPROACH: Check if any records exist for today's date
+    // If records exist for today, it means reset has already happened
+    let hasRecordsForToday = false;
 
     try {
-      // Connect to model-wise serial tracking collection
-      await MongoDBService.connect("main-data", "modelSerialConfig");
+      // Connect to records collection to check for today's records
+      await MongoDBService.connect(
+        this.originalDbName,
+        this.originalCollectionName
+      );
 
-      const modelConfig = await MongoDBService.collection.findOne({
-        modelNumber: currentModel || "default",
-      });
+      // Get today's date range (start of day to end of day)
+      const todayStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0,
+        0,
+        0,
+        0
+      );
+      const todayEnd = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+        999
+      );
 
-      if (modelConfig && modelConfig.lastReset) {
-        modelSpecificLastResetDate = new Date(modelConfig.lastReset);
-        logger.info(
-          `📅 Model ${currentModel} last reset: ${format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss")}`
-        );
-      } else {
-        logger.info(`📅 Model ${currentModel} has never been reset`);
-        modelSpecificLastResetDate = null;
+      // Build query filter for current model and today's date
+      const query = {
+        Timestamp: {
+          $gte: todayStart,
+          $lte: todayEnd,
+        },
+      };
+
+      // Add model filter if we have a current model
+      if (currentModel) {
+        query.ModelNumber = currentModel;
       }
+
+      const todayRecordsCount =
+        await MongoDBService.collection.countDocuments(query);
+      hasRecordsForToday = todayRecordsCount > 0;
+
+      logger.info(
+        `📊 Today's records check (${currentModel || "any model"}): ${todayRecordsCount} records found for ${format(todayStart, "yyyy-MM-dd")}`
+      );
     } catch (error) {
-      logger.error("❌ Error fetching model-specific reset date:", error);
-      modelSpecificLastResetDate = this.lastResetDate; // Fallback to global if DB fetch fails
+      logger.error("❌ Error checking today's records:", error);
+      hasRecordsForToday = false; // Assume no records on error
     }
 
     // Set resetTime to 12:00 AM today (midnight)
@@ -361,44 +396,23 @@ class SerialNumberGeneratorService {
     const debugInfo = {
       currentTime: format(now, "yyyy-MM-dd HH:mm:ss"),
       resetTimeToday: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
-      modelSpecificLastResetDate: modelSpecificLastResetDate
-        ? format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss")
-        : "Never",
+      hasRecordsForToday: hasRecordsForToday,
       currentModel: currentModel || "Unknown",
       currentSerialNumber: this.currentSerialNumber,
       isAfterResetTimeToday: isAfter(now, resetTime),
-      wasModelLastResetBeforeResetTimeToday: modelSpecificLastResetDate
-        ? isBefore(modelSpecificLastResetDate, resetTime)
-        : true,
     };
 
     logger.info(
       `🕐 RESET CHECK (${currentModel || "Unknown"}): ${JSON.stringify(debugInfo, null, 2)}`
     );
 
-    // RESET LOGIC: "First run after 12:00 AM each day FOR EACH MODEL INDEPENDENTLY"
-    // Reset behavior applies to ALL models (CMB-877, CMB-778, etc.) but each model tracks its own reset
-    // Reset should happen if:
-    // 1. Current time is after 12:00 AM today (machine is running after reset time)
-    // 2. THIS MODEL'S last reset was before 12:00 AM today (this model hasn't reset today yet)
-    //
-    // IMPORTANT: Each model resets independently!
-    // - CMB-877 can reset at 1:00 AM → doesn't affect CMB-778
-    // - CMB-778 can still reset at 2:00 AM on the same day → independent of CMB-877's reset
-    //
-    // Each model will reset to its specific starting serial:
-    // - CMB-877 → resets to 7001 (S7001)
-    // - CMB-778 → resets to 1 (S0001)
-    // - Other models → reset to 1 (S0001)
-    //
-    // This ensures reset happens exactly once per day per model on the first machine operation after 12:00 AM
-    const isFirstRunAfter12AMForThisModel =
-      isAfter(now, resetTime) &&
-      (!modelSpecificLastResetDate ||
-        isBefore(modelSpecificLastResetDate, resetTime));
+    // NEW RESET LOGIC: Reset only if:
+    // 1. Current time is after 12:00 AM today (midnight)
+    // 2. NO records exist for today (meaning reset hasn't happened yet)
+    const shouldReset = isAfter(now, resetTime) && !hasRecordsForToday;
 
-    if (isFirstRunAfter12AMForThisModel) {
-      // This is the first machine operation after 12:00 AM today FOR THIS SPECIFIC MODEL - time to reset!
+    if (shouldReset) {
+      // This is the first run after midnight with no records for today - time to reset!
       const modelStartingSerial = await this.getModelStartingSerial();
       const oldSerial = this.currentSerialNumber;
 
@@ -410,7 +424,7 @@ class SerialNumberGeneratorService {
         `🔄 FIRST RUN AFTER 12:00 AM RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(3, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
       );
       logger.info(
-        `📅 Reset trigger: This is the first machine operation after ${format(resetTime, "HH:mm:ss")} today for model ${currentModel}. Previous reset for this model: ${modelSpecificLastResetDate ? format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss") : "Never"}`
+        `📅 Reset trigger: Current time ${format(now, "HH:mm:ss")} is after ${format(resetTime, "HH:mm:ss")} and no records found for today ${format(todayStart, "yyyy-MM-dd")}`
       );
       logger.info(
         `🔑 IMPORTANT: This reset is model-specific. Other models can still reset independently today.`
@@ -427,10 +441,10 @@ class SerialNumberGeneratorService {
         );
       } else {
         logger.info(
-          `✅ NO RESET (${currentModel}): Model ${currentModel} already reset today after ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
+          `✅ NO RESET (${currentModel}): Records already exist for today ${format(todayStart, "yyyy-MM-dd")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
         );
         logger.info(
-          `🔑 NOTE: Other models can still reset independently if they haven't reset today yet.`
+          `🔑 NOTE: Reset already happened today or system has been running.`
         );
       }
       return false;
@@ -445,30 +459,28 @@ class SerialNumberGeneratorService {
       if (modelNumber) {
         // Model-specific starting serial configurations for ALL models
         if (modelNumber === "CMB-877") {
-          logger.info(
-            `✅ Model ${modelNumber} → starting serial: 7001 (S7001)`
-          );
-          return 7001;
+          logger.info(`✅ Model ${modelNumber} → starting serial: 701 (S701)`);
+          return 701; // Changed from 7001 to 701 (3 digits max)
         } else if (modelNumber === "CMB-778") {
           // CMB-778 starts from 1
-          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S0001)`);
+          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S001)`);
           return 1;
         } else {
           // All other models start from 1
           logger.info(
-            `✅ Model ${modelNumber} → starting serial: 1 (S0001) [default for this model]`
+            `✅ Model ${modelNumber} → starting serial: 1 (S001) [default for this model]`
           );
           return 1;
         }
       } else {
         logger.warn(
-          "⚠️ No model number found, using default starting serial: 1 (S0001)"
+          "⚠️ No model number found, using default starting serial: 1 (S001)"
         );
         return this.modelStartingSerials["default"];
       }
     } catch (error) {
       logger.error("❌ Error fetching model starting serial:", error);
-      logger.warn("⚠️ Defaulting to serial number 1 (S0001) due to error");
+      logger.warn("⚠️ Defaulting to serial number 1 (S001) due to error");
       return this.modelStartingSerials["default"];
     }
   }
