@@ -332,31 +332,31 @@ class SerialNumberGeneratorService {
     // If records exist for today, it means reset has already happened
     let hasRecordsForToday = false;
 
+    // Get today's date range (start of day to end of day) - moved outside try block
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+    const todayEnd = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999
+    );
+
     try {
       // Connect to records collection to check for today's records
       await MongoDBService.connect(
         this.originalDbName,
         this.originalCollectionName
-      );
-
-      // Get today's date range (start of day to end of day)
-      const todayStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        0,
-        0,
-        0,
-        0
-      );
-      const todayEnd = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        23,
-        59,
-        59,
-        999
       );
 
       // Build query filter for current model and today's date
