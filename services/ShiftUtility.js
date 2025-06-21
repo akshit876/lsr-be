@@ -42,9 +42,9 @@ class ShiftUtility {
   constructor(shiftConfig = null) {
     // Initialize shiftConfig from MongoDB
     this.shiftConfig = shiftConfig || {
-      A: { start: "06:00", end: "14:30" },
-      B: { start: "14:30", end: "23:00" },
-      C: { start: "23:00", end: "06:00" },
+      A: { start: "00:00", end: "08:30" },
+      B: { start: "08:30", end: "17:00" },
+      C: { start: "17:00", end: "00:00" },
     };
   }
 
