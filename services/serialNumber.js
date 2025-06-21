@@ -6,12 +6,12 @@ class SerialNumberGeneratorService {
   constructor() {
     this.currentSerialNumber = 1;
     this.lastResetDate = new Date();
-    this.resetHour = 6;
+    this.resetHour = 0;
     this.resetMinute = 0;
     this.isInitialized = false;
     this.currentModelNumber = null; // Track current model for separate sequences
     this.modelStartingSerials = {
-      "CMB-877": 7001,
+      "CMB-877": 701,
       default: 1,
     };
   }
@@ -64,9 +64,9 @@ class SerialNumberGeneratorService {
 
   // ... rest of the methods remain the same
   extractSerialNumberFromOCR(ocrData) {
-    // Assuming the serial number is a 4-digit number in the OCR data
+    // Assuming the serial number is a 3-digit number in the OCR data
     // Modify this regex if the format is different
-    const match = ocrData.match(/\d{4}/);
+    const match = ocrData.match(/\d{3}/);
     return match ? parseInt(match[0], 10) + 1 : 1; // Start from next number, or 1 if not found
   }
 
@@ -286,8 +286,17 @@ class SerialNumberGeneratorService {
       }
     }
 
-    // Format the serial number
-    const serialNumber = serialToUse.toString().padStart(4, "0");
+    // VALIDATION: Ensure serial number doesn't exceed 999 (3-digit max)
+    if (serialToUse > 999) {
+      logger.warn(
+        `⚠️ Serial number ${serialToUse} exceeds 999, rolling over to 1`
+      );
+      serialToUse = 1;
+      this.currentSerialNumber = 1;
+    }
+
+    // Format the serial number - MAX 3 DIGITS (001-999)
+    const serialNumber = serialToUse.toString().padStart(3, "0");
 
     // Save the USED serial number to modelSerialConfig
     await this.saveUsedSerialNumber(serialToUse);
@@ -340,7 +349,7 @@ class SerialNumberGeneratorService {
       modelSpecificLastResetDate = this.lastResetDate; // Fallback to global if DB fetch fails
     }
 
-    // Set resetTime to 6:00 AM today
+    // Set resetTime to 12:00 AM today (midnight)
     const resetTime = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -367,29 +376,29 @@ class SerialNumberGeneratorService {
       `🕐 RESET CHECK (${currentModel || "Unknown"}): ${JSON.stringify(debugInfo, null, 2)}`
     );
 
-    // RESET LOGIC: "First run after 6:00 AM each day FOR EACH MODEL INDEPENDENTLY"
+    // RESET LOGIC: "First run after 12:00 AM each day FOR EACH MODEL INDEPENDENTLY"
     // Reset behavior applies to ALL models (CMB-877, CMB-778, etc.) but each model tracks its own reset
     // Reset should happen if:
-    // 1. Current time is after 6:00 AM today (machine is running after reset time)
-    // 2. THIS MODEL'S last reset was before 6:00 AM today (this model hasn't reset today yet)
+    // 1. Current time is after 12:00 AM today (machine is running after reset time)
+    // 2. THIS MODEL'S last reset was before 12:00 AM today (this model hasn't reset today yet)
     //
     // IMPORTANT: Each model resets independently!
-    // - CMB-877 can reset at 7:00 AM → doesn't affect CMB-778
-    // - CMB-778 can still reset at 8:00 AM on the same day → independent of CMB-877's reset
+    // - CMB-877 can reset at 1:00 AM → doesn't affect CMB-778
+    // - CMB-778 can still reset at 2:00 AM on the same day → independent of CMB-877's reset
     //
     // Each model will reset to its specific starting serial:
     // - CMB-877 → resets to 7001 (S7001)
     // - CMB-778 → resets to 1 (S0001)
     // - Other models → reset to 1 (S0001)
     //
-    // This ensures reset happens exactly once per day per model on the first machine operation after 6:00 AM
-    const isFirstRunAfter6AMForThisModel =
+    // This ensures reset happens exactly once per day per model on the first machine operation after 12:00 AM
+    const isFirstRunAfter12AMForThisModel =
       isAfter(now, resetTime) &&
       (!modelSpecificLastResetDate ||
         isBefore(modelSpecificLastResetDate, resetTime));
 
-    if (isFirstRunAfter6AMForThisModel) {
-      // This is the first machine operation after 6:00 AM today FOR THIS SPECIFIC MODEL - time to reset!
+    if (isFirstRunAfter12AMForThisModel) {
+      // This is the first machine operation after 12:00 AM today FOR THIS SPECIFIC MODEL - time to reset!
       const modelStartingSerial = await this.getModelStartingSerial();
       const oldSerial = this.currentSerialNumber;
 
@@ -398,7 +407,7 @@ class SerialNumberGeneratorService {
       this.lastResetDate = now;
 
       logger.info(
-        `🔄 FIRST RUN AFTER 6:00 AM RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+        `🔄 FIRST RUN AFTER 12:00 AM RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(3, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
       );
       logger.info(
         `📅 Reset trigger: This is the first machine operation after ${format(resetTime, "HH:mm:ss")} today for model ${currentModel}. Previous reset for this model: ${modelSpecificLastResetDate ? format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss") : "Never"}`
@@ -414,11 +423,11 @@ class SerialNumberGeneratorService {
     } else {
       if (isBefore(now, resetTime)) {
         logger.info(
-          `✅ NO RESET (${currentModel}): Current time ${format(now, "HH:mm:ss")} is before reset time ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+          `✅ NO RESET (${currentModel}): Current time ${format(now, "HH:mm:ss")} is before reset time ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
         );
       } else {
         logger.info(
-          `✅ NO RESET (${currentModel}): Model ${currentModel} already reset today after ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+          `✅ NO RESET (${currentModel}): Model ${currentModel} already reset today after ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
         );
         logger.info(
           `🔑 NOTE: Other models can still reset independently if they haven't reset today yet.`
@@ -479,7 +488,7 @@ class SerialNumberGeneratorService {
 
         // Only apply if reset is enabled (daily interval)
         if (serialConfig.resetInterval === "daily") {
-          this.resetHour = hour || 6;
+          this.resetHour = hour || 0;
           this.resetMinute = minute || 0;
           logger.info(
             `Reset time updated from serialNoconfig: ${this.resetHour}:${this.resetMinute}`
@@ -488,7 +497,7 @@ class SerialNumberGeneratorService {
           logger.info(
             `Reset interval is '${serialConfig.resetInterval}', using default reset time`
           );
-          this.resetHour = 6;
+          this.resetHour = 0;
           this.resetMinute = 0;
         }
 
@@ -499,15 +508,15 @@ class SerialNumberGeneratorService {
         }
       } else {
         logger.warn(
-          "No serial number reset configuration found, using defaults (6:00)"
+          "No serial number reset configuration found, using defaults (0:00)"
         );
-        this.resetHour = 6;
+        this.resetHour = 0;
         this.resetMinute = 0;
       }
     } catch (error) {
       logger.error("Error fetching serial number reset configuration:", error);
-      logger.warn("Using default reset time (6:00) due to error");
-      this.resetHour = 6;
+      logger.warn("Using default reset time (0:00) due to error");
+      this.resetHour = 0;
       this.resetMinute = 0;
     }
   }
