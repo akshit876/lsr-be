@@ -1072,8 +1072,6 @@ class ScannerController {
     }
 
     // If we get here and have valid scanner data, it means the part is already marked
-    // COMMENTED OUT FOR TESTING - Part already marked logic
-    /*
     if (scannerData && scannerData.trim() !== "") {
       logger.warn("⚠️ Part appears to be already marked");
 
@@ -1090,13 +1088,8 @@ class ScannerController {
       logger.info("✍️ Writing bit 1414.6 to signal OK scan");
       await writeBit(1414, 6, 1);
     }
-    */
 
-    // FOR TESTING: Always continue with workflow regardless of scanner data
-    logger.info(
-      "🧪 TESTING MODE: Continuing with workflow regardless of first scan result"
-    );
-    return { shouldContinue: true };
+    return { shouldContinue: false };
   }
 
   async initializeScannerAndMonitor(io, tcpScannerService) {
