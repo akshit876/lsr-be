@@ -324,15 +324,9 @@ class SerialNumberGeneratorService {
 
   async checkAndResetSerialNumber() {
     const now = new Date();
-
-    // Get current model to show in logs
     const currentModel = await this.getCurrentModelNumber();
 
-    // NEW APPROACH: Check if any records exist for today's date
-    // If records exist for today, it means reset has already happened
-    let hasRecordsForToday = false;
-
-    // Get today's date range (start of day to end of day) - moved outside try block
+    // Get today's start
     const todayStart = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -342,111 +336,50 @@ class SerialNumberGeneratorService {
       0,
       0
     );
-    const todayEnd = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      23,
-      59,
-      59,
-      999
-    );
 
+    let shouldReset = false;
     try {
-      // Connect to records collection to check for today's records
+      // Connect to records collection
       await MongoDBService.connect(
         this.originalDbName,
         this.originalCollectionName
       );
-
-      // Build query filter for current model and today's date
-      const query = {
-        Timestamp: {
-          $gte: todayStart,
-          $lte: todayEnd,
-        },
-      };
-
-      // Add model filter if we have a current model
-      if (currentModel) {
-        query.ModelNumber = currentModel;
+      // Find the last record for the current model
+      const lastRecord = await MongoDBService.collection
+        .find(currentModel ? { ModelNumber: currentModel } : {})
+        .sort({ Timestamp: -1 })
+        .limit(1)
+        .toArray();
+      let lastRecordDate = null;
+      if (lastRecord.length && lastRecord[0].Timestamp) {
+        lastRecordDate = new Date(lastRecord[0].Timestamp);
       }
-
-      const todayRecordsCount =
-        await MongoDBService.collection.countDocuments(query);
-      hasRecordsForToday = todayRecordsCount > 0;
-
+      if (!lastRecordDate || lastRecordDate < todayStart) {
+        shouldReset = true;
+      }
       logger.info(
-        `📊 Today's records check (${currentModel || "any model"}): ${todayRecordsCount} records found for ${format(todayStart, "yyyy-MM-dd")}`
+        `🕐 Serial reset check: lastRecordDate=${lastRecordDate}, todayStart=${todayStart}, shouldReset=${shouldReset}`
       );
     } catch (error) {
-      logger.error("❌ Error checking today's records:", error);
-      hasRecordsForToday = false; // Assume no records on error
+      logger.error("❌ Error checking last record for serial reset:", error);
+      // On error, do not reset
+      shouldReset = false;
     }
 
-    // Set resetTime to 12:00 AM today (midnight)
-    const resetTime = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      this.resetHour,
-      this.resetMinute
-    );
-
-    const debugInfo = {
-      currentTime: format(now, "yyyy-MM-dd HH:mm:ss"),
-      resetTimeToday: format(resetTime, "yyyy-MM-dd HH:mm:ss"),
-      hasRecordsForToday: hasRecordsForToday,
-      currentModel: currentModel || "Unknown",
-      currentSerialNumber: this.currentSerialNumber,
-      isAfterResetTimeToday: isAfter(now, resetTime),
-    };
-
-    logger.info(
-      `🕐 RESET CHECK (${currentModel || "Unknown"}): ${JSON.stringify(debugInfo, null, 2)}`
-    );
-
-    // NEW RESET LOGIC: Reset only if:
-    // 1. Current time is after 12:00 AM today (midnight)
-    // 2. NO records exist for today (meaning reset hasn't happened yet)
-    const shouldReset = isAfter(now, resetTime) && !hasRecordsForToday;
-
     if (shouldReset) {
-      // This is the first run after midnight with no records for today - time to reset!
       const modelStartingSerial = await this.getModelStartingSerial();
       const oldSerial = this.currentSerialNumber;
-
       this.currentSerialNumber = modelStartingSerial;
-      // Update the global lastResetDate for this service instance
       this.lastResetDate = now;
-
       logger.info(
-        `🔄 FIRST RUN AFTER 12:00 AM RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(3, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+        `🔄 SERIAL RESET: Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(3, "0")}) at ${now.toISOString()}`
       );
-      logger.info(
-        `📅 Reset trigger: Current time ${format(now, "HH:mm:ss")} is after ${format(resetTime, "HH:mm:ss")} and no records found for today ${format(todayStart, "yyyy-MM-dd")}`
-      );
-      logger.info(
-        `🔑 IMPORTANT: This reset is model-specific. Other models can still reset independently today.`
-      );
-
-      // Update the database with the reset information (model-specific)
       await this.updateSerialConfigOnReset();
-
       return true;
     } else {
-      if (isBefore(now, resetTime)) {
-        logger.info(
-          `✅ NO RESET (${currentModel}): Current time ${format(now, "HH:mm:ss")} is before reset time ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
-        );
-      } else {
-        logger.info(
-          `✅ NO RESET (${currentModel}): Records already exist for today ${format(todayStart, "yyyy-MM-dd")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
-        );
-        logger.info(
-          `🔑 NOTE: Reset already happened today or system has been running.`
-        );
-      }
+      logger.info(
+        `✅ NO SERIAL RESET: Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
+      );
       return false;
     }
   }
