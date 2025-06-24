@@ -32,6 +32,17 @@ const TCP_SCANNER_CONFIG = {
   logDir: "scanner_logs",
 };
 
+// Middle Scanner configuration
+const MIDDLE_SCANNER_CONFIG = {
+  host: process.env.MIDDLE_SCANNER_HOST || "192.168.3.144", // Middle scanner IP
+  port: parseInt(process.env.MIDDLE_SCANNER_PORT, 10) || 502, // Middle scanner port
+  timeout: 5000,
+  reconnectInterval: 3000,
+  keepAlive: true,
+  keepAliveInitialDelay: 1000,
+  logDir: "scanner_logs",
+};
+
 class ScannerController {
   static instance = null;
 
@@ -47,6 +58,7 @@ class ScannerController {
     this.resetMonitor = null;
     this.resetListeners = new Set();
     this.tcpScannerService = null;
+    this.middleScannerService = null;
     this.isInitialized = false;
     this.shiftUtility = new ShiftUtility();
     this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
@@ -56,6 +68,10 @@ class ScannerController {
     this.isPulseOn = false;
     this.currentDayId = 1;
     this.lastResetDate = this.getLastResetTime();
+
+    // NEW: Add duplicate check cache
+    this.duplicateCheckCache = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache timeout
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
@@ -113,7 +129,7 @@ class ScannerController {
           logger.error("   4. Ensure no firewall is blocking the connection");
           logger.error("   5. Try pinging the scanner IP address");
           logger.error(
-            `   6. Verify scanner is listening on port ${TCP_SCANNER_CONFIG.port}`
+            "   6. Verify scanner is listening on port ${TCP_SCANNER_CONFIG.port}"
           );
         } else if (tcpError.message.includes("EHOSTUNREACH")) {
           logger.error("❌ TCP Scanner Host Unreachable");
@@ -135,12 +151,50 @@ class ScannerController {
         throw new Error(`TCP Scanner Error: ${tcpError.message}`);
       }
 
+      // Initialize Middle scanner connection
+      logger.info("🔌 Setting up Middle scanner connection...");
+      try {
+        logger.info("🔍 Creating Middle TcpScannerService instance...");
+        this.middleScannerService = new TcpScannerService(
+          MIDDLE_SCANNER_CONFIG
+        );
+        logger.info(
+          `🔍 middleScannerService created: ${this.middleScannerService ? "exists" : "null"}`
+        );
+
+        logger.info("🔍 Calling initTcpConnection for middle scanner...");
+        await this.middleScannerService.initTcpConnection();
+        logger.info(
+          `🔍 After initTcpConnection - middleScannerService: ${this.middleScannerService ? "exists" : "null"}`
+        );
+        logger.success(
+          `Middle scanner connected successfully at ${MIDDLE_SCANNER_CONFIG.host}:${MIDDLE_SCANNER_CONFIG.port}`
+        );
+      } catch (middleTcpError) {
+        logger.error(
+          `🔍 Middle scanner initialization failed: ${middleTcpError.message}`
+        );
+        // Set middleScannerService to null on error to make debugging easier
+        this.middleScannerService = null;
+
+        logger.info(`💡 Current Middle Scanner Configuration:`);
+        logger.info(`   - Host: ${MIDDLE_SCANNER_CONFIG.host}`);
+        logger.info(`   - Port: ${MIDDLE_SCANNER_CONFIG.port}`);
+        logger.info(`   - Timeout: ${MIDDLE_SCANNER_CONFIG.timeout}ms`);
+
+        throw new Error(`Middle Scanner Error: ${middleTcpError.message}`);
+      }
+
       // Initialize barcode generator
       logger.info("🏷️ Setting up barcode generator...");
       this.shiftUtility = new ShiftUtility();
       this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
       await this.barcodeGenerator.initialize("main-data", "records");
       logger.success("Barcode generator initialized");
+
+      // Create database indexes for better performance
+      logger.info("🔧 Setting up database indexes...");
+      await this.createDatabaseIndexes();
 
       this.isInitialized = true;
       logger.success("Scanner controller initialization complete");
@@ -239,6 +293,11 @@ class ScannerController {
       if (this.tcpScannerService) {
         logger.info("🔌 Closing TCP scanner connection...");
         await this.tcpScannerService.closeConnection();
+      }
+
+      if (this.middleScannerService) {
+        logger.info("🔌 Closing Middle scanner connection...");
+        await this.middleScannerService.closeConnection();
       }
 
       logger.info("📦 Disconnecting from MongoDB...");
@@ -576,7 +635,7 @@ class ScannerController {
           const resetMonitoring = this.startResetMonitoring();
 
           await Promise.race([
-            this.executeScanCycle(this.tcpScannerService, partNumber),
+            this.executeScanCycle(this.tcpScannerService),
             resetMonitoring,
           ]);
 
@@ -602,7 +661,7 @@ class ScannerController {
   }
 
   // New method to encapsulate the main scan cycle logic
-  async executeScanCycle(tcpScannerService, partNumber) {
+  async executeScanCycle(tcpScannerService) {
     // First check for 1410.0 (start signal)
     logger.info("Waiting for start signal (1410.0)...");
     const resetResult = await this.checkResetOrBit(1410, 0, 1);
@@ -618,11 +677,21 @@ class ScannerController {
       return;
     }
 
-    // Step 2: Generate and Write Barcode (simplified, no OCR)
-    const barcodeData = await this.generateAndWriteBarcode(partNumber);
-    if (!barcodeData) {
+    // Step 2: Middle Scanner Check (New workflow)
+    logger.info("🔄 Starting middle scan workflow...");
+    const middleScanResult = await this.handleMiddleScan();
+    if (!middleScanResult.shouldContinue) {
+      if (middleScanResult.isDuplicate) {
+        logger.warn("⚠️ Cycle stopped due to duplicate marking data");
+      } else {
+        logger.info("Cycle stopped after middle scan");
+      }
       return;
     }
+
+    // Use middle scan data as marking data
+    const markingData = middleScanResult.markingData;
+    const serialNumber = markingData || "N/A"; // Use marking data as serial number for now
 
     // Step 3: Signal Transfer and Wait
     logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
@@ -636,8 +705,8 @@ class ScannerController {
       await sleep(1000);
       await this.saveToMongoDB({
         io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
+        serialNumber: serialNumber,
+        markingData: markingData,
         scannerData: "N/A",
         result: "NG",
         grading: "N/A",
@@ -649,7 +718,7 @@ class ScannerController {
     // Step 4: Verification Scanner Check
     const verificationScanResult = await this.handleVerificationScan(
       tcpScannerService,
-      barcodeData
+      { text: markingData, serialNo: serialNumber }
     );
 
     // Step 5: Final Checks and Cleanup
@@ -780,12 +849,12 @@ class ScannerController {
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
           resolve(data);
-          this.tcpScannerService.off("dataGot", dataHandler);
+          tcpScannerService.off("dataGot", dataHandler);
         };
 
         // Set up event listener
         logger.info("👂 Adding event listener for scanner data");
-        this.tcpScannerService.on("dataGot", dataHandler);
+        tcpScannerService.on("dataGot", dataHandler);
 
         // Configure timeout with better debugging
         const timeoutId = setTimeout(() => {
@@ -803,7 +872,7 @@ class ScannerController {
           );
           logger.error("   5. Test scanner with a simple TCP client");
 
-          this.tcpScannerService.off("dataGot", dataHandler);
+          tcpScannerService.off("dataGot", dataHandler);
 
           // Return "NG" on timeout and ensure proper bit handling
           logger.warn(
@@ -872,6 +941,8 @@ class ScannerController {
     switch (scanType) {
       case "first":
         return 1415;
+      case "middle":
+        return 1418;
       case "verification":
         return 1416;
       default:
@@ -882,6 +953,8 @@ class ScannerController {
   getScanBit(scanType) {
     switch (scanType) {
       case "first":
+        return 0;
+      case "middle":
         return 0;
       case "verification":
         return 15;
@@ -894,6 +967,8 @@ class ScannerController {
     switch (scanType) {
       case "first":
         return "First";
+      case "middle":
+        return "Middle";
       case "verification":
         return "Verification";
       default:
@@ -1339,6 +1414,469 @@ class ScannerController {
     } catch (error) {
       logger.error("Error fetching current model number:", error);
       return null;
+    }
+  }
+
+  async fetchMiddleScannerData() {
+    const { timeout = 30 * 1000, scannerLabel = "Middle" } = {};
+
+    logger.section(`${scannerLabel} Scanner Data Acquisition`);
+
+    // Prevent multiple triggers
+    if (this.isScanning) {
+      logger.warn("Scanner already in progress, skipping new trigger");
+      return null;
+    }
+    this.isScanning = true;
+
+    try {
+      logger.info(
+        `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
+      );
+
+      const scannerData = await new Promise((resolve, reject) => {
+        const dataHandler = (data) => {
+          logger.success(
+            `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
+          );
+          resolve(data);
+          this.middleScannerService.off("dataGot", dataHandler);
+        };
+
+        // Set up event listener
+        logger.info("👂 Adding event listener for middle scanner data");
+        this.middleScannerService.on("dataGot", dataHandler);
+
+        // Configure timeout with better debugging
+        const timeoutId = setTimeout(() => {
+          logger.error(
+            `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
+          );
+          logger.error("🔍 Troubleshooting suggestions:");
+          logger.error("   1. Check if middle scanner is powered on");
+          logger.error(
+            "   2. Verify scanner is reachable via network (ping test)"
+          );
+          logger.error("   3. Check if barcode is present for scanner to read");
+          logger.error("   4. Test scanner with a simple TCP client");
+
+          this.middleScannerService.off("dataGot", dataHandler);
+
+          // Return "NG" on timeout and ensure proper bit handling
+          logger.warn(
+            "🔧 Middle scanner timeout - treating as NG to continue workflow"
+          );
+          resolve("NG");
+        }, timeout);
+
+        // Trigger middle scanner
+        const register = this.getScanRegister("middle");
+        const bit = this.getScanBit("middle");
+
+        logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
+        logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
+
+        // Add 200ms delay before triggering scanner ON
+        setTimeout(() => {
+          logger.info(
+            `⏳ 200ms delay completed, now triggering middle scanner...`
+          );
+
+          writeBit(register, bit, 1)
+            .then(() => {
+              logger.success(`${scannerLabel} scanner triggered successfully`);
+              logger.info(
+                `⏳ Waiting for middle scanner data via TCP... (timeout: ${timeout / 1000}s)`
+              );
+            })
+            .catch((err) => {
+              logger.error(
+                `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
+                err
+              );
+              clearTimeout(timeoutId);
+              reject(err);
+            });
+        }, 200);
+      });
+
+      logger.success(
+        `📊 ${scannerLabel} scanner data received: ${scannerData}`
+      );
+
+      // Emit scanner read event to UI
+      if (this.io) {
+        this.io.emit("scanner_read", {
+          timestamp: new Date(),
+          scannerType: scannerLabel,
+          data: scannerData,
+        });
+      }
+
+      return scannerData;
+    } catch (error) {
+      logger.separator.hash();
+      logger.error(
+        `❌ Error acquiring ${scannerLabel.toLowerCase()} scanner data:`,
+        error
+      );
+      throw error;
+    } finally {
+      this.isScanning = false;
+    }
+  }
+
+  async handleMiddleScan() {
+    logger.info("Starting middle scan handler");
+
+    try {
+      const scannerData = await this.fetchMiddleScannerData();
+
+      // Check for reset signal before proceeding
+      if (await this.checkReset()) {
+        logger.warn("⚠️ Reset detected during middle scan, restarting cycle");
+        return { shouldContinue: false, markingData: null };
+      }
+
+      // Handle timeout/null/undefined or explicit "NG" response
+      if (!scannerData || scannerData.trim().toUpperCase() === "NG") {
+        logger.warn(
+          "⚠️ Middle scan data is NG or timeout, proceeding with workflow"
+        );
+        return { shouldContinue: true, markingData: "NG" };
+      }
+
+      // Process the middle scan data - remove @ symbol if present
+      let processedData = scannerData.trim();
+      if (processedData.startsWith("@")) {
+        processedData = processedData.substring(1);
+        logger.info(
+          `🔧 Removed @ symbol from middle scan data: ${processedData}`
+        );
+      }
+
+      logger.success(
+        `✅ Middle scan successful, marking data: ${processedData}`
+      );
+
+      // Check for duplicate marking data in MongoDB
+      const duplicateCheck =
+        await this.checkDuplicateMarkingDataCached(processedData);
+
+      if (duplicateCheck.isDuplicate) {
+        logger.warn("⚠️ Duplicate marking data detected - stopping workflow");
+        logger.info("✍️ Writing bit 1414.6 to signal duplicate detected");
+        await writeBit(1414, 6, 1);
+
+        // Save duplicate detection to MongoDB
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: processedData,
+          markingData: processedData,
+          scannerData: "N/A",
+          result: "NG",
+          grading: "N/A",
+          isUpdate: false,
+        });
+
+        return {
+          shouldContinue: false,
+          markingData: processedData,
+          isDuplicate: true,
+        };
+      }
+
+      // Write the middle scan data to files as marking data
+      logger.info("📁 Writing middle scan data to files...");
+      await Promise.all([
+        this.writeToFile(CODE_FILE_PATH, processedData, "Middle scan data"),
+        this.writeToFile(TEXT_FILE_PATH, processedData, "Middle scan text"),
+      ]);
+      logger.info("✅ Files written successfully");
+
+      // Emit marking data to UI
+      if (this.io) {
+        logger.info("📡 Emitting middle scan marking data to UI...");
+        this.io.emit("marking_data", {
+          timestamp: new Date(),
+          data: processedData,
+        });
+      }
+
+      return {
+        shouldContinue: true,
+        markingData: processedData,
+        isDuplicate: false,
+      };
+    } catch (error) {
+      logger.error("❌ Error in middle scan handler:", error);
+      return { shouldContinue: false, markingData: null };
+    }
+  }
+
+  // NEW: Cached duplicate check for better performance
+  async checkDuplicateMarkingDataCached(markingData) {
+    try {
+      const now = Date.now();
+
+      // Check cache first
+      const cachedResult = this.duplicateCheckCache.get(markingData);
+      if (cachedResult && now - cachedResult.timestamp < this.cacheTimeout) {
+        logger.info("📋 Using cached duplicate check result");
+        return { ...cachedResult.result, cacheHit: true };
+      }
+
+      // Perform actual check
+      const result = await this.checkDuplicateMarkingData(markingData);
+
+      // Cache the result
+      this.duplicateCheckCache.set(markingData, {
+        result: result,
+        timestamp: now,
+      });
+
+      // Clean up old cache entries (keep only last 100 entries)
+      if (this.duplicateCheckCache.size > 100) {
+        const entries = Array.from(this.duplicateCheckCache.entries());
+        entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+        this.duplicateCheckCache.clear();
+        entries.slice(0, 100).forEach(([key, value]) => {
+          this.duplicateCheckCache.set(key, value);
+        });
+      }
+
+      return result;
+    } catch (error) {
+      logger.error("❌ Error in cached duplicate check:", error);
+      return { isDuplicate: false, existingRecord: null };
+    }
+  }
+
+  // NEW: Performance monitoring for duplicate checks
+  async checkDuplicateMarkingDataWithPerformance(markingData) {
+    const startTime = Date.now();
+
+    try {
+      const result = await this.checkDuplicateMarkingDataCached(markingData);
+      const duration = Date.now() - startTime;
+
+      // Log performance metrics
+      if (duration > 1000) {
+        logger.warn(
+          `⚠️ Slow duplicate check: ${duration}ms for marking data: ${markingData}`
+        );
+      } else if (duration > 500) {
+        logger.info(
+          `📊 Moderate duplicate check: ${duration}ms for marking data: ${markingData}`
+        );
+      } else {
+        logger.debug(
+          `📊 Fast duplicate check: ${duration}ms for marking data: ${markingData}`
+        );
+      }
+
+      // Emit performance metrics to UI if available
+      if (this.io) {
+        this.io.emit("duplicate_check_performance", {
+          timestamp: new Date(),
+          markingData: markingData,
+          duration: duration,
+          isDuplicate: result.isDuplicate,
+          cacheHit: result.cacheHit || false,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      logger.error(`❌ Duplicate check failed after ${duration}ms:`, error);
+      throw error;
+    }
+  }
+
+  async checkDuplicateMarkingData(markingData) {
+    try {
+      logger.info("🔍 Checking for duplicate marking data in MongoDB...");
+      logger.info(`📋 Marking data to check: ${markingData}`);
+
+      if (!markingData || markingData === "NG" || markingData === "N/A") {
+        logger.warn("⚠️ Invalid marking data, skipping duplicate check");
+        return { isDuplicate: false, existingRecord: null };
+      }
+
+      // Connect to MongoDB and search for existing records with the same marking data
+      await mongoDbService.connect("main-data", "records");
+
+      // OPTIMIZATION: Use countDocuments instead of findOne for better performance
+      // This avoids loading the full document into memory initially
+      const duplicateCount = await mongoDbService.collection.countDocuments(
+        {
+          MarkingData: markingData,
+        },
+        { limit: 1 }
+      ); // Limit to 1 for faster response
+
+      if (duplicateCount > 0) {
+        logger.warn("⚠️ DUPLICATE MARKING DATA DETECTED!");
+
+        // Only fetch the first record for details (avoid loading all duplicates)
+        const existingRecord = await mongoDbService.collection.findOne(
+          {
+            MarkingData: markingData,
+          },
+          {
+            projection: {
+              SerialNumber: 1,
+              ModelNumber: 1,
+              Timestamp: 1,
+              Result: 1,
+              User: 1,
+            },
+          }
+        );
+
+        logger.info(`📋 Duplicate details:`);
+        logger.info(`   - Total occurrences: ${duplicateCount}`);
+        logger.info(`   - First occurrence: ${existingRecord.Timestamp}`);
+        logger.info(`   - Serial Number: ${existingRecord.SerialNumber}`);
+        logger.info(`   - Model Number: ${existingRecord.ModelNumber}`);
+        logger.info(`   - Result: ${existingRecord.Result}`);
+        logger.info(`   - User: ${existingRecord.User}`);
+
+        // Emit duplicate detection event to UI with optimized information
+        if (this.io) {
+          this.io.emit("duplicate_marking_detected", {
+            timestamp: new Date(),
+            markingData: markingData,
+            duplicateCount: duplicateCount,
+            existingRecord: {
+              serialNumber: existingRecord.SerialNumber,
+              modelNumber: existingRecord.ModelNumber,
+              timestamp: existingRecord.Timestamp,
+              result: existingRecord.Result,
+              user: existingRecord.User,
+            },
+            message: `Duplicate marking data detected - ${duplicateCount} occurrence(s) found in database`,
+          });
+        }
+
+        return { isDuplicate: true, existingRecord, duplicateCount };
+      } else {
+        logger.success(
+          "✅ No duplicate marking data found - proceeding with workflow"
+        );
+        return { isDuplicate: false, existingRecord: null };
+      }
+    } catch (error) {
+      logger.error("❌ Error checking for duplicate marking data:", error);
+      // Return false to allow workflow to continue even if check fails
+      return { isDuplicate: false, existingRecord: null };
+    }
+  }
+
+  async getDuplicateStatistics(markingData) {
+    try {
+      logger.info("📊 Getting duplicate statistics for marking data...");
+
+      if (!markingData || markingData === "NG" || markingData === "N/A") {
+        return { count: 0, records: [] };
+      }
+
+      await mongoDbService.connect("main-data", "records");
+
+      // OPTIMIZATION: Use countDocuments for fast count
+      const count = await mongoDbService.collection.countDocuments({
+        MarkingData: markingData,
+      });
+
+      if (count > 0) {
+        logger.info(
+          `📊 Found ${count} duplicate record(s) for marking data: ${markingData}`
+        );
+
+        // OPTIMIZATION: Only fetch limited records for display (max 10)
+        const maxDisplayRecords = 10;
+        const duplicateRecords = await mongoDbService.collection
+          .find(
+            {
+              MarkingData: markingData,
+            },
+            {
+              projection: {
+                SerialNumber: 1,
+                ModelNumber: 1,
+                Timestamp: 1,
+                Result: 1,
+                User: 1,
+              },
+              sort: { Timestamp: -1 }, // Most recent first
+              limit: maxDisplayRecords,
+            }
+          )
+          .toArray();
+
+        // Log details of each duplicate (limited display)
+        duplicateRecords.forEach((record, index) => {
+          logger.info(
+            `   ${index + 1}. Serial: ${record.SerialNumber}, Model: ${record.ModelNumber}, Result: ${record.Result}, Date: ${record.Timestamp}`
+          );
+        });
+
+        if (count > maxDisplayRecords) {
+          logger.info(
+            `   ... and ${count - maxDisplayRecords} more records (display limited to ${maxDisplayRecords})`
+          );
+        }
+
+        return { count, records: duplicateRecords, totalCount: count };
+      }
+
+      return { count: 0, records: [], totalCount: 0 };
+    } catch (error) {
+      logger.error("❌ Error getting duplicate statistics:", error);
+      return { count: 0, records: [], totalCount: 0 };
+    }
+  }
+
+  // NEW: Method to create database indexes for better performance
+  async createDatabaseIndexes() {
+    try {
+      logger.info("🔧 Creating database indexes for better performance...");
+
+      await mongoDbService.connect("main-data", "records");
+
+      // Create index on MarkingData field for fast duplicate checks
+      await mongoDbService.collection.createIndex(
+        { MarkingData: 1 },
+        {
+          name: "marking_data_index",
+          background: true,
+          unique: false, // Allow duplicates for detection purposes
+        }
+      );
+
+      // Create compound index for common queries
+      await mongoDbService.collection.createIndex(
+        { MarkingData: 1, Timestamp: -1 },
+        {
+          name: "marking_data_timestamp_index",
+          background: true,
+        }
+      );
+
+      // Create index on SerialNumber for fast lookups
+      await mongoDbService.collection.createIndex(
+        { SerialNumber: 1 },
+        {
+          name: "serial_number_index",
+          background: true,
+        }
+      );
+
+      logger.success("✅ Database indexes created successfully");
+    } catch (error) {
+      logger.error("❌ Error creating database indexes:", error);
+      // Don't throw error - indexes are optional for performance
     }
   }
 }

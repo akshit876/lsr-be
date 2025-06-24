@@ -1,0 +1,9 @@
+db = db.getSiblingDB('main-data'); // Switches to the 'main-data' database
+db.records.createIndex(            // Creates the index on the 'records' collection
+  { MarkingData: 1 },
+  {
+    name: 'marking_data_index',
+    background: true,
+    unique: false
+  }
+);
