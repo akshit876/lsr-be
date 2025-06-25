@@ -867,6 +867,9 @@ class ScannerController {
       logger.info(
         `🔍 Listeners before clearing: ${tcpScannerService.listenerCount("dataGot")}`
       );
+
+      // Add a small delay before clearing to ensure no race conditions
+      await sleep(50);
       tcpScannerService.removeAllListeners("dataGot");
       logger.info(
         `🔍 Listeners after clearing: ${tcpScannerService.listenerCount("dataGot")}`
@@ -885,20 +888,54 @@ class ScannerController {
       }
 
       const scannerData = await new Promise((resolve, reject) => {
+        let isResolved = false;
+        let timeoutId = null;
+
         const dataHandler = (data) => {
+          if (isResolved) {
+            logger.warn(
+              "⚠️ Data handler called after already resolved, ignoring"
+            );
+            return;
+          }
+
+          isResolved = true;
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
           logger.info(
             `🔍 Event listener called with data: "${data}" (type: ${typeof data})`
           );
+          logger.info(
+            `🔍 Current listener count when data received: ${tcpScannerService.listenerCount("dataGot")}`
+          );
+
+          // Clear timeout since we got data
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+
+          // Remove listener after a small delay to ensure no race conditions
+          setTimeout(() => {
+            tcpScannerService.off("dataGot", dataHandler);
+            logger.info(
+              `🔍 Removed dataGot listener for ${scannerLabel} scanner`
+            );
+            logger.info(
+              `🔍 Listener count after removal: ${tcpScannerService.listenerCount("dataGot")}`
+            );
+          }, 100);
+
           resolve(data);
-          tcpScannerService.off("dataGot", dataHandler);
         };
 
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for scanner data");
         tcpScannerService.on("dataGot", dataHandler);
+        logger.info(
+          `🔍 Event listener count after adding: ${tcpScannerService.listenerCount("dataGot")}`
+        );
 
         // Debug: Check if listener was added
         logger.info(
@@ -906,7 +943,15 @@ class ScannerController {
         );
 
         // Configure timeout with better debugging
-        const timeoutId = setTimeout(() => {
+        timeoutId = setTimeout(() => {
+          if (isResolved) {
+            logger.warn(
+              "⚠️ Timeout handler called after already resolved, ignoring"
+            );
+            return;
+          }
+
+          isResolved = true;
           logger.error(
             `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
           );
@@ -921,7 +966,13 @@ class ScannerController {
           );
           logger.error("   5. Test scanner with a simple TCP client");
 
-          tcpScannerService.off("dataGot", dataHandler);
+          // Remove listener after a small delay
+          setTimeout(() => {
+            tcpScannerService.off("dataGot", dataHandler);
+            logger.info(
+              `🔍 Removed dataGot listener for ${scannerLabel} scanner (timeout)`
+            );
+          }, 100);
 
           // Return "NG" on timeout and ensure proper bit handling
           logger.warn(
@@ -947,12 +998,31 @@ class ScannerController {
               );
             })
             .catch((err) => {
+              if (isResolved) {
+                logger.warn(
+                  "⚠️ Error handler called after already resolved, ignoring"
+                );
+                return;
+              }
+
+              isResolved = true;
               logger.error(
                 `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
                 err
               );
-              clearTimeout(timeoutId);
-              tcpScannerService.off("dataGot", dataHandler);
+
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+              }
+
+              setTimeout(() => {
+                tcpScannerService.off("dataGot", dataHandler);
+                logger.info(
+                  `🔍 Removed dataGot listener for ${scannerLabel} scanner (error)`
+                );
+              }, 100);
+
               reject(err);
             });
         }, 100); // Small delay to ensure listener is ready
@@ -1509,6 +1579,9 @@ class ScannerController {
       logger.info(
         `🔍 Listeners before clearing: ${this.middleScannerService.listenerCount("dataGot")}`
       );
+
+      // Add a small delay before clearing to ensure no race conditions
+      await sleep(50);
       this.middleScannerService.removeAllListeners("dataGot");
       logger.info(
         `🔍 Listeners after clearing: ${this.middleScannerService.listenerCount("dataGot")}`
@@ -1527,20 +1600,54 @@ class ScannerController {
       }
 
       const scannerData = await new Promise((resolve, reject) => {
+        let isResolved = false;
+        let timeoutId = null;
+
         const dataHandler = (data) => {
+          if (isResolved) {
+            logger.warn(
+              "⚠️ Middle scanner data handler called after already resolved, ignoring"
+            );
+            return;
+          }
+
+          isResolved = true;
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
           logger.info(
             `🔍 Event listener called with data: "${data}" (type: ${typeof data})`
           );
+          logger.info(
+            `🔍 Current listener count when data received: ${this.middleScannerService.listenerCount("dataGot")}`
+          );
+
+          // Clear timeout since we got data
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+
+          // Remove listener after a small delay to ensure no race conditions
+          setTimeout(() => {
+            this.middleScannerService.off("dataGot", dataHandler);
+            logger.info(
+              `🔍 Removed dataGot listener for ${scannerLabel} scanner`
+            );
+            logger.info(
+              `🔍 Listener count after removal: ${this.middleScannerService.listenerCount("dataGot")}`
+            );
+          }, 100);
+
           resolve(data);
-          this.middleScannerService.off("dataGot", dataHandler);
         };
 
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for middle scanner data");
         this.middleScannerService.on("dataGot", dataHandler);
+        logger.info(
+          `🔍 Event listener count after adding: ${this.middleScannerService.listenerCount("dataGot")}`
+        );
 
         // Debug: Check if listener was added
         logger.info(
@@ -1548,7 +1655,15 @@ class ScannerController {
         );
 
         // Configure timeout with better debugging
-        const timeoutId = setTimeout(() => {
+        timeoutId = setTimeout(() => {
+          if (isResolved) {
+            logger.warn(
+              "⚠️ Middle scanner timeout handler called after already resolved, ignoring"
+            );
+            return;
+          }
+
+          isResolved = true;
           logger.error(
             `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
           );
@@ -1560,7 +1675,13 @@ class ScannerController {
           logger.error("   3. Check if barcode is present for scanner to read");
           logger.error("   4. Test scanner with a simple TCP client");
 
-          this.middleScannerService.off("dataGot", dataHandler);
+          // Remove listener after a small delay
+          setTimeout(() => {
+            this.middleScannerService.off("dataGot", dataHandler);
+            logger.info(
+              `🔍 Removed dataGot listener for ${scannerLabel} scanner (timeout)`
+            );
+          }, 100);
 
           // Return "NG" on timeout and ensure proper bit handling
           logger.warn(
@@ -1586,12 +1707,31 @@ class ScannerController {
               );
             })
             .catch((err) => {
+              if (isResolved) {
+                logger.warn(
+                  "⚠️ Middle scanner error handler called after already resolved, ignoring"
+                );
+                return;
+              }
+
+              isResolved = true;
               logger.error(
                 `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
                 err
               );
-              clearTimeout(timeoutId);
-              this.middleScannerService.off("dataGot", dataHandler);
+
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+              }
+
+              setTimeout(() => {
+                this.middleScannerService.off("dataGot", dataHandler);
+                logger.info(
+                  `🔍 Removed dataGot listener for ${scannerLabel} scanner (error)`
+                );
+              }, 100);
+
               reject(err);
             });
         }, 100); // Small delay to ensure listener is ready
