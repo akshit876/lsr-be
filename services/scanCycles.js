@@ -824,6 +824,61 @@ class ScannerController {
     }
   }
 
+  async handleFirstScan(tcpScannerService) {
+    logger.info("Starting first scan handler");
+
+    const scannerData = await this.fetchScannerData(tcpScannerService, {
+      scanType: "first",
+    });
+
+    // Debug: Log the exact data received
+    logger.info(
+      `🔍 First scan received data: "${scannerData}" (type: ${typeof scannerData})`
+    );
+    logger.info(
+      `🔍 Data trimmed: "${scannerData ? scannerData.trim() : "null"}"`
+    );
+    logger.info(
+      `🔍 Is NG check: ${!scannerData || scannerData.trim().toUpperCase() === "NG"}`
+    );
+
+    // Check for reset signal before proceeding
+    if (await this.checkReset()) {
+      logger.warn("⚠️ Reset detected during first scan, restarting cycle");
+      return { shouldContinue: false };
+    }
+
+    // Handle timeout/null/undefined or explicit "NG" response
+    if (!scannerData || scannerData.trim().toUpperCase() === "NG") {
+      logger.warn(
+        "⚠️ First scan data is NG or timeout, proceeding with workflow"
+      );
+      logger.info("✍️ Writing bit 1414.7 to signal NG scan");
+      await writeBit(1414, 7, 1);
+      return { shouldContinue: true };
+    }
+
+    // If we get here and have valid scanner data, it means the part is already marked
+    if (scannerData && scannerData.trim() !== "") {
+      logger.warn("⚠️ Part appears to be already marked");
+
+      // Emit the "part_already_marked" event to the UI
+      if (this.io) {
+        this.io.emit("first_scan_ok", {
+          timestamp: new Date(),
+          scannerData: scannerData,
+          message:
+            "Part detected with existing marking. Please use an unmarked part.",
+        });
+      }
+
+      logger.info("✍️ Writing bit 1414.6 to signal OK scan");
+      await writeBit(1414, 6, 1);
+    }
+
+    return { shouldContinue: false };
+  }
+
   async checkReset() {
     return new Promise((resolve) => {
       // If resetEmitter is not available, resolve immediately with false
@@ -880,144 +935,164 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      // --- NEW: Debug buffer and queue state before scan ---
-      if (tcpScannerService.getBufferStatus) {
-        const bufStatus = tcpScannerService.getBufferStatus();
+      // --- NEW: Listen to both scanners simultaneously ---
+      logger.info(
+        `🎯 Setting up listeners for BOTH scanners (main + middle)...`
+      );
+
+      // --- NEW: Debug buffer and queue state before scan for both scanners ---
+      if (this.tcpScannerService && this.tcpScannerService.getBufferStatus) {
+        const mainBufStatus = this.tcpScannerService.getBufferStatus();
         logger.info(
-          `[DEBUG] Buffer status before scan: ${JSON.stringify(bufStatus)}`
+          `[DEBUG] Main scanner buffer status: ${JSON.stringify(mainBufStatus)}`
         );
       }
-      if (tcpScannerService.dataQueue) {
+      if (
+        this.middleScannerService &&
+        this.middleScannerService.getBufferStatus
+      ) {
+        const middleBufStatus = this.middleScannerService.getBufferStatus();
         logger.info(
-          `[DEBUG] Data queue length before scan: ${tcpScannerService.dataQueue.length}`
+          `[DEBUG] Middle scanner buffer status: ${JSON.stringify(middleBufStatus)}`
         );
-        if (tcpScannerService.dataQueue.length > 0) {
-          logger.warn(
-            `[DEBUG] WARNING: Data queue has ${tcpScannerService.dataQueue.length} items before scan!`
-          );
-        }
+      }
+      if (this.tcpScannerService && this.tcpScannerService.dataQueue) {
+        logger.info(
+          `[DEBUG] Main scanner queue length: ${this.tcpScannerService.dataQueue.length}`
+        );
+      }
+      if (this.middleScannerService && this.middleScannerService.dataQueue) {
+        logger.info(
+          `[DEBUG] Middle scanner queue length: ${this.middleScannerService.dataQueue.length}`
+        );
       }
 
       // Clear any existing event listeners to prevent conflicts
-      logger.info("🧹 Clearing any existing dataGot listeners...");
       logger.info(
-        `🔍 Listeners before clearing: ${tcpScannerService.listenerCount("dataGot")}`
+        "🧹 Clearing any existing dataGot listeners for both scanners..."
       );
+      if (this.tcpScannerService) {
+        logger.info(
+          `🔍 Main scanner listeners before clearing: ${this.tcpScannerService.listenerCount("dataGot")}`
+        );
+      }
+      if (this.middleScannerService) {
+        logger.info(
+          `🔍 Middle scanner listeners before clearing: ${this.middleScannerService.listenerCount("dataGot")}`
+        );
+      }
       await sleep(50);
-      logger.info("🔍 Not calling removeAllListeners to avoid interference");
-      logger.info(
-        `🔍 Listeners after clearing: ${tcpScannerService.listenerCount("dataGot")}`
-      );
 
       const scannerData = await new Promise((resolve, reject) => {
-        // --- NEW: Clear buffer before attaching listener ---
-        if (tcpScannerService.clearBuffer) {
-          logger.info(
-            "🧹 Clearing TCP scanner data buffer (before listener attach)..."
-          );
-          tcpScannerService.clearBuffer();
+        // --- NEW: Clear buffer and queue for both scanners ---
+        if (this.tcpScannerService && this.tcpScannerService.clearBuffer) {
+          logger.info("🧹 Clearing main TCP scanner data buffer...");
+          this.tcpScannerService.clearBuffer();
         }
-        // --- NEW: Clear data queue to prevent cross-instance data sharing ---
-        if (tcpScannerService.clearDataQueue) {
-          logger.info(
-            "🧹 Clearing TCP scanner data queue (before listener attach)..."
-          );
-          tcpScannerService.clearDataQueue();
+        if (
+          this.middleScannerService &&
+          this.middleScannerService.clearBuffer
+        ) {
+          logger.info("🧹 Clearing middle TCP scanner data buffer...");
+          this.middleScannerService.clearBuffer();
         }
-        // --- NEW: Debug buffer and queue state after clearBuffer ---
-        if (tcpScannerService.getBufferStatus) {
-          const bufStatus = tcpScannerService.getBufferStatus();
-          logger.info(
-            `[DEBUG] Buffer status after clearBuffer: ${JSON.stringify(bufStatus)}`
-          );
+        if (this.tcpScannerService && this.tcpScannerService.clearDataQueue) {
+          logger.info("🧹 Clearing main TCP scanner data queue...");
+          this.tcpScannerService.clearDataQueue();
         }
-        if (tcpScannerService.dataQueue) {
-          logger.info(
-            `[DEBUG] Data queue length after clearBuffer: ${tcpScannerService.dataQueue.length}`
-          );
+        if (
+          this.middleScannerService &&
+          this.middleScannerService.clearDataQueue
+        ) {
+          logger.info("🧹 Clearing middle TCP scanner data queue...");
+          this.middleScannerService.clearDataQueue();
         }
 
         let isResolved = false;
         let timeoutId = null;
+        let mainDataHandler = null;
+        let middleDataHandler = null;
 
-        const dataHandler = (data) => {
+        const cleanup = () => {
+          if (mainDataHandler && this.tcpScannerService) {
+            this.tcpScannerService.off("dataGot", mainDataHandler);
+          }
+          if (middleDataHandler && this.middleScannerService) {
+            this.middleScannerService.off("dataGot", middleDataHandler);
+          }
+        };
+
+        const dataHandler = (data, scannerType) => {
           if (isResolved) {
             logger.warn(
-              "⚠️ Data handler called after already resolved, ignoring"
+              `⚠️ ${scannerType} scanner data handler called after already resolved, ignoring`
             );
             return;
           }
           isResolved = true;
           const dataReceiveTime = Date.now();
           logger.success(
-            `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
+            `📥 Data received from ${scannerType} scanner: ${data}`
           );
           logger.info(
             `🔍 Event listener called with data: "${data}" (type: ${typeof data})`
           );
           logger.info(
-            `🔍 Current listener count when data received: ${tcpScannerService.listenerCount("dataGot")}`
-          );
-          logger.info(
             `⏰ Data received at: ${new Date(dataReceiveTime).toISOString()}`
-          );
-          logger.info(
-            `⏰ Time since listener added: ${dataReceiveTime - listenerStartTime}ms`
           );
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;
           }
-          logger.info("🔍 Removing specific dataGot listener...");
-          tcpScannerService.off("dataGot", dataHandler);
-          logger.info(
-            `🔍 Removed dataGot listener for ${scannerLabel} scanner`
-          );
-          logger.info(
-            `🔍 Listener count after removal: ${tcpScannerService.listenerCount("dataGot")}`
-          );
+          cleanup();
           resolve(data);
         };
 
-        // Set up event listener FIRST (before triggering scanner)
-        logger.info(
-          "👂 Adding event listener for scanner data (onDataGotOnce)"
-        );
+        // Set up event listeners for BOTH scanners
+        logger.info("👂 Adding event listeners for BOTH scanners...");
         const listenerStartTime = Date.now();
-        logger.info(
-          `🔍 Listener count before adding: ${tcpScannerService.listenerCount("dataGot")}`
-        );
-        tcpScannerService.onDataGotOnce(dataHandler);
-        logger.info(
-          `🔍 Listener count immediately after adding: ${tcpScannerService.listenerCount("dataGot")}`
-        );
-        logger.info(
-          `🔍 Event listener count after adding: ${tcpScannerService.listenerCount("dataGot")}`
-        );
-        logger.info(
-          `⏰ Event listener added at: ${new Date(listenerStartTime).toISOString()}`
-        );
-        logger.info(
-          `🔍 Event listener count for dataGot: ${tcpScannerService.listenerCount("dataGot")}`
-        );
-        // --- NEW: Debug queue state after listener attach ---
-        if (tcpScannerService.dataQueue) {
+
+        // Main scanner listener
+        if (this.tcpScannerService) {
+          mainDataHandler = (data) => dataHandler(data, "main");
+          this.tcpScannerService.onDataGotOnce(mainDataHandler);
           logger.info(
-            `[DEBUG] Data queue length after listener attach: ${tcpScannerService.dataQueue.length}`
+            `🔍 Main scanner listener count after adding: ${this.tcpScannerService.listenerCount("dataGot")}`
           );
         }
 
+        // Middle scanner listener
+        if (this.middleScannerService) {
+          middleDataHandler = (data) => dataHandler(data, "middle");
+          this.middleScannerService.onDataGotOnce(middleDataHandler);
+          logger.info(
+            `🔍 Middle scanner listener count after adding: ${this.middleScannerService.listenerCount("dataGot")}`
+          );
+        }
+
+        logger.info(
+          `⏰ Event listeners added at: ${new Date(listenerStartTime).toISOString()}`
+        );
+
         // --- NEW: Monitor listener count to detect unexpected drops ---
         const listenerCheckInterval = setInterval(() => {
-          const currentListenerCount =
-            tcpScannerService.listenerCount("dataGot");
-          if (currentListenerCount === 0 && !isResolved) {
-            logger.warn(
-              `[DEBUG] WARNING: Listener count dropped to 0 unexpectedly!`
-            );
-            logger.warn(
-              `[DEBUG] This might explain why data is being queued instead of delivered.`
-            );
+          if (this.tcpScannerService) {
+            const mainListenerCount =
+              this.tcpScannerService.listenerCount("dataGot");
+            if (mainListenerCount === 0 && !isResolved) {
+              logger.warn(
+                `[DEBUG] WARNING: Main scanner listener count dropped to 0 unexpectedly!`
+              );
+            }
+          }
+          if (this.middleScannerService) {
+            const middleListenerCount =
+              this.middleScannerService.listenerCount("dataGot");
+            if (middleListenerCount === 0 && !isResolved) {
+              logger.warn(
+                `[DEBUG] WARNING: Middle scanner listener count dropped to 0 unexpectedly!`
+              );
+            }
           }
         }, 1000); // Check every second
 
@@ -1032,25 +1107,21 @@ class ScannerController {
           isResolved = true;
           clearInterval(listenerCheckInterval); // Clear the monitoring interval
           logger.error(
-            `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
+            `⏰ TIMEOUT: No data received from either scanner after ${timeout / 1000} seconds`
           );
           logger.error("🔍 Troubleshooting suggestions:");
+          logger.error("   1. Check if scanners are powered on");
           logger.error(
-            "   1. Check if scanner is physically connected to COM3"
+            "   2. Verify scanners are reachable via network (ping test)"
           );
-          logger.error("   2. Verify scanner is powered on");
-          logger.error("   3. Check if barcode is present for scanner to read");
           logger.error(
-            "   4. Verify scanner is reachable via network (ping test)"
+            "   3. Check if barcode is present for scanners to read"
           );
-          logger.error("   5. Test scanner with a simple TCP client");
+          logger.error("   4. Test scanners with a simple TCP client");
 
-          // Remove listener after a small delay
+          // Remove listeners after a small delay
           setTimeout(() => {
-            tcpScannerService.off("dataGot", dataHandler);
-            logger.info(
-              `🔍 Removed dataGot listener for ${scannerLabel} scanner (timeout)`
-            );
+            cleanup();
           }, 100);
 
           // Return "NG" on timeout and ensure proper bit handling
@@ -1065,15 +1136,19 @@ class ScannerController {
         const bit = this.getScanBit(scanType);
 
         logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
+        logger.info(
+          `📡 PLC Trigger: Register ${register}, Bit ${bit} (will trigger both scanners)`
+        );
 
-        // Add small delay to ensure event listener is ready, then trigger scanner
+        // Add small delay to ensure event listeners are ready, then trigger scanner
         setTimeout(() => {
           writeBit(register, bit, 1)
             .then(() => {
-              logger.success(`${scannerLabel} scanner triggered successfully`);
+              logger.success(
+                `${scannerLabel} scanner triggered successfully (both scanners will respond)`
+              );
               logger.info(
-                `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
+                `⏳ Waiting for scanner data from either scanner... (timeout: ${timeout / 1000}s)`
               );
             })
             .catch((err) => {
@@ -1093,784 +1168,11 @@ class ScannerController {
                 timeoutId = null;
               }
               setTimeout(() => {
-                tcpScannerService.off("dataGot", dataHandler);
-                logger.info(
-                  `🔍 Removed dataGot listener for ${scannerLabel} scanner (error)`
-                );
+                cleanup();
               }, 100);
               reject(err);
             });
-        }, 100); // Small delay to ensure listener is ready
-      });
-
-      logger.success(
-        `📊 ${scannerLabel} scanner data received: ${scannerData}`
-      );
-
-      // Emit scanner read event to UI
-      if (this.io) {
-        this.io.emit("scanner_read", {
-          timestamp: new Date(),
-          scannerType: scannerLabel,
-          data: scannerData,
-        });
-      }
-
-      return scannerData;
-    } catch (error) {
-      logger.separator.hash();
-      logger.error(
-        `❌ Error acquiring ${scannerLabel.toLowerCase()} scanner data:`,
-        error
-      );
-      throw error;
-    } finally {
-      this.isScanning = false;
-    }
-  }
-
-  // Helper methods for scan configuration
-  getScanRegister(scanType) {
-    switch (scanType) {
-      case "first":
-        return 1415;
-      case "middle":
-        return 1418;
-      case "verification":
-        return 1416;
-      default:
-        return 1415;
-    }
-  }
-
-  getScanBit(scanType) {
-    switch (scanType) {
-      case "first":
-        return 0;
-      case "middle":
-        return 0;
-      case "verification":
-        return 15;
-      default:
-        return 0;
-    }
-  }
-
-  getScanLabel(scanType) {
-    switch (scanType) {
-      case "first":
-        return "First";
-      case "middle":
-        return "Middle";
-      case "verification":
-        return "Verification";
-      default:
-        return "Scanner";
-    }
-  }
-
-  async generateAndWriteBarcode(partNumber) {
-    // Check for reset signal before generating barcode
-    if (await this.checkReset()) {
-      logger.warn(
-        "⚠️ Reset detected during barcode generation, restarting cycle"
-      );
-      await sleep(1000);
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: "",
-        markingData: "",
-        scannerData: "N/A",
-        result: "NG",
-        grading: "N/A",
-        isUpdate: true,
-      });
-      return null;
-    }
-
-    try {
-      logger.info("🏷️ Starting barcode generation process...");
-      logger.info(`📦 Part Number: ${partNumber}`);
-
-      // Generate barcode data using simplified method
-      logger.info("🔄 Calling barcodeGenerator.generateBarcodeData...");
-      const { text: barcodeText, serialNo: serialString } =
-        await this.barcodeGenerator.generateBarcodeData({
-          mongoDbService,
-          partNumber,
-        });
-      logger.info(`✅ Barcode generated: ${barcodeText}`);
-      logger.info(`🔢 Serial Number: ${serialString}`);
-
-      // Write both files using the reusable function
-      logger.info("📁 Writing barcode data to files...");
-      await Promise.all([
-        this.writeToFile(CODE_FILE_PATH, barcodeText, "Barcode data"),
-        this.writeToFile(TEXT_FILE_PATH, barcodeText, "Barcode text"),
-      ]);
-      logger.info("✅ Files written successfully");
-
-      // Emit marking data to UI
-      if (this.io) {
-        logger.info("📡 Emitting marking data to UI...");
-        this.io.emit("marking_data", {
-          timestamp: new Date(),
-          data: barcodeText,
-        });
-      }
-
-      logger.info("🔍 Verifying file write...");
-      const isVerified = await this.verifyAndRetryWrite(barcodeText, 2);
-      logger.info(`✅ File verification: ${isVerified ? "PASSED" : "FAILED"}`);
-
-      // Add MongoDB write after file verification
-      if (isVerified) {
-        logger.info("💾 Saving initial data to MongoDB...");
-        await this.saveToMongoDB({
-          io: this.io,
-          serialNumber: serialString,
-          markingData: barcodeText,
-          scannerData: "N/A", // No scanner data at this point
-          result: "N/A", // File write was successful
-          grading: "N/A", // No grading at this point
-          isUpdate: false,
-        });
-        logger.info("✅ MongoDB save completed");
-      }
-
-      logger.info(
-        `🎯 Barcode generation process completed. Returning ${isVerified ? "barcodeData" : "null"}`
-      );
-      return isVerified ? { text: barcodeText, serialNo: serialString } : null;
-    } catch (error) {
-      logger.error("❌ Error in file writing process:", error);
-      // Save error state to MongoDB
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: "",
-        markingData: "",
-        scannerData: "N/A",
-        result: "NG",
-        grading: "N/A",
-        isUpdate: true,
-      });
-      throw error;
-    }
-  }
-
-  // Reusable file writing function
-  async writeToFile(filePath, data, description = "Data") {
-    try {
-      await fs.writeFileSync(filePath, data.toString(), "utf8");
-      logger.info(`✅ ${description} written to ${path.basename(filePath)}`);
-
-      // Verify the write was successful
-      const verificationData = await fs.readFileSync(filePath, "utf8");
-      if (verificationData !== data.toString()) {
-        throw new Error(
-          `File verification failed for ${path.basename(filePath)}`
-        );
-      }
-
-      return true;
-    } catch (error) {
-      logger.error(
-        `❌ Error writing ${description.toLowerCase()} to ${path.basename(filePath)}:`,
-        error
-      );
-      throw error;
-    }
-  }
-
-  resetCycleCount() {
-    this.cycleCount = 0;
-    logger.info("Cycle count reset to 0");
-  }
-
-  getLastResetTime() {
-    const now = new Date();
-    const resetTime = new Date(now);
-
-    // Use the reset time from SerialNumberGeneratorService if available
-    const resetHour =
-      this.barcodeGenerator?.serialNumberService?.resetHour || 0;
-    const resetMinute =
-      this.barcodeGenerator?.serialNumberService?.resetMinute || 0;
-
-    resetTime.setHours(resetHour, resetMinute, 0, 0);
-
-    // If current time is before reset time, set reset time to previous day
-    if (now < resetTime) {
-      resetTime.setDate(resetTime.getDate() - 1);
-    }
-
-    return resetTime;
-  }
-
-  async getCurrentDayId() {
-    const now = new Date();
-    const nextResetTime = new Date(this.lastResetDate);
-    nextResetTime.setDate(nextResetTime.getDate() + 1);
-
-    // Check if we need to reset the counter
-    if (now >= nextResetTime) {
-      this.currentDayId = 1;
-      this.lastResetDate = this.getLastResetTime();
-    }
-
-    return this.currentDayId++;
-  }
-
-  async handleFirstScan(tcpScannerService) {
-    logger.info("Starting first scan handler");
-
-    const scannerData = await this.fetchScannerData(tcpScannerService, {
-      scanType: "first",
-    });
-
-    // Debug: Log the exact data received
-    logger.info(
-      `🔍 First scan received data: "${scannerData}" (type: ${typeof scannerData})`
-    );
-    logger.info(
-      `🔍 Data trimmed: "${scannerData ? scannerData.trim() : "null"}"`
-    );
-    logger.info(
-      `🔍 Is NG check: ${!scannerData || scannerData.trim().toUpperCase() === "NG"}`
-    );
-
-    // Check for reset signal before proceeding
-    if (await this.checkReset()) {
-      logger.warn("⚠️ Reset detected during first scan, restarting cycle");
-      return { shouldContinue: false };
-    }
-
-    // Handle timeout/null/undefined or explicit "NG" response
-    if (!scannerData || scannerData.trim().toUpperCase() === "NG") {
-      logger.warn(
-        "⚠️ First scan data is NG or timeout, proceeding with workflow"
-      );
-      logger.info("✍️ Writing bit 1414.7 to signal NG scan");
-      await writeBit(1414, 7, 1);
-      return { shouldContinue: true };
-    }
-
-    // If we get here and have valid scanner data, it means the part is already marked
-    if (scannerData && scannerData.trim() !== "") {
-      logger.warn("⚠️ Part appears to be already marked");
-
-      // Emit the "part_already_marked" event to the UI
-      if (this.io) {
-        this.io.emit("first_scan_ok", {
-          timestamp: new Date(),
-          scannerData: scannerData,
-          message:
-            "Part detected with existing marking. Please use an unmarked part.",
-        });
-      }
-
-      logger.info("✍️ Writing bit 1414.6 to signal OK scan");
-      await writeBit(1414, 6, 1);
-    }
-
-    return { shouldContinue: false };
-  }
-
-  async initializeScannerAndMonitor(io, tcpScannerService) {
-    if (!this.isInitialized) {
-      logger.info("🔄 Starting scanner initialization...");
-      await this.initialize();
-    }
-
-    // Debug logging
-    logger.info("🔍 Debugging TCP scanner service state:");
-    logger.info(
-      `   - Provided tcpScannerService: ${tcpScannerService ? "exists" : "null"}`
-    );
-    logger.info(
-      `   - Internal tcpScannerService: ${this.tcpScannerService ? "exists" : "null"}`
-    );
-    logger.info(`   - isInitialized: ${this.isInitialized}`);
-
-    // Use the internally created tcpScannerService if no external service provided
-    if (tcpScannerService) {
-      this.tcpScannerService = tcpScannerService;
-      logger.info("🔗 Using provided TCP scanner service");
-    } else {
-      // Use the TCP scanner service created during initialization
-      if (!this.tcpScannerService) {
-        throw new Error(
-          "TCP scanner service not initialized. Make sure initialize() completed successfully."
-        );
-      }
-      logger.info("🔗 Using internal TCP scanner service");
-    }
-
-    this.setupResetMonitor();
-  }
-
-  setupResetMonitor() {
-    if (!this.resetMonitor) {
-      this.resetMonitor = new Worker("./services/resetMonitor.js");
-      this.resetMonitor.setMaxListeners(20);
-    }
-
-    this.cleanupResetListeners();
-
-    this.resetMonitor.on("error", (error) => {
-      logger.error("❌ Reset monitor error:", error);
-    });
-
-    this.resetMonitor.on("exit", (code) => {
-      logger.warn(`Reset monitor exited with code ${code}`);
-      this.cleanupResetListeners();
-      if (code !== 0) {
-        this.setupResetMonitor();
-      }
-    });
-  }
-
-  startResetMonitoring() {
-    return new Promise((resolve) => {
-      const messageHandler = async (message) => {
-        if (message === "reset") {
-          logger.warn("🔄 Reset signal detected from monitor");
-          this.resetMonitor.removeListener("message", messageHandler);
-          this.resetListeners.delete(messageHandler);
-          await this.handleReset();
-          resolve("RESET_DETECTED");
-        }
-      };
-
-      this.resetListeners.add(messageHandler);
-      this.resetMonitor.on("message", messageHandler);
-
-      return () => {
-        this.resetMonitor.removeListener("message", messageHandler);
-        this.resetListeners.delete(messageHandler);
-      };
-    });
-  }
-
-  cleanupResetListeners() {
-    if (this.resetMonitor) {
-      this.resetMonitor.removeAllListeners("message");
-      this.resetListeners.clear();
-    }
-  }
-
-  async handleScanError(error) {
-    logger.error("❌ Unexpected error in scanner workflow:", error);
-    await this.handleError(error);
-    await sleep(5000);
-  }
-
-  async handleReset() {
-    try {
-      logger.info("🔄 Handling reset signal");
-      await writeBit(1500, 3, 1);
-      await this.resetBits();
-      this.barcodeGenerator.decSerialNo();
-      throw new Error("RESET_DETECTED");
-    } catch (error) {
-      logger.error("❌ Error handling reset:", error);
-      throw error;
-    }
-  }
-
-  async performFinalChecks() {
-    try {
-      logger.info("🔍 Performing final checks...");
-      if (await this.checkResetOrBit(1415, 7, 1)) {
-        logger.warn("⚠️ Reset detected at final step, restarting cycle");
-        await sleep(1000);
-        return false;
-      }
-
-      await sleep(3 * 1000);
-      return true;
-    } catch (error) {
-      logger.error("❌ Error in final checks:", error);
-      throw error;
-    }
-  }
-
-  async handleVerificationScan(tcpScannerService, barcodeData) {
-    logger.info("Starting verification scan");
-
-    try {
-      const scannerData = await this.fetchScannerData(tcpScannerService, {
-        scanType: "verification",
-      });
-
-      // Handle timeout/null/undefined cases as NG
-      const effectiveScannerData = scannerData || "NG";
-
-      if (effectiveScannerData !== "NG") {
-        logger.success("Verification scan OK");
-      } else {
-        logger.warn("⚠️ Verification scan NG or timeout");
-      }
-
-      const isDataMatching =
-        await this.compareScannerDataWithCode(effectiveScannerData);
-
-      logger.info(
-        `✍️ Writing bit 1414.${isDataMatching ? 3 : 4} to signal data match result`
-      );
-      await writeBit(1414, isDataMatching ? 3 : 4, 1);
-
-      if (isDataMatching) {
-        logger.success("Data matches ✅");
-      } else {
-        logger.warn("⚠️ Data does not match");
-      }
-
-      logger.info("💾 Saving verification scan results to MongoDB...");
-      logger.info(
-        `📋 Save data: SerialNumber=${barcodeData.serialNo}, MarkingData=${barcodeData.text}, ScannerData=${effectiveScannerData}, Result=${isDataMatching}`
-      );
-
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
-        scannerData: effectiveScannerData,
-        grading: "N/A",
-        result: isDataMatching,
-        isUpdate: true, // Update existing record from middle scan
-      });
-
-      logger.success(
-        "✅ Verification scan results updated in MongoDB successfully"
-      );
-
-      return { success: isDataMatching };
-    } catch (error) {
-      if (error.message === "RESET_DETECTED") {
-        logger.warn(
-          "Reset detected during verification scan, restarting cycle"
-        );
-        await this.handleReset();
-        throw error;
-      }
-      throw error;
-    }
-  }
-
-  // Test method to verify COM port communication
-  async testComPortCommunication() {
-    logger.section("COM Port Communication Test");
-
-    if (!this.comPortService) {
-      logger.error("❌ COM port service not available");
-      return false;
-    }
-
-    try {
-      logger.info("🔍 Testing COM port communication...");
-      logger.info("📡 Listening for any data on COM3 for 10 seconds...");
-
-      return new Promise((resolve) => {
-        let testComplete = false;
-
-        const testHandler = (data) => {
-          if (!testComplete) {
-            logger.success(`✅ COM3 Data received: "${data}"`);
-            this.comPortService.off("dataGot", testHandler);
-            testComplete = true;
-            resolve(true);
-          }
-        };
-
-        this.comPortService.onDataGotOnce(testHandler);
-
-        // 10 second timeout
-        setTimeout(() => {
-          if (!testComplete) {
-            logger.warn("⚠️ No data received on COM3 during test period");
-            logger.info("💡 This suggests:");
-            logger.info("   - Scanner may not be sending data automatically");
-            logger.info("   - Scanner may need manual trigger (scan button)");
-            logger.info(
-              "   - Scanner may be configured for different baud rate"
-            );
-            logger.info("   - Scanner may require specific trigger sequence");
-            this.comPortService.off("dataGot", testHandler);
-            testComplete = true;
-            resolve(false);
-          }
-        }, 10000);
-      });
-    } catch (error) {
-      logger.error("❌ Error during COM port test:", error);
-      return false;
-    }
-  }
-
-  async getCurrentModelNumber() {
-    try {
-      // Get current model from config collection
-      await mongoDbService.connect("main-data", "config");
-      const configData = await mongoDbService.collection.findOne({});
-
-      if (
-        configData &&
-        configData.currentModelConfig &&
-        configData.currentModelConfig.modelNumber
-      ) {
-        return configData.currentModelConfig.modelNumber;
-      } else {
-        logger.warn("No model configuration found");
-        return null;
-      }
-    } catch (error) {
-      logger.error("Error fetching current model number:", error);
-      return null;
-    }
-  }
-
-  async fetchMiddleScannerData() {
-    const { timeout = SCANNER_TIMEOUT, scannerLabel = "Middle" } = {};
-
-    logger.section(`${scannerLabel} Scanner Data Acquisition`);
-
-    // --- NEW: Debug TcpScannerService instance identification ---
-    const instanceId =
-      this.middleScannerService === this.tcpScannerService
-        ? "MAIN"
-        : this.middleScannerService === this.middleScannerService
-          ? "MIDDLE"
-          : "UNKNOWN";
-    logger.info(`[DEBUG] Using TcpScannerService instance: ${instanceId}`);
-    if (this.middleScannerService.options) {
-      logger.info(
-        `[DEBUG] Scanner config: ${this.middleScannerService.options.host}:${this.middleScannerService.options.port}`
-      );
-    }
-
-    // Prevent multiple triggers
-    if (this.isScanning) {
-      logger.warn("Scanner already in progress, skipping new trigger");
-      return null;
-    }
-    this.isScanning = true;
-
-    try {
-      logger.info(
-        `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
-      );
-
-      // --- NEW: Debug buffer and queue state before scan ---
-      if (this.middleScannerService.getBufferStatus) {
-        const bufStatus = this.middleScannerService.getBufferStatus();
-        logger.info(
-          `[DEBUG] Buffer status before scan: ${JSON.stringify(bufStatus)}`
-        );
-      }
-      if (this.middleScannerService.dataQueue) {
-        logger.info(
-          `[DEBUG] Data queue length before scan: ${this.middleScannerService.dataQueue.length}`
-        );
-        if (this.middleScannerService.dataQueue.length > 0) {
-          logger.warn(
-            `[DEBUG] WARNING: Data queue has ${this.middleScannerService.dataQueue.length} items before scan!`
-          );
-        }
-      }
-
-      // Clear any existing event listeners to prevent conflicts
-      logger.info(
-        "🧹 Clearing any existing dataGot listeners for middle scanner..."
-      );
-      logger.info(
-        `🔍 Listeners before clearing: ${this.middleScannerService.listenerCount("dataGot")}`
-      );
-      await sleep(50);
-      logger.info("🔍 Not calling removeAllListeners to avoid interference");
-      logger.info(
-        `🔍 Listeners after clearing: ${this.middleScannerService.listenerCount("dataGot")}`
-      );
-
-      const scannerData = await new Promise((resolve, reject) => {
-        // Clear any existing data buffer to prevent stale data (MOVED UP, INSIDE PROMISE)
-        if (this.middleScannerService.clearBuffer) {
-          logger.info("🧹 Clearing middle TCP scanner data buffer...");
-          this.middleScannerService.clearBuffer();
-        }
-        // --- NEW: Clear data queue to prevent cross-instance data sharing ---
-        if (this.middleScannerService.clearDataQueue) {
-          logger.info(
-            "🧹 Clearing TCP scanner data queue (before listener attach)..."
-          );
-          this.middleScannerService.clearDataQueue();
-        }
-        // --- NEW: Debug buffer and queue state after clearBuffer ---
-        if (this.middleScannerService.getBufferStatus) {
-          const bufStatus = this.middleScannerService.getBufferStatus();
-          logger.info(
-            `[DEBUG] Buffer status after clearBuffer: ${JSON.stringify(bufStatus)}`
-          );
-        }
-        if (this.middleScannerService.dataQueue) {
-          logger.info(
-            `[DEBUG] Data queue length after clearBuffer: ${this.middleScannerService.dataQueue.length}`
-          );
-        }
-
-        let isResolved = false;
-        let timeoutId = null;
-
-        const dataHandler = (data) => {
-          if (isResolved) {
-            logger.warn(
-              "⚠️ Middle scanner data handler called after already resolved, ignoring"
-            );
-            return;
-          }
-          isResolved = true;
-          const dataReceiveTime = Date.now();
-          logger.success(
-            `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-          );
-          logger.info(
-            `🔍 Event listener called with data: "${data}" (type: ${typeof data})`
-          );
-          logger.info(
-            `🔍 Current listener count when data received: ${this.middleScannerService.listenerCount("dataGot")}`
-          );
-          logger.info(
-            `⏰ Data received at: ${new Date(dataReceiveTime).toISOString()}`
-          );
-          logger.info(
-            `⏰ Time since listener added: ${dataReceiveTime - listenerStartTime}ms`
-          );
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-            timeoutId = null;
-          }
-          logger.info("🔍 Removing specific dataGot listener...");
-          this.middleScannerService.off("dataGot", dataHandler);
-          logger.info(
-            `🔍 Removed dataGot listener for ${scannerLabel} scanner`
-          );
-          logger.info(
-            `🔍 Listener count after removal: ${this.middleScannerService.listenerCount("dataGot")}`
-          );
-          resolve(data);
-        };
-
-        // Set up event listener FIRST (before triggering scanner)
-        logger.info("👂 Adding event listener for middle scanner data");
-        const listenerStartTime = Date.now();
-        this.middleScannerService.onDataGotOnce(dataHandler);
-        logger.info(
-          `🔍 Event listener count after adding: ${this.middleScannerService.listenerCount("dataGot")}`
-        );
-        logger.info(
-          `⏰ Event listener added at: ${new Date(listenerStartTime).toISOString()}`
-        );
-        logger.info(
-          `🔍 Event listener count for dataGot: ${this.middleScannerService.listenerCount("dataGot")}`
-        );
-        // --- NEW: Debug queue state after listener attach ---
-        if (this.middleScannerService.dataQueue) {
-          logger.info(
-            `[DEBUG] Data queue length after listener attach: ${this.middleScannerService.dataQueue.length}`
-          );
-        }
-
-        // --- NEW: Monitor listener count to detect unexpected drops ---
-        const listenerCheckInterval = setInterval(() => {
-          const currentListenerCount =
-            this.middleScannerService.listenerCount("dataGot");
-          if (currentListenerCount === 0 && !isResolved) {
-            logger.warn(
-              `[DEBUG] WARNING: Middle scanner listener count dropped to 0 unexpectedly!`
-            );
-            logger.warn(
-              `[DEBUG] This might explain why data is being queued instead of delivered.`
-            );
-          }
-        }, 1000); // Check every second
-
-        // Configure timeout with better debugging
-        timeoutId = setTimeout(() => {
-          if (isResolved) {
-            logger.warn(
-              "⚠️ Middle scanner timeout handler called after already resolved, ignoring"
-            );
-            return;
-          }
-          isResolved = true;
-          clearInterval(listenerCheckInterval); // Clear the monitoring interval
-          logger.error(
-            `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
-          );
-          logger.error("🔍 Troubleshooting suggestions:");
-          logger.error("   1. Check if middle scanner is powered on");
-          logger.error(
-            "   2. Verify scanner is reachable via network (ping test)"
-          );
-          logger.error("   3. Check if barcode is present for scanner to read");
-          logger.error("   4. Test scanner with a simple TCP client");
-
-          // Remove listener after a small delay
-          setTimeout(() => {
-            this.middleScannerService.off("dataGot", dataHandler);
-            logger.info(
-              `🔍 Removed dataGot listener for ${scannerLabel} scanner (timeout)`
-            );
-          }, 100);
-
-          // Return "NG" on timeout and ensure proper bit handling
-          logger.warn(
-            "🔧 Middle scanner timeout - treating as NG to continue workflow"
-          );
-          resolve("NG");
-        }, timeout);
-
-        // Trigger middle scanner
-        const register = this.getScanRegister("middle");
-        const bit = this.getScanBit("middle");
-
-        logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
-
-        // Add small delay to ensure event listener is ready, then trigger scanner
-        setTimeout(() => {
-          writeBit(register, bit, 1)
-            .then(() => {
-              logger.success(`${scannerLabel} scanner triggered successfully`);
-              logger.info(
-                `⏳ Waiting for middle scanner data via TCP... (timeout: ${timeout / 1000}s)`
-              );
-            })
-            .catch((err) => {
-              if (isResolved) {
-                logger.warn(
-                  "⚠️ Middle scanner error handler called after already resolved, ignoring"
-                );
-                return;
-              }
-              isResolved = true;
-              logger.error(
-                `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-                err
-              );
-              if (timeoutId) {
-                clearTimeout(timeoutId);
-                timeoutId = null;
-              }
-              setTimeout(() => {
-                this.middleScannerService.off("dataGot", dataHandler);
-                logger.info(
-                  `🔍 Removed dataGot listener for ${scannerLabel} scanner (error)`
-                );
-              }, 100);
-              reject(err);
-            });
-        }, 100); // Small delay to ensure listener is ready
+        }, 100); // Small delay to ensure listeners are ready
       });
 
       logger.success(
@@ -1903,7 +1205,12 @@ class ScannerController {
     logger.info("Starting middle scan handler");
 
     try {
-      const scannerData = await this.fetchMiddleScannerData();
+      const scannerData = await this.fetchScannerData(
+        this.middleScannerService,
+        {
+          scanType: "middle",
+        }
+      );
 
       // Check for reset signal before proceeding
       if (await this.checkReset()) {
@@ -2332,6 +1639,165 @@ class ScannerController {
     if (this.middleScannerService && this.middleScannerService.setDebugLevel) {
       this.middleScannerService.setDebugLevel(true);
       logger.info("✅ Debug logging enabled for middle TCP scanner");
+    }
+  }
+
+  async initializeScannerAndMonitor(io, tcpScannerService) {
+    if (!this.isInitialized) {
+      logger.info("🔄 Starting scanner initialization...");
+      await this.initialize();
+    }
+
+    // Debug logging
+    logger.info("🔍 Debugging TCP scanner service state:");
+    logger.info(
+      `   - Provided tcpScannerService: ${tcpScannerService ? "exists" : "null"}`
+    );
+    logger.info(
+      `   - Internal tcpScannerService: ${this.tcpScannerService ? "exists" : "null"}`
+    );
+    logger.info(`   - isInitialized: ${this.isInitialized}`);
+
+    // Use the internally created tcpScannerService if no external service provided
+    if (tcpScannerService) {
+      this.tcpScannerService = tcpScannerService;
+      logger.info("🔗 Using provided TCP scanner service");
+    } else {
+      // Use the TCP scanner service created during initialization
+      if (!this.tcpScannerService) {
+        throw new Error(
+          "TCP scanner service not initialized. Make sure initialize() completed successfully."
+        );
+      }
+      logger.info("🔗 Using internal TCP scanner service");
+    }
+
+    this.setupResetMonitor();
+  }
+
+  setupResetMonitor() {
+    if (!this.resetMonitor) {
+      this.resetMonitor = new Worker("./services/resetMonitor.js");
+      this.resetMonitor.setMaxListeners(20);
+    }
+
+    this.cleanupResetListeners();
+
+    this.resetMonitor.on("error", (error) => {
+      logger.error("❌ Reset monitor error:", error);
+    });
+
+    this.resetMonitor.on("exit", (code) => {
+      logger.warn(`Reset monitor exited with code ${code}`);
+      this.cleanupResetListeners();
+      if (code !== 0) {
+        this.setupResetMonitor();
+      }
+    });
+  }
+
+  startResetMonitoring() {
+    return new Promise((resolve) => {
+      const messageHandler = async (message) => {
+        if (message === "reset") {
+          logger.warn("🔄 Reset signal detected from monitor");
+          this.resetMonitor.removeListener("message", messageHandler);
+          this.resetListeners.delete(messageHandler);
+          await this.handleReset();
+          resolve("RESET_DETECTED");
+        }
+      };
+
+      this.resetListeners.add(messageHandler);
+      this.resetMonitor.on("message", messageHandler);
+
+      return () => {
+        this.resetMonitor.removeListener("message", messageHandler);
+        this.resetListeners.delete(messageHandler);
+      };
+    });
+  }
+
+  cleanupResetListeners() {
+    if (this.resetMonitor) {
+      this.resetMonitor.removeAllListeners("message");
+      this.resetListeners.clear();
+    }
+  }
+
+  async handleVerificationScan(tcpScannerService, barcodeData) {
+    logger.info("Starting verification scan");
+
+    try {
+      const scannerData = await this.fetchScannerData(tcpScannerService, {
+        scanType: "verification",
+      });
+
+      // Handle timeout/null/undefined cases as NG
+      const effectiveScannerData = scannerData || "NG";
+
+      if (effectiveScannerData !== "NG") {
+        logger.success("Verification scan OK");
+      } else {
+        logger.warn("⚠️ Verification scan NG or timeout");
+      }
+
+      const isDataMatching =
+        await this.compareScannerDataWithCode(effectiveScannerData);
+
+      logger.info(
+        `✍️ Writing bit 1414.${isDataMatching ? 3 : 4} to signal data match result`
+      );
+      await writeBit(1414, isDataMatching ? 3 : 4, 1);
+
+      if (isDataMatching) {
+        logger.success("Data matches ✅");
+      } else {
+        logger.warn("⚠️ Data does not match");
+      }
+
+      logger.info("💾 Saving verification scan results to MongoDB...");
+      logger.info(
+        `📋 Save data: SerialNumber=${barcodeData.serialNo}, MarkingData=${barcodeData.text}, ScannerData=${effectiveScannerData}, Result=${isDataMatching}`
+      );
+
+      await this.saveToMongoDB({
+        io: this.io,
+        serialNumber: barcodeData.serialNo,
+        markingData: barcodeData.text,
+        scannerData: effectiveScannerData,
+        grading: "N/A",
+        result: isDataMatching,
+        isUpdate: true, // Update existing record from middle scan
+      });
+
+      logger.success(
+        "✅ Verification scan results updated in MongoDB successfully"
+      );
+
+      return { success: isDataMatching };
+    } catch (error) {
+      if (error.message === "RESET_DETECTED") {
+        logger.warn(
+          "Reset detected during verification scan, restarting cycle"
+        );
+        await this.handleReset();
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  async handleReset() {
+    try {
+      logger.info("🔄 Handling reset signal");
+      await writeBit(1500, 3, 1);
+      await this.resetBits();
+      this.barcodeGenerator.decSerialNo();
+      throw new Error("RESET_DETECTED");
+    } catch (error) {
+      logger.error("❌ Error handling reset:", error);
+      throw error;
     }
   }
 }

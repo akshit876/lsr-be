@@ -8,6 +8,10 @@ import process from "process";
 class TcpScannerService extends EventEmitter {
   constructor(options = {}) {
     super(); // Initialize EventEmitter
+
+    // --- NEW: Debug logging to identify the issue ---
+    console.log("TcpScannerService constructor called with options:", options);
+
     this.options = {
       host: options.host || process.env.SCANNER_HOST || "192.168.3.145",
       port: parseInt(options.port || process.env.SCANNER_PORT, 10) || 502,
@@ -17,20 +21,54 @@ class TcpScannerService extends EventEmitter {
       keepAliveInitialDelay: options.keepAliveInitialDelay || 1000,
       logDir: options.logDir || "scanner_logs",
     };
+
+    // --- NEW: Debug logging for options ---
+    console.log("TcpScannerService options set:", this.options);
+
     this.client = null;
     this.isConnected = false;
     this.isInitialized = false;
     this.dataBuffer = ""; // Buffer to accumulate data
     this.bufferTimeout = null; // Timeout to emit buffered data
     this.reconnectTimer = null;
-    // --- NEW: Instance identification (moved before setupLogger) ---
-    this.instanceId = `${this.options.host}:${this.options.port}`;
-    this.setupLogger();
+
+    // --- NEW: Instance identification with safety checks ---
+    try {
+      this.instanceId = `${this.options.host}:${this.options.port}`;
+      console.log("TcpScannerService instanceId set:", this.instanceId);
+    } catch (error) {
+      console.error("Error setting instanceId:", error);
+      this.instanceId = "unknown-scanner";
+    }
+
+    try {
+      this.setupLogger();
+      console.log("TcpScannerService setupLogger completed");
+    } catch (error) {
+      console.error("Error in setupLogger:", error);
+      // Fallback logger setup
+      this.setupFallbackLogger();
+    }
+
     // --- Data queue for scan events ---
     this.dataQueue = [];
   }
 
+  setupFallbackLogger() {
+    console.log("Setting up fallback logger");
+    this.logger = winston.createLogger({
+      level: "debug",
+      transports: [
+        new winston.transports.Console({
+          format: winston.format.simple(),
+        }),
+      ],
+    });
+  }
+
   setupLogger() {
+    console.log("Setting up logger with instanceId:", this.instanceId);
+
     const logFormat = winston.format.combine(
       winston.format.timestamp(),
       winston.format.printf(({ timestamp, level, message }) => {
@@ -40,10 +78,22 @@ class TcpScannerService extends EventEmitter {
 
     // --- FIXED: Use safe instanceId with fallback ---
     const safeInstanceId =
-      this.instanceId || `${this.options.host}:${this.options.port}`;
-    const logFileName = safeInstanceId
-      ? safeInstanceId.replace(/[.:]/g, "-")
-      : "tcp-scanner";
+      this.instanceId ||
+      `${this.options.host}:${this.options.port}` ||
+      "unknown";
+    console.log("Safe instanceId:", safeInstanceId);
+
+    let logFileName = "tcp-scanner";
+    try {
+      if (safeInstanceId && typeof safeInstanceId === "string") {
+        logFileName = safeInstanceId.replace(/[.:]/g, "-");
+      }
+    } catch (error) {
+      console.error("Error creating logFileName:", error);
+      logFileName = "tcp-scanner";
+    }
+
+    console.log("Log filename:", logFileName);
 
     this.logger = winston.createLogger({
       level: "debug",
@@ -65,9 +115,16 @@ class TcpScannerService extends EventEmitter {
   }
 
   log(message, level = "info") {
-    const instanceId =
-      this.instanceId || `${this.options.host}:${this.options.port}`;
-    this.logger.log(level, `[${instanceId}] ${message}`);
+    try {
+      const instanceId =
+        this.instanceId ||
+        `${this.options.host}:${this.options.port}` ||
+        "unknown";
+      this.logger.log(level, `[${instanceId}] ${message}`);
+    } catch (error) {
+      console.error("Error in log method:", error);
+      console.log(`[${this.instanceId || "unknown"}] ${message}`);
+    }
   }
 
   // Method to enable/disable debug logging
