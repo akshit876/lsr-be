@@ -1869,6 +1869,30 @@ class ScannerController {
     }
   }
 
+  // Reusable file writing function
+  async writeToFile(filePath, data, description = "Data") {
+    try {
+      await fs.writeFileSync(filePath, data.toString(), "utf8");
+      logger.info(`✅ ${description} written to ${path.basename(filePath)}`);
+
+      // Verify the write was successful
+      const verificationData = await fs.readFileSync(filePath, "utf8");
+      if (verificationData !== data.toString()) {
+        throw new Error(
+          `File verification failed for ${path.basename(filePath)}`
+        );
+      }
+
+      return true;
+    } catch (error) {
+      logger.error(
+        `❌ Error writing ${description.toLowerCase()} to ${path.basename(filePath)}:`,
+        error
+      );
+      throw error;
+    }
+  }
+
   // Helper methods for scan configuration
   getScanRegister(scanType) {
     switch (scanType) {
