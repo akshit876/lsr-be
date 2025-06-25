@@ -1829,6 +1829,20 @@ class ScannerController {
     return resetTime;
   }
 
+  async getCurrentDayId() {
+    const now = new Date();
+    const nextResetTime = new Date(this.lastResetDate);
+    nextResetTime.setDate(nextResetTime.getDate() + 1);
+
+    // Check if we need to reset the counter
+    if (now >= nextResetTime) {
+      this.currentDayId = 1;
+      this.lastResetDate = this.getLastResetTime();
+    }
+
+    return this.currentDayId++;
+  }
+
   // Helper methods for scan configuration
   getScanRegister(scanType) {
     switch (scanType) {
