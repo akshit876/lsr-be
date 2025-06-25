@@ -24,6 +24,8 @@ class TcpScannerService extends EventEmitter {
     this.bufferTimeout = null; // Timeout to emit buffered data
     this.reconnectTimer = null;
     this.setupLogger();
+    // --- Data queue for scan events ---
+    this.dataQueue = [];
   }
 
   setupLogger() {
@@ -166,7 +168,8 @@ class TcpScannerService extends EventEmitter {
           this.log(
             `Number of dataGot listeners: ${this.listenerCount("dataGot")}`
           );
-          this.emit("dataGot", finalMessage);
+          // --- Use queue-aware emit ---
+          this.emitDataGot(finalMessage);
           this.dataBuffer = ""; // Clear buffer
         } else {
           // Set timeout to wait for more data
@@ -181,7 +184,8 @@ class TcpScannerService extends EventEmitter {
               this.log(
                 `Number of dataGot listeners: ${this.listenerCount("dataGot")}`
               );
-              this.emit("dataGot", this.dataBuffer);
+              // --- Use queue-aware emit ---
+              this.emitDataGot(this.dataBuffer);
               this.dataBuffer = ""; // Clear buffer
             }
           }, 500); // 500ms timeout for better buffering
@@ -416,6 +420,31 @@ class TcpScannerService extends EventEmitter {
       bufferContent: this.dataBuffer,
       hasTimeout: !!this.bufferTimeout,
     };
+  }
+
+  // --- Data queue logic ---
+  emitDataGot(data) {
+    if (this.listenerCount("dataGot") > 0) {
+      this.emit("dataGot", data);
+    } else {
+      this.dataQueue.push(data);
+      this.log(
+        `[QUEUE] No dataGot listeners, queueing data: "${data}"`,
+        "debug"
+      );
+    }
+  }
+
+  onDataGotOnce(handler) {
+    if (this.dataQueue.length > 0) {
+      this.log(
+        `[QUEUE] Delivering queued data to new listener: "${this.dataQueue[0]}"`,
+        "debug"
+      );
+      handler(this.dataQueue.shift());
+    } else {
+      this.once("dataGot", handler);
+    }
   }
 }
 

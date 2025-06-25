@@ -932,7 +932,7 @@ class ScannerController {
         logger.info(
           `🔍 Listener count before adding: ${tcpScannerService.listenerCount("dataGot")}`
         );
-        tcpScannerService.on("dataGot", dataHandler);
+        tcpScannerService.onDataGotOnce(dataHandler);
         logger.info(
           `🔍 Listener count immediately after adding: ${tcpScannerService.listenerCount("dataGot")}`
         );
@@ -1507,7 +1507,7 @@ class ScannerController {
           }
         };
 
-        this.comPortService.on("dataGot", testHandler);
+        this.comPortService.onDataGotOnce(testHandler);
 
         // 10 second timeout
         setTimeout(() => {
@@ -1636,7 +1636,7 @@ class ScannerController {
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for middle scanner data");
         const listenerStartTime = Date.now();
-        this.middleScannerService.on("dataGot", dataHandler);
+        this.middleScannerService.onDataGotOnce(dataHandler);
         logger.info(
           `🔍 Event listener count after adding: ${this.middleScannerService.listenerCount("dataGot")}`
         );
