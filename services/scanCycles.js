@@ -864,25 +864,27 @@ class ScannerController {
       return { shouldContinue: true };
     }
 
-    // If we get here and have valid scanner data, it means the part is already marked
+    // DEBUG MODE: Always continue regardless of scan result
     if (scannerData && scannerData.trim() !== "") {
-      logger.warn("⚠️ Part appears to be already marked");
+      logger.info(
+        "🔧 DEBUG MODE: First scan received data, but continuing workflow anyway"
+      );
+      logger.info(`📋 Received data: "${scannerData}"`);
 
-      // Emit the "part_already_marked" event to the UI
+      // Emit the data to the UI for debugging
       if (this.io) {
-        this.io.emit("first_scan_ok", {
+        this.io.emit("first_scan_debug", {
           timestamp: new Date(),
           scannerData: scannerData,
-          message:
-            "Part detected with existing marking. Please use an unmarked part.",
+          message: "DEBUG: First scan received data, continuing workflow",
         });
       }
 
-      logger.info("✍️ Writing bit 1414.6 to signal OK scan");
-      await writeBit(1414, 6, 1);
+      logger.info("✍️ Writing bit 1414.7 to signal NG scan (debug mode)");
+      await writeBit(1414, 7, 1);
     }
 
-    return { shouldContinue: false };
+    return { shouldContinue: true };
   }
 
   async checkReset() {
