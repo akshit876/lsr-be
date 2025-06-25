@@ -20,6 +20,7 @@ const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
 export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
+const SCANNER_TIMEOUT = 30 * 1000; // 30 seconds scanner timeout
 
 // TCP Scanner configuration
 const TCP_SCANNER_CONFIG = {
@@ -195,6 +196,9 @@ class ScannerController {
       // Create database indexes for better performance
       logger.info("🔧 Setting up database indexes...");
       await this.createDatabaseIndexes();
+
+      // Enable debug logging for TCP scanners
+      this.enableTcpScannerDebug();
 
       this.isInitialized = true;
       logger.success("Scanner controller initialization complete");
@@ -844,7 +848,7 @@ class ScannerController {
   async fetchScannerData(tcpScannerService, options = {}) {
     const {
       scanType = options.scanType || "first",
-      timeout = 5 * 1000, // Set timeout to 5 seconds
+      timeout = SCANNER_TIMEOUT, // Set timeout to 30 seconds
       scannerLabel = this.getScanLabel(scanType),
     } = options;
 
@@ -900,6 +904,7 @@ class ScannerController {
           }
 
           isResolved = true;
+          const dataReceiveTime = Date.now();
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
@@ -908,6 +913,12 @@ class ScannerController {
           );
           logger.info(
             `🔍 Current listener count when data received: ${tcpScannerService.listenerCount("dataGot")}`
+          );
+          logger.info(
+            `⏰ Data received at: ${new Date(dataReceiveTime).toISOString()}`
+          );
+          logger.info(
+            `⏰ Time since listener added: ${dataReceiveTime - listenerStartTime}ms`
           );
 
           // Clear timeout since we got data
@@ -932,9 +943,13 @@ class ScannerController {
 
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for scanner data");
+        const listenerStartTime = Date.now();
         tcpScannerService.on("dataGot", dataHandler);
         logger.info(
           `🔍 Event listener count after adding: ${tcpScannerService.listenerCount("dataGot")}`
+        );
+        logger.info(
+          `⏰ Event listener added at: ${new Date(listenerStartTime).toISOString()}`
         );
 
         // Debug: Check if listener was added
@@ -1556,7 +1571,7 @@ class ScannerController {
   }
 
   async fetchMiddleScannerData() {
-    const { timeout = 5 * 1000, scannerLabel = "Middle" } = {};
+    const { timeout = SCANNER_TIMEOUT, scannerLabel = "Middle" } = {};
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
 
@@ -1612,6 +1627,7 @@ class ScannerController {
           }
 
           isResolved = true;
+          const dataReceiveTime = Date.now();
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
@@ -1620,6 +1636,12 @@ class ScannerController {
           );
           logger.info(
             `🔍 Current listener count when data received: ${this.middleScannerService.listenerCount("dataGot")}`
+          );
+          logger.info(
+            `⏰ Data received at: ${new Date(dataReceiveTime).toISOString()}`
+          );
+          logger.info(
+            `⏰ Time since listener added: ${dataReceiveTime - listenerStartTime}ms`
           );
 
           // Clear timeout since we got data
@@ -1644,9 +1666,13 @@ class ScannerController {
 
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for middle scanner data");
+        const listenerStartTime = Date.now();
         this.middleScannerService.on("dataGot", dataHandler);
         logger.info(
           `🔍 Event listener count after adding: ${this.middleScannerService.listenerCount("dataGot")}`
+        );
+        logger.info(
+          `⏰ Event listener added at: ${new Date(listenerStartTime).toISOString()}`
         );
 
         // Debug: Check if listener was added
@@ -1833,6 +1859,37 @@ class ScannerController {
           grading: "N/A",
           isUpdate: false,
         });
+
+        logger.info(`📋 Duplicate details:`);
+        logger.info(`   - Total occurrences: ${duplicateCheck.duplicateCount}`);
+        logger.info(
+          `   - First occurrence: ${duplicateCheck.existingRecord.Timestamp}`
+        );
+        logger.info(
+          `   - Serial Number: ${duplicateCheck.existingRecord.SerialNumber}`
+        );
+        logger.info(
+          `   - Model Number: ${duplicateCheck.existingRecord.ModelNumber}`
+        );
+        logger.info(`   - Result: ${duplicateCheck.existingRecord.Result}`);
+        logger.info(`   - User: ${duplicateCheck.existingRecord.User}`);
+
+        // Emit duplicate detection event to UI with optimized information
+        if (this.io) {
+          this.io.emit("duplicate_marking_detected", {
+            timestamp: new Date(),
+            markingData: processedData,
+            duplicateCount: duplicateCheck.duplicateCount,
+            existingRecord: {
+              serialNumber: duplicateCheck.existingRecord.SerialNumber,
+              modelNumber: duplicateCheck.existingRecord.ModelNumber,
+              timestamp: duplicateCheck.existingRecord.Timestamp,
+              result: duplicateCheck.existingRecord.Result,
+              user: duplicateCheck.existingRecord.User,
+            },
+            message: `Duplicate marking data detected - ${duplicateCheck.duplicateCount} occurrence(s) found in database`,
+          });
+        }
 
         return {
           shouldContinue: false,
@@ -2052,7 +2109,7 @@ class ScannerController {
       logger.info("📊 Getting duplicate statistics for marking data...");
 
       if (!markingData || markingData === "NG" || markingData === "N/A") {
-        return { count: 0, records: [] };
+        return { count: 0, records: [], totalCount: 0 };
       }
 
       await mongoDbService.connect("main-data", "records");
@@ -2150,6 +2207,21 @@ class ScannerController {
     } catch (error) {
       logger.error("❌ Error creating database indexes:", error);
       // Don't throw error - indexes are optional for performance
+    }
+  }
+
+  // NEW: Method to enable debug logging for TCP scanners
+  enableTcpScannerDebug() {
+    logger.info("🔧 Enabling debug logging for TCP scanners...");
+
+    if (this.tcpScannerService && this.tcpScannerService.setDebugLevel) {
+      this.tcpScannerService.setDebugLevel(true);
+      logger.info("✅ Debug logging enabled for main TCP scanner");
+    }
+
+    if (this.middleScannerService && this.middleScannerService.setDebugLevel) {
+      this.middleScannerService.setDebugLevel(true);
+      logger.info("✅ Debug logging enabled for middle TCP scanner");
     }
   }
 }

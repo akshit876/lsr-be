@@ -35,7 +35,7 @@ class TcpScannerService extends EventEmitter {
     );
 
     this.logger = winston.createLogger({
-      level: "info",
+      level: "debug",
       format: logFormat,
       transports: [
         new winston.transports.Console(),
@@ -52,6 +52,12 @@ class TcpScannerService extends EventEmitter {
 
   log(message, level = "info") {
     this.logger.log(level, message);
+  }
+
+  // Method to enable/disable debug logging
+  setDebugLevel(enable = true) {
+    this.logger.level = enable ? "debug" : "info";
+    this.log(`Debug logging ${enable ? "enabled" : "disabled"}`);
   }
 
   async initTcpConnection() {
@@ -112,10 +118,34 @@ class TcpScannerService extends EventEmitter {
 
     // Handle incoming data from TCP scanner
     this.client.on("data", (buffer) => {
-      const newData = buffer.toString().trim();
+      // Convert buffer to string but preserve the @ symbol
+      const rawData = buffer.toString();
+
+      // Debug: Log the raw buffer data to see exactly what's received
+      this.log(`Raw buffer length: ${buffer.length}`, "debug");
+      this.log(`Raw buffer hex: ${buffer.toString("hex")}`, "debug");
+      this.log(
+        `Raw TCP data chunk received (before trim): "${rawData}"`,
+        "debug"
+      );
+      this.log(
+        `Raw data char codes: [${Array.from(rawData)
+          .map((c) => c.charCodeAt(0))
+          .join(", ")}]`,
+        "debug"
+      );
+
+      // Only trim whitespace, not the @ symbol
+      const newData = rawData.replace(/^\s+|\s+$/g, "");
 
       if (newData) {
-        this.log(`Raw TCP data chunk received: "${newData}"`, "debug");
+        this.log(`Processed TCP data chunk: "${newData}"`, "debug");
+        this.log(
+          `Processed data char codes: [${Array.from(newData)
+            .map((c) => c.charCodeAt(0))
+            .join(", ")}]`,
+          "debug"
+        );
 
         // Add to buffer
         this.dataBuffer += newData;
@@ -214,10 +244,20 @@ class TcpScannerService extends EventEmitter {
   isCompleteMessage(data) {
     const trimmedData = data.trim();
 
-    // Scanner messages end with @ delimiter (same as COM port implementation)
+    // Scanner messages end with @ delimiter (manufacturer confirmed)
     if (trimmedData.includes("@")) {
       this.log(
         `Complete TCP message detected (@ found): "${trimmedData}"`,
+        "debug"
+      );
+      return true;
+    }
+
+    // Fallback: Handle scanner data format like "P5314775;S7002;1TB;D25157;VR0003" (without @)
+    // This format contains semicolons and appears to be complete scanner data
+    if (trimmedData.includes(";") && trimmedData.length > 10) {
+      this.log(
+        `Complete TCP message detected (semicolon format, no @): "${trimmedData}"`,
         "debug"
       );
       return true;
@@ -229,9 +269,18 @@ class TcpScannerService extends EventEmitter {
       return false;
     }
 
-    // Default to incomplete for other cases (waiting for @)
+    // For "NG" responses, treat as complete
+    if (trimmedData.toUpperCase() === "NG") {
+      this.log(
+        `Complete TCP message detected (NG response): "${trimmedData}"`,
+        "debug"
+      );
+      return true;
+    }
+
+    // Default to incomplete for other cases (waiting for @ or proper format)
     this.log(
-      `TCP data appears incomplete (waiting for @): "${trimmedData}"`,
+      `TCP data appears incomplete (waiting for @ or proper format): "${trimmedData}"`,
       "debug"
     );
     return false;
@@ -251,8 +300,14 @@ class TcpScannerService extends EventEmitter {
       return trimmedData;
     }
 
-    // Get the last complete segment
-    const lastSegment = segments[segments.length - 1].trim();
+    // Get the last complete segment and remove any trailing @ if present
+    let lastSegment = segments[segments.length - 1].trim();
+
+    // Remove trailing @ if it exists (shouldn't happen with split, but just in case)
+    if (lastSegment.endsWith("@")) {
+      lastSegment = lastSegment.slice(0, -1);
+      this.log(`Removed trailing @ from segment: "${lastSegment}"`, "debug");
+    }
 
     this.log(
       `Extracted final TCP message: "${lastSegment}" from segments: [${segments.join(", ")}]`,
