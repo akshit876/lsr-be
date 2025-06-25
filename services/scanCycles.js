@@ -1826,6 +1826,46 @@ class ScannerController {
 
     return resetTime;
   }
+
+  // Helper methods for scan configuration
+  getScanRegister(scanType) {
+    switch (scanType) {
+      case "first":
+        return 1415;
+      case "middle":
+        return 1418;
+      case "verification":
+        return 1416;
+      default:
+        return 1415;
+    }
+  }
+
+  getScanBit(scanType) {
+    switch (scanType) {
+      case "first":
+        return 0;
+      case "middle":
+        return 0;
+      case "verification":
+        return 15;
+      default:
+        return 0;
+    }
+  }
+
+  getScanLabel(scanType) {
+    switch (scanType) {
+      case "first":
+        return "First";
+      case "middle":
+        return "Middle";
+      case "verification":
+        return "Verification";
+      default:
+        return "Scanner";
+    }
+  }
 }
 
 // Export singleton instance
