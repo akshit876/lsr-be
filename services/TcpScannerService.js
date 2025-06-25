@@ -26,6 +26,8 @@ class TcpScannerService extends EventEmitter {
     this.setupLogger();
     // --- Data queue for scan events ---
     this.dataQueue = [];
+    // --- NEW: Instance identification ---
+    this.instanceId = `${this.options.host}:${this.options.port}`;
   }
 
   setupLogger() {
@@ -42,7 +44,10 @@ class TcpScannerService extends EventEmitter {
       transports: [
         new winston.transports.Console(),
         new winston.transports.DailyRotateFile({
-          filename: path.join(this.options.logDir, "tcp-scanner-%DATE%.log"),
+          filename: path.join(
+            this.options.logDir,
+            `tcp-scanner-${this.instanceId.replace(/[.:]/g, "-")}-%DATE%.log`
+          ),
           datePattern: "YYYY-MM-DD",
           zippedArchive: true,
           maxSize: "20m",
@@ -53,7 +58,7 @@ class TcpScannerService extends EventEmitter {
   }
 
   log(message, level = "info") {
-    this.logger.log(level, message);
+    this.logger.log(level, `[${this.instanceId}] ${message}`);
   }
 
   // Method to enable/disable debug logging
@@ -412,6 +417,13 @@ class TcpScannerService extends EventEmitter {
     }
   }
 
+  // --- NEW: Clear the data queue (useful for preventing cross-instance data sharing) ---
+  clearDataQueue() {
+    const queueLength = this.dataQueue.length;
+    this.dataQueue = [];
+    this.log(`Clearing data queue (removed ${queueLength} items)`, "debug");
+  }
+
   // Get current buffer status for debugging
   getBufferStatus() {
     return {
@@ -443,7 +455,15 @@ class TcpScannerService extends EventEmitter {
       );
       handler(this.dataQueue.shift());
     } else {
-      this.once("dataGot", handler);
+      // --- FIXED: Don't use this.once() to prevent race condition ---
+      // Instead, manually add listener and remove it after first event
+      const wrappedHandler = (data) => {
+        // Remove this specific listener immediately
+        this.off("dataGot", wrappedHandler);
+        // Call the original handler
+        handler(data);
+      };
+      this.on("dataGot", wrappedHandler);
     }
   }
 }

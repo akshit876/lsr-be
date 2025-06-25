@@ -917,6 +917,13 @@ class ScannerController {
           );
           tcpScannerService.clearBuffer();
         }
+        // --- NEW: Clear data queue to prevent cross-instance data sharing ---
+        if (tcpScannerService.clearDataQueue) {
+          logger.info(
+            "🧹 Clearing TCP scanner data queue (before listener attach)..."
+          );
+          tcpScannerService.clearDataQueue();
+        }
         // --- NEW: Debug buffer and queue state after clearBuffer ---
         if (tcpScannerService.getBufferStatus) {
           const bufStatus = tcpScannerService.getBufferStatus();
@@ -1000,6 +1007,20 @@ class ScannerController {
           );
         }
 
+        // --- NEW: Monitor listener count to detect unexpected drops ---
+        const listenerCheckInterval = setInterval(() => {
+          const currentListenerCount =
+            tcpScannerService.listenerCount("dataGot");
+          if (currentListenerCount === 0 && !isResolved) {
+            logger.warn(
+              `[DEBUG] WARNING: Listener count dropped to 0 unexpectedly!`
+            );
+            logger.warn(
+              `[DEBUG] This might explain why data is being queued instead of delivered.`
+            );
+          }
+        }, 1000); // Check every second
+
         // Configure timeout with better debugging
         timeoutId = setTimeout(() => {
           if (isResolved) {
@@ -1009,6 +1030,7 @@ class ScannerController {
             return;
           }
           isResolved = true;
+          clearInterval(listenerCheckInterval); // Clear the monitoring interval
           logger.error(
             `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
           );
@@ -1676,6 +1698,13 @@ class ScannerController {
           logger.info("🧹 Clearing middle TCP scanner data buffer...");
           this.middleScannerService.clearBuffer();
         }
+        // --- NEW: Clear data queue to prevent cross-instance data sharing ---
+        if (this.middleScannerService.clearDataQueue) {
+          logger.info(
+            "🧹 Clearing TCP scanner data queue (before listener attach)..."
+          );
+          this.middleScannerService.clearDataQueue();
+        }
         // --- NEW: Debug buffer and queue state after clearBuffer ---
         if (this.middleScannerService.getBufferStatus) {
           const bufStatus = this.middleScannerService.getBufferStatus();
@@ -1751,6 +1780,20 @@ class ScannerController {
           );
         }
 
+        // --- NEW: Monitor listener count to detect unexpected drops ---
+        const listenerCheckInterval = setInterval(() => {
+          const currentListenerCount =
+            this.middleScannerService.listenerCount("dataGot");
+          if (currentListenerCount === 0 && !isResolved) {
+            logger.warn(
+              `[DEBUG] WARNING: Middle scanner listener count dropped to 0 unexpectedly!`
+            );
+            logger.warn(
+              `[DEBUG] This might explain why data is being queued instead of delivered.`
+            );
+          }
+        }, 1000); // Check every second
+
         // Configure timeout with better debugging
         timeoutId = setTimeout(() => {
           if (isResolved) {
@@ -1760,6 +1803,7 @@ class ScannerController {
             return;
           }
           isResolved = true;
+          clearInterval(listenerCheckInterval); // Clear the monitoring interval
           logger.error(
             `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
           );
