@@ -587,6 +587,25 @@ class ScannerController {
     } catch (error) {
       console.error({ error });
       logger.error("Error saving data:", error);
+      logger.error("📋 Failed data:", {
+        serialNumber,
+        markingData,
+        scannerData,
+        result,
+        isUpdate,
+      });
+
+      // Check if it's a MongoDB connection issue
+      if (
+        error.message.includes("ECONNREFUSED") ||
+        error.message.includes("MongoNetworkError")
+      ) {
+        logger.error("❌ MongoDB connection issue detected");
+        logger.error(
+          "💡 Try restarting the application or check MongoDB service"
+        );
+      }
+
       throw error;
     }
   }
@@ -1322,6 +1341,11 @@ class ScannerController {
         logger.warn("⚠️ Data does not match");
       }
 
+      logger.info("💾 Saving verification scan results to MongoDB...");
+      logger.info(
+        `📋 Save data: SerialNumber=${barcodeData.serialNo}, MarkingData=${barcodeData.text}, ScannerData=${effectiveScannerData}, Result=${isDataMatching}`
+      );
+
       await this.saveToMongoDB({
         io: this.io,
         serialNumber: barcodeData.serialNo,
@@ -1329,8 +1353,12 @@ class ScannerController {
         scannerData: effectiveScannerData,
         grading: "N/A",
         result: isDataMatching,
-        isUpdate: true,
+        isUpdate: true, // Update existing record from middle scan
       });
+
+      logger.success(
+        "✅ Verification scan results updated in MongoDB successfully"
+      );
 
       return { success: isDataMatching };
     } catch (error) {
@@ -1593,6 +1621,24 @@ class ScannerController {
         this.writeToFile(TEXT_FILE_PATH, processedData, "Middle scan text"),
       ]);
       logger.info("✅ Files written successfully");
+
+      // Save middle scan data to MongoDB as first update
+      logger.info("💾 Saving middle scan data to MongoDB as first update...");
+      logger.info(
+        `📋 First update data: SerialNumber=${processedData}, MarkingData=${processedData}, ScannerData=Middle Scan`
+      );
+
+      await this.saveToMongoDB({
+        io: this.io,
+        serialNumber: processedData,
+        markingData: processedData,
+        scannerData: "N/A",
+        result: "N/A", // Will be updated after verification
+        grading: "N/A",
+        isUpdate: false, // Insert new record
+      });
+
+      logger.success("✅ Middle scan data saved to MongoDB as first update");
 
       // Emit marking data to UI
       if (this.io) {
