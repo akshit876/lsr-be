@@ -824,6 +824,12 @@ class ScannerController {
     }
   }
 
+  async handleScanError(error) {
+    logger.error("❌ Unexpected error in scanner workflow:", error);
+    await this.handleError(error);
+    await sleep(5000);
+  }
+
   async handleFirstScan(tcpScannerService) {
     logger.info("Starting first scan handler");
 
