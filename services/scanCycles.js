@@ -871,30 +871,19 @@ class ScannerController {
       logger.info(
         `🔍 Listeners before clearing: ${tcpScannerService.listenerCount("dataGot")}`
       );
-
-      // Add a small delay before clearing to ensure no race conditions
       await sleep(50);
-
-      // Instead of removeAllListeners, we'll just clear the buffer and let the new listener handle the data
-      // This prevents interference with other parts of the system
       logger.info("🔍 Not calling removeAllListeners to avoid interference");
       logger.info(
         `🔍 Listeners after clearing: ${tcpScannerService.listenerCount("dataGot")}`
       );
 
-      // Clear any existing data buffer to prevent stale data
-      if (tcpScannerService.clearBuffer) {
-        logger.info("🧹 Clearing TCP scanner data buffer...");
-        tcpScannerService.clearBuffer();
-      }
-
-      // Debug: Check TCP scanner service status
-      if (tcpScannerService.getStatus) {
-        const status = tcpScannerService.getStatus();
-        logger.info(`🔍 TCP scanner status: ${JSON.stringify(status)}`);
-      }
-
       const scannerData = await new Promise((resolve, reject) => {
+        // Clear any existing data buffer to prevent stale data (MOVED UP, INSIDE PROMISE)
+        if (tcpScannerService.clearBuffer) {
+          logger.info("🧹 Clearing TCP scanner data buffer...");
+          tcpScannerService.clearBuffer();
+        }
+
         let isResolved = false;
         let timeoutId = null;
 
@@ -905,7 +894,6 @@ class ScannerController {
             );
             return;
           }
-
           isResolved = true;
           const dataReceiveTime = Date.now();
           logger.success(
@@ -923,14 +911,10 @@ class ScannerController {
           logger.info(
             `⏰ Time since listener added: ${dataReceiveTime - listenerStartTime}ms`
           );
-
-          // Clear timeout since we got data
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;
           }
-
-          // Remove only this specific listener to avoid interfering with others
           logger.info("🔍 Removing specific dataGot listener...");
           tcpScannerService.off("dataGot", dataHandler);
           logger.info(
@@ -939,14 +923,12 @@ class ScannerController {
           logger.info(
             `🔍 Listener count after removal: ${tcpScannerService.listenerCount("dataGot")}`
           );
-
           resolve(data);
         };
 
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for scanner data");
         const listenerStartTime = Date.now();
-
         logger.info(
           `🔍 Listener count before adding: ${tcpScannerService.listenerCount("dataGot")}`
         );
@@ -954,15 +936,12 @@ class ScannerController {
         logger.info(
           `🔍 Listener count immediately after adding: ${tcpScannerService.listenerCount("dataGot")}`
         );
-
         logger.info(
           `🔍 Event listener count after adding: ${tcpScannerService.listenerCount("dataGot")}`
         );
         logger.info(
           `⏰ Event listener added at: ${new Date(listenerStartTime).toISOString()}`
         );
-
-        // Debug: Check if listener was added
         logger.info(
           `🔍 Event listener count for dataGot: ${tcpScannerService.listenerCount("dataGot")}`
         );
@@ -975,7 +954,6 @@ class ScannerController {
             );
             return;
           }
-
           isResolved = true;
           logger.error(
             `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
@@ -1029,25 +1007,21 @@ class ScannerController {
                 );
                 return;
               }
-
               isResolved = true;
               logger.error(
                 `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
                 err
               );
-
               if (timeoutId) {
                 clearTimeout(timeoutId);
                 timeoutId = null;
               }
-
               setTimeout(() => {
                 tcpScannerService.off("dataGot", dataHandler);
                 logger.info(
                   `🔍 Removed dataGot listener for ${scannerLabel} scanner (error)`
                 );
               }, 100);
-
               reject(err);
             });
         }, 100); // Small delay to ensure listener is ready
@@ -1604,30 +1578,19 @@ class ScannerController {
       logger.info(
         `🔍 Listeners before clearing: ${this.middleScannerService.listenerCount("dataGot")}`
       );
-
-      // Add a small delay before clearing to ensure no race conditions
       await sleep(50);
-
-      // Instead of removeAllListeners, we'll just clear the buffer and let the new listener handle the data
-      // This prevents interference with other parts of the system
       logger.info("🔍 Not calling removeAllListeners to avoid interference");
       logger.info(
         `🔍 Listeners after clearing: ${this.middleScannerService.listenerCount("dataGot")}`
       );
 
-      // Clear any existing data buffer to prevent stale data
-      if (this.middleScannerService.clearBuffer) {
-        logger.info("🧹 Clearing middle TCP scanner data buffer...");
-        this.middleScannerService.clearBuffer();
-      }
-
-      // Debug: Check middle scanner service status
-      if (this.middleScannerService.getStatus) {
-        const status = this.middleScannerService.getStatus();
-        logger.info(`🔍 Middle scanner status: ${JSON.stringify(status)}`);
-      }
-
       const scannerData = await new Promise((resolve, reject) => {
+        // Clear any existing data buffer to prevent stale data (MOVED UP, INSIDE PROMISE)
+        if (this.middleScannerService.clearBuffer) {
+          logger.info("🧹 Clearing middle TCP scanner data buffer...");
+          this.middleScannerService.clearBuffer();
+        }
+
         let isResolved = false;
         let timeoutId = null;
 
@@ -1638,7 +1601,6 @@ class ScannerController {
             );
             return;
           }
-
           isResolved = true;
           const dataReceiveTime = Date.now();
           logger.success(
@@ -1656,14 +1618,10 @@ class ScannerController {
           logger.info(
             `⏰ Time since listener added: ${dataReceiveTime - listenerStartTime}ms`
           );
-
-          // Clear timeout since we got data
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;
           }
-
-          // Remove only this specific listener to avoid interfering with others
           logger.info("🔍 Removing specific dataGot listener...");
           this.middleScannerService.off("dataGot", dataHandler);
           logger.info(
@@ -1672,7 +1630,6 @@ class ScannerController {
           logger.info(
             `🔍 Listener count after removal: ${this.middleScannerService.listenerCount("dataGot")}`
           );
-
           resolve(data);
         };
 
@@ -1686,8 +1643,6 @@ class ScannerController {
         logger.info(
           `⏰ Event listener added at: ${new Date(listenerStartTime).toISOString()}`
         );
-
-        // Debug: Check if listener was added
         logger.info(
           `🔍 Event listener count for dataGot: ${this.middleScannerService.listenerCount("dataGot")}`
         );
@@ -1700,7 +1655,6 @@ class ScannerController {
             );
             return;
           }
-
           isResolved = true;
           logger.error(
             `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
@@ -1751,25 +1705,21 @@ class ScannerController {
                 );
                 return;
               }
-
               isResolved = true;
               logger.error(
                 `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
                 err
               );
-
               if (timeoutId) {
                 clearTimeout(timeoutId);
                 timeoutId = null;
               }
-
               setTimeout(() => {
                 this.middleScannerService.off("dataGot", dataHandler);
                 logger.info(
                   `🔍 Removed dataGot listener for ${scannerLabel} scanner (error)`
                 );
               }, 100);
-
               reject(err);
             });
         }, 100); // Small delay to ensure listener is ready
