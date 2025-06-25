@@ -866,6 +866,19 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
+      // --- NEW: Debug buffer and queue state before scan ---
+      if (tcpScannerService.getBufferStatus) {
+        const bufStatus = tcpScannerService.getBufferStatus();
+        logger.info(
+          `[DEBUG] Buffer status before scan: ${JSON.stringify(bufStatus)}`
+        );
+      }
+      if (tcpScannerService.dataQueue) {
+        logger.info(
+          `[DEBUG] Data queue length before scan: ${tcpScannerService.dataQueue.length}`
+        );
+      }
+
       // Clear any existing event listeners to prevent conflicts
       logger.info("🧹 Clearing any existing dataGot listeners...");
       logger.info(
@@ -878,10 +891,24 @@ class ScannerController {
       );
 
       const scannerData = await new Promise((resolve, reject) => {
-        // Clear any existing data buffer to prevent stale data (MOVED UP, INSIDE PROMISE)
+        // --- NEW: Clear buffer before attaching listener ---
         if (tcpScannerService.clearBuffer) {
-          logger.info("🧹 Clearing TCP scanner data buffer...");
+          logger.info(
+            "🧹 Clearing TCP scanner data buffer (before listener attach)..."
+          );
           tcpScannerService.clearBuffer();
+        }
+        // --- NEW: Debug buffer and queue state after clearBuffer ---
+        if (tcpScannerService.getBufferStatus) {
+          const bufStatus = tcpScannerService.getBufferStatus();
+          logger.info(
+            `[DEBUG] Buffer status after clearBuffer: ${JSON.stringify(bufStatus)}`
+          );
+        }
+        if (tcpScannerService.dataQueue) {
+          logger.info(
+            `[DEBUG] Data queue length after clearBuffer: ${tcpScannerService.dataQueue.length}`
+          );
         }
 
         let isResolved = false;
@@ -927,7 +954,9 @@ class ScannerController {
         };
 
         // Set up event listener FIRST (before triggering scanner)
-        logger.info("👂 Adding event listener for scanner data");
+        logger.info(
+          "👂 Adding event listener for scanner data (onDataGotOnce)"
+        );
         const listenerStartTime = Date.now();
         logger.info(
           `🔍 Listener count before adding: ${tcpScannerService.listenerCount("dataGot")}`
@@ -945,6 +974,12 @@ class ScannerController {
         logger.info(
           `🔍 Event listener count for dataGot: ${tcpScannerService.listenerCount("dataGot")}`
         );
+        // --- NEW: Debug queue state after listener attach ---
+        if (tcpScannerService.dataQueue) {
+          logger.info(
+            `[DEBUG] Data queue length after listener attach: ${tcpScannerService.dataQueue.length}`
+          );
+        }
 
         // Configure timeout with better debugging
         timeoutId = setTimeout(() => {
