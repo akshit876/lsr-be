@@ -874,7 +874,10 @@ class ScannerController {
 
       // Add a small delay before clearing to ensure no race conditions
       await sleep(50);
-      tcpScannerService.removeAllListeners("dataGot");
+
+      // Instead of removeAllListeners, we'll just clear the buffer and let the new listener handle the data
+      // This prevents interference with other parts of the system
+      logger.info("🔍 Not calling removeAllListeners to avoid interference");
       logger.info(
         `🔍 Listeners after clearing: ${tcpScannerService.listenerCount("dataGot")}`
       );
@@ -927,16 +930,15 @@ class ScannerController {
             timeoutId = null;
           }
 
-          // Remove listener after a small delay to ensure no race conditions
-          setTimeout(() => {
-            tcpScannerService.off("dataGot", dataHandler);
-            logger.info(
-              `🔍 Removed dataGot listener for ${scannerLabel} scanner`
-            );
-            logger.info(
-              `🔍 Listener count after removal: ${tcpScannerService.listenerCount("dataGot")}`
-            );
-          }, 100);
+          // Remove only this specific listener to avoid interfering with others
+          logger.info("🔍 Removing specific dataGot listener...");
+          tcpScannerService.off("dataGot", dataHandler);
+          logger.info(
+            `🔍 Removed dataGot listener for ${scannerLabel} scanner`
+          );
+          logger.info(
+            `🔍 Listener count after removal: ${tcpScannerService.listenerCount("dataGot")}`
+          );
 
           resolve(data);
         };
@@ -944,7 +946,15 @@ class ScannerController {
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for scanner data");
         const listenerStartTime = Date.now();
+
+        logger.info(
+          `🔍 Listener count before adding: ${tcpScannerService.listenerCount("dataGot")}`
+        );
         tcpScannerService.on("dataGot", dataHandler);
+        logger.info(
+          `🔍 Listener count immediately after adding: ${tcpScannerService.listenerCount("dataGot")}`
+        );
+
         logger.info(
           `🔍 Event listener count after adding: ${tcpScannerService.listenerCount("dataGot")}`
         );
@@ -1597,7 +1607,10 @@ class ScannerController {
 
       // Add a small delay before clearing to ensure no race conditions
       await sleep(50);
-      this.middleScannerService.removeAllListeners("dataGot");
+
+      // Instead of removeAllListeners, we'll just clear the buffer and let the new listener handle the data
+      // This prevents interference with other parts of the system
+      logger.info("🔍 Not calling removeAllListeners to avoid interference");
       logger.info(
         `🔍 Listeners after clearing: ${this.middleScannerService.listenerCount("dataGot")}`
       );
@@ -1650,16 +1663,15 @@ class ScannerController {
             timeoutId = null;
           }
 
-          // Remove listener after a small delay to ensure no race conditions
-          setTimeout(() => {
-            this.middleScannerService.off("dataGot", dataHandler);
-            logger.info(
-              `🔍 Removed dataGot listener for ${scannerLabel} scanner`
-            );
-            logger.info(
-              `🔍 Listener count after removal: ${this.middleScannerService.listenerCount("dataGot")}`
-            );
-          }, 100);
+          // Remove only this specific listener to avoid interfering with others
+          logger.info("🔍 Removing specific dataGot listener...");
+          this.middleScannerService.off("dataGot", dataHandler);
+          logger.info(
+            `🔍 Removed dataGot listener for ${scannerLabel} scanner`
+          );
+          logger.info(
+            `🔍 Listener count after removal: ${this.middleScannerService.listenerCount("dataGot")}`
+          );
 
           resolve(data);
         };
