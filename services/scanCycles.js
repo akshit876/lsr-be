@@ -862,6 +862,16 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
+      // Clear any existing event listeners to prevent conflicts
+      logger.info("🧹 Clearing any existing dataGot listeners...");
+      tcpScannerService.removeAllListeners("dataGot");
+
+      // Clear any existing data buffer to prevent stale data
+      if (tcpScannerService.clearBuffer) {
+        logger.info("🧹 Clearing TCP scanner data buffer...");
+        tcpScannerService.clearBuffer();
+      }
+
       const scannerData = await new Promise((resolve, reject) => {
         const dataHandler = (data) => {
           logger.success(
@@ -871,7 +881,7 @@ class ScannerController {
           tcpScannerService.off("dataGot", dataHandler);
         };
 
-        // Set up event listener
+        // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for scanner data");
         tcpScannerService.on("dataGot", dataHandler);
 
@@ -907,10 +917,8 @@ class ScannerController {
         logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
         logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
 
-        // Add 200ms delay before triggering scanner ON
+        // Add small delay to ensure event listener is ready, then trigger scanner
         setTimeout(() => {
-          logger.info(`⏳ 200ms delay completed, now triggering scanner...`);
-
           writeBit(register, bit, 1)
             .then(() => {
               logger.success(`${scannerLabel} scanner triggered successfully`);
@@ -924,9 +932,10 @@ class ScannerController {
                 err
               );
               clearTimeout(timeoutId);
+              tcpScannerService.off("dataGot", dataHandler);
               reject(err);
             });
-        }, 200);
+        }, 100); // Small delay to ensure listener is ready
       });
 
       logger.success(
@@ -1462,6 +1471,18 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
+      // Clear any existing event listeners to prevent conflicts
+      logger.info(
+        "🧹 Clearing any existing dataGot listeners for middle scanner..."
+      );
+      this.middleScannerService.removeAllListeners("dataGot");
+
+      // Clear any existing data buffer to prevent stale data
+      if (this.middleScannerService.clearBuffer) {
+        logger.info("🧹 Clearing middle TCP scanner data buffer...");
+        this.middleScannerService.clearBuffer();
+      }
+
       const scannerData = await new Promise((resolve, reject) => {
         const dataHandler = (data) => {
           logger.success(
@@ -1471,7 +1492,7 @@ class ScannerController {
           this.middleScannerService.off("dataGot", dataHandler);
         };
 
-        // Set up event listener
+        // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for middle scanner data");
         this.middleScannerService.on("dataGot", dataHandler);
 
@@ -1504,12 +1525,8 @@ class ScannerController {
         logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
         logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
 
-        // Add 200ms delay before triggering scanner ON
+        // Add small delay to ensure event listener is ready, then trigger scanner
         setTimeout(() => {
-          logger.info(
-            `⏳ 200ms delay completed, now triggering middle scanner...`
-          );
-
           writeBit(register, bit, 1)
             .then(() => {
               logger.success(`${scannerLabel} scanner triggered successfully`);
@@ -1523,9 +1540,10 @@ class ScannerController {
                 err
               );
               clearTimeout(timeoutId);
+              this.middleScannerService.off("dataGot", dataHandler);
               reject(err);
             });
-        }, 200);
+        }, 100); // Small delay to ensure listener is ready
       });
 
       logger.success(

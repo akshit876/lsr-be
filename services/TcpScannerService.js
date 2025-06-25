@@ -290,7 +290,7 @@ class TcpScannerService extends EventEmitter {
       this.bufferTimeout = null;
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (this.client) {
         this.client.end(() => {
           this.log("TCP scanner connection closed successfully");
@@ -330,6 +330,26 @@ class TcpScannerService extends EventEmitter {
       port: this.options.port,
       hasClient: !!this.client,
       clientDestroyed: this.client ? this.client.destroyed : true,
+    };
+  }
+
+  // Clear the data buffer (useful for preventing stale data)
+  clearBuffer() {
+    this.log("Clearing TCP scanner data buffer");
+    this.dataBuffer = "";
+    if (this.bufferTimeout) {
+      clearTimeout(this.bufferTimeout);
+      this.bufferTimeout = null;
+    }
+  }
+
+  // Get current buffer status for debugging
+  getBufferStatus() {
+    return {
+      hasBuffer: !!this.dataBuffer,
+      bufferLength: this.dataBuffer.length,
+      bufferContent: this.dataBuffer,
+      hasTimeout: !!this.bufferTimeout,
     };
   }
 }
