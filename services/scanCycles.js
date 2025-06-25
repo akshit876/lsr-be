@@ -545,18 +545,44 @@ class ScannerController {
         CurrentId: currentId,
       };
 
-      // Always insert new record - never update existing ones
-      logger.info(
-        `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
-      );
-      logger.info(
-        `📊 New record data: ScannerData=${scannerData}, Result=${result}, MarkingData=${markingData}`
-      );
+      if (isUpdate) {
+        // Find and update the most recent record for this serial number AND model
+        logger.info(
+          `🔄 Attempting to update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+        );
+        logger.info(
+          `📊 Update data: ScannerData=${scannerData}, Result=${result}`
+        );
 
-      await mongoDbService.insertRecord(data, "main-data", "records");
-      logger.info(
-        `✅ New record saved to MongoDB with CurrentId: ${currentId}, Model: ${modelNumber}`
-      );
+        const updateResult = await mongoDbService.updateLastRecord(
+          { SerialNumber: serialNumber, ModelNumber: modelNumber },
+          { $set: data },
+          "main-data",
+          "records"
+        );
+
+        if (updateResult) {
+          logger.info(
+            `✅ Successfully updated MongoDB record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+          );
+          logger.info(`📋 Updated fields: ${JSON.stringify(data)}`);
+        } else {
+          logger.warn(
+            `⚠️ Failed to find/update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+          );
+          logger.warn(`🔍 Trying to insert as new record instead`);
+          await mongoDbService.insertRecord(data, "main-data", "records");
+        }
+      } else {
+        // Insert new record
+        logger.info(
+          `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+        );
+        await mongoDbService.insertRecord(data, "main-data", "records");
+        logger.info(
+          `✅ Data saved to MongoDB with CurrentId: ${currentId}, Model: ${modelNumber}`
+        );
+      }
 
       if (io) {
         // Use broadcast method to refresh all connected clients
