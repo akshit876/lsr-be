@@ -1266,62 +1266,66 @@ class ScannerController {
       );
 
       // Check for duplicate marking data in MongoDB
-      const duplicateCheck =
-        await this.checkDuplicateMarkingDataCached(processedData);
+      // const duplicateCheck =
+      //   await this.checkDuplicateMarkingDataCached(processedData);
 
-      if (duplicateCheck.isDuplicate) {
-        logger.warn("⚠️ Duplicate marking data detected - stopping workflow");
-        logger.info("✍️ Writing bit 1414.6 to signal duplicate detected");
-        await writeBit(1414, 6, 1);
+      // if (duplicateCheck.isDuplicate) {
+      //   logger.warn("⚠️ Duplicate marking data detected - stopping workflow");
+      //   logger.info("✍️ Writing bit 1414.6 to signal duplicate detected");
+      //   await writeBit(1414, 6, 1);
 
-        // Save duplicate detection to MongoDB
-        await this.saveToMongoDB({
-          io: this.io,
-          serialNumber: processedData,
-          markingData: processedData,
-          scannerData: "N/A",
-          result: "NG",
-          grading: "N/A",
-          isUpdate: false,
-        });
+      //   // Save duplicate detection to MongoDB
+      //   await this.saveToMongoDB({
+      //     io: this.io,
+      //     serialNumber: processedData,
+      //     markingData: processedData,
+      //     scannerData: "N/A",
+      //     result: "NG",
+      //     grading: "N/A",
+      //     isUpdate: false,
+      //   });
 
-        logger.info(`📋 Duplicate details:`);
-        logger.info(`   - Total occurrences: ${duplicateCheck.duplicateCount}`);
-        logger.info(
-          `   - First occurrence: ${duplicateCheck.existingRecord.Timestamp}`
-        );
-        logger.info(
-          `   - Serial Number: ${duplicateCheck.existingRecord.SerialNumber}`
-        );
-        logger.info(
-          `   - Model Number: ${duplicateCheck.existingRecord.ModelNumber}`
-        );
-        logger.info(`   - Result: ${duplicateCheck.existingRecord.Result}`);
-        logger.info(`   - User: ${duplicateCheck.existingRecord.User}`);
+      //   logger.info(`📋 Duplicate details:`);
+      //   logger.info(`   - Total occurrences: ${duplicateCheck.duplicateCount}`);
+      //   logger.info(
+      //     `   - First occurrence: ${duplicateCheck.existingRecord.Timestamp}`
+      //   );
+      //   logger.info(
+      //     `   - Serial Number: ${duplicateCheck.existingRecord.SerialNumber}`
+      //   );
+      //   logger.info(
+      //     `   - Model Number: ${duplicateCheck.existingRecord.ModelNumber}`
+      //   );
+      //   logger.info(`   - Result: ${duplicateCheck.existingRecord.Result}`);
+      //   logger.info(`   - User: ${duplicateCheck.existingRecord.User}`);
 
-        // Emit duplicate detection event to UI with optimized information
-        if (this.io) {
-          this.io.emit("duplicate_marking_detected", {
-            timestamp: new Date(),
-            markingData: processedData,
-            duplicateCount: duplicateCheck.duplicateCount,
-            existingRecord: {
-              serialNumber: duplicateCheck.existingRecord.SerialNumber,
-              modelNumber: duplicateCheck.existingRecord.ModelNumber,
-              timestamp: duplicateCheck.existingRecord.Timestamp,
-              result: duplicateCheck.existingRecord.Result,
-              user: duplicateCheck.existingRecord.User,
-            },
-            message: `Duplicate marking data detected - ${duplicateCheck.duplicateCount} occurrence(s) found in database`,
-          });
-        }
+      //   // Emit duplicate detection event to UI with optimized information
+      //   if (this.io) {
+      //     this.io.emit("duplicate_marking_detected", {
+      //       timestamp: new Date(),
+      //       markingData: processedData,
+      //       duplicateCount: duplicateCheck.duplicateCount,
+      //       existingRecord: {
+      //         serialNumber: duplicateCheck.existingRecord.SerialNumber,
+      //         modelNumber: duplicateCheck.existingRecord.ModelNumber,
+      //         timestamp: duplicateCheck.existingRecord.Timestamp,
+      //         result: duplicateCheck.existingRecord.Result,
+      //         user: duplicateCheck.existingRecord.User,
+      //       },
+      //       message: `Duplicate marking data detected - ${duplicateCheck.duplicateCount} occurrence(s) found in database`,
+      //     });
+      //   }
 
-        return {
-          shouldContinue: false,
-          markingData: processedData,
-          isDuplicate: true,
-        };
-      }
+      //   return {
+      //     shouldContinue: false,
+      //     markingData: processedData,
+      //     isDuplicate: true,
+      //   };
+      // }
+
+      logger.info(
+        "🔧 DEBUG MODE: Skipping duplicate check, continuing workflow"
+      );
 
       // Write the middle scan data to files as marking data
       logger.info("📁 Writing middle scan data to files...");
