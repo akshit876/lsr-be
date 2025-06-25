@@ -864,7 +864,13 @@ class ScannerController {
 
       // Clear any existing event listeners to prevent conflicts
       logger.info("🧹 Clearing any existing dataGot listeners...");
+      logger.info(
+        `🔍 Listeners before clearing: ${tcpScannerService.listenerCount("dataGot")}`
+      );
       tcpScannerService.removeAllListeners("dataGot");
+      logger.info(
+        `🔍 Listeners after clearing: ${tcpScannerService.listenerCount("dataGot")}`
+      );
 
       // Clear any existing data buffer to prevent stale data
       if (tcpScannerService.clearBuffer) {
@@ -872,10 +878,19 @@ class ScannerController {
         tcpScannerService.clearBuffer();
       }
 
+      // Debug: Check TCP scanner service status
+      if (tcpScannerService.getStatus) {
+        const status = tcpScannerService.getStatus();
+        logger.info(`🔍 TCP scanner status: ${JSON.stringify(status)}`);
+      }
+
       const scannerData = await new Promise((resolve, reject) => {
         const dataHandler = (data) => {
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
+          );
+          logger.info(
+            `🔍 Event listener called with data: "${data}" (type: ${typeof data})`
           );
           resolve(data);
           tcpScannerService.off("dataGot", dataHandler);
@@ -884,6 +899,11 @@ class ScannerController {
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for scanner data");
         tcpScannerService.on("dataGot", dataHandler);
+
+        // Debug: Check if listener was added
+        logger.info(
+          `🔍 Event listener count for dataGot: ${tcpScannerService.listenerCount("dataGot")}`
+        );
 
         // Configure timeout with better debugging
         const timeoutId = setTimeout(() => {
@@ -1162,6 +1182,17 @@ class ScannerController {
     const scannerData = await this.fetchScannerData(tcpScannerService, {
       scanType: "first",
     });
+
+    // Debug: Log the exact data received
+    logger.info(
+      `🔍 First scan received data: "${scannerData}" (type: ${typeof scannerData})`
+    );
+    logger.info(
+      `🔍 Data trimmed: "${scannerData ? scannerData.trim() : "null"}"`
+    );
+    logger.info(
+      `🔍 Is NG check: ${!scannerData || scannerData.trim().toUpperCase() === "NG"}`
+    );
 
     // Check for reset signal before proceeding
     if (await this.checkReset()) {
@@ -1475,7 +1506,13 @@ class ScannerController {
       logger.info(
         "🧹 Clearing any existing dataGot listeners for middle scanner..."
       );
+      logger.info(
+        `🔍 Listeners before clearing: ${this.middleScannerService.listenerCount("dataGot")}`
+      );
       this.middleScannerService.removeAllListeners("dataGot");
+      logger.info(
+        `🔍 Listeners after clearing: ${this.middleScannerService.listenerCount("dataGot")}`
+      );
 
       // Clear any existing data buffer to prevent stale data
       if (this.middleScannerService.clearBuffer) {
@@ -1483,10 +1520,19 @@ class ScannerController {
         this.middleScannerService.clearBuffer();
       }
 
+      // Debug: Check middle scanner service status
+      if (this.middleScannerService.getStatus) {
+        const status = this.middleScannerService.getStatus();
+        logger.info(`🔍 Middle scanner status: ${JSON.stringify(status)}`);
+      }
+
       const scannerData = await new Promise((resolve, reject) => {
         const dataHandler = (data) => {
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
+          );
+          logger.info(
+            `🔍 Event listener called with data: "${data}" (type: ${typeof data})`
           );
           resolve(data);
           this.middleScannerService.off("dataGot", dataHandler);
@@ -1495,6 +1541,11 @@ class ScannerController {
         // Set up event listener FIRST (before triggering scanner)
         logger.info("👂 Adding event listener for middle scanner data");
         this.middleScannerService.on("dataGot", dataHandler);
+
+        // Debug: Check if listener was added
+        logger.info(
+          `🔍 Event listener count for dataGot: ${this.middleScannerService.listenerCount("dataGot")}`
+        );
 
         // Configure timeout with better debugging
         const timeoutId = setTimeout(() => {

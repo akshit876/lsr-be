@@ -132,6 +132,10 @@ class TcpScannerService extends EventEmitter {
           // Process and extract the final valid message
           const finalMessage = this.extractFinalMessage(this.dataBuffer);
           this.log(`Complete TCP scanner message detected: "${finalMessage}"`);
+          this.log(`Emitting dataGot event with data: "${finalMessage}"`);
+          this.log(
+            `Number of dataGot listeners: ${this.listenerCount("dataGot")}`
+          );
           this.emit("dataGot", finalMessage);
           this.dataBuffer = ""; // Clear buffer
         } else {
@@ -140,6 +144,12 @@ class TcpScannerService extends EventEmitter {
             if (this.dataBuffer) {
               this.log(
                 `Buffered TCP scanner data timeout reached: "${this.dataBuffer}"`
+              );
+              this.log(
+                `Emitting dataGot event with buffered data: "${this.dataBuffer}"`
+              );
+              this.log(
+                `Number of dataGot listeners: ${this.listenerCount("dataGot")}`
               );
               this.emit("dataGot", this.dataBuffer);
               this.dataBuffer = ""; // Clear buffer
