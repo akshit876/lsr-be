@@ -1843,6 +1843,28 @@ class ScannerController {
     return this.currentDayId++;
   }
 
+  async getCurrentModelNumber() {
+    try {
+      // Get current model from config collection
+      await mongoDbService.connect("main-data", "config");
+      const configData = await mongoDbService.collection.findOne({});
+
+      if (
+        configData &&
+        configData.currentModelConfig &&
+        configData.currentModelConfig.modelNumber
+      ) {
+        return configData.currentModelConfig.modelNumber;
+      } else {
+        logger.warn("No model configuration found");
+        return null;
+      }
+    } catch (error) {
+      logger.error("Error fetching current model number:", error);
+      return null;
+    }
+  }
+
   // Helper methods for scan configuration
   getScanRegister(scanType) {
     switch (scanType) {
