@@ -825,7 +825,7 @@ class ScannerController {
   async fetchScannerData(tcpScannerService, options = {}) {
     const {
       scanType = options.scanType || "first",
-      timeout = 30 * 1000, // Reduced timeout for faster debugging
+      timeout = 5 * 1000, // Set timeout to 5 seconds
       scannerLabel = this.getScanLabel(scanType),
     } = options;
 
@@ -1418,7 +1418,7 @@ class ScannerController {
   }
 
   async fetchMiddleScannerData() {
-    const { timeout = 30 * 1000, scannerLabel = "Middle" } = {};
+    const { timeout = 5 * 1000, scannerLabel = "Middle" } = {};
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
 
