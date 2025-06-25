@@ -1813,6 +1813,23 @@ class ScannerController {
     }
   }
 
+  async performFinalChecks() {
+    try {
+      logger.info("🔍 Performing final checks...");
+      if (await this.checkResetOrBit(1415, 7, 1)) {
+        logger.warn("⚠️ Reset detected at final step, restarting cycle");
+        await sleep(1000);
+        return false;
+      }
+
+      await sleep(3 * 1000);
+      return true;
+    } catch (error) {
+      logger.error("❌ Error in final checks:", error);
+      throw error;
+    }
+  }
+
   getLastResetTime() {
     const now = new Date();
     const resetTime = new Date(now);
