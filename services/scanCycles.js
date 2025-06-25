@@ -1571,6 +1571,24 @@ class ScannerController {
         logger.warn(
           "⚠️ Middle scan data is NG or timeout, proceeding with workflow"
         );
+        // Always save NG to MongoDB
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: "NG",
+          markingData: "NG",
+          scannerData: "NG",
+          result: "N/A",
+          grading: "N/A",
+          isUpdate: false,
+        });
+        // Emit marking data to UI (even for NG)
+        if (this.io) {
+          logger.info("📡 Emitting NG marking data to UI...");
+          this.io.emit("marking_data", {
+            timestamp: new Date(),
+            data: "NG",
+          });
+        }
         return { shouldContinue: true, markingData: "NG" };
       }
 
