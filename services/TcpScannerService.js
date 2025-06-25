@@ -23,11 +23,11 @@ class TcpScannerService extends EventEmitter {
     this.dataBuffer = ""; // Buffer to accumulate data
     this.bufferTimeout = null; // Timeout to emit buffered data
     this.reconnectTimer = null;
+    // --- NEW: Instance identification (moved before setupLogger) ---
+    this.instanceId = `${this.options.host}:${this.options.port}`;
     this.setupLogger();
     // --- Data queue for scan events ---
     this.dataQueue = [];
-    // --- NEW: Instance identification ---
-    this.instanceId = `${this.options.host}:${this.options.port}`;
   }
 
   setupLogger() {
@@ -38,6 +38,13 @@ class TcpScannerService extends EventEmitter {
       })
     );
 
+    // --- FIXED: Use safe instanceId with fallback ---
+    const safeInstanceId =
+      this.instanceId || `${this.options.host}:${this.options.port}`;
+    const logFileName = safeInstanceId
+      ? safeInstanceId.replace(/[.:]/g, "-")
+      : "tcp-scanner";
+
     this.logger = winston.createLogger({
       level: "debug",
       format: logFormat,
@@ -46,7 +53,7 @@ class TcpScannerService extends EventEmitter {
         new winston.transports.DailyRotateFile({
           filename: path.join(
             this.options.logDir,
-            `tcp-scanner-${this.instanceId.replace(/[.:]/g, "-")}-%DATE%.log`
+            `tcp-scanner-${logFileName}-%DATE%.log`
           ),
           datePattern: "YYYY-MM-DD",
           zippedArchive: true,
@@ -58,7 +65,9 @@ class TcpScannerService extends EventEmitter {
   }
 
   log(message, level = "info") {
-    this.logger.log(level, `[${this.instanceId}] ${message}`);
+    const instanceId =
+      this.instanceId || `${this.options.host}:${this.options.port}`;
+    this.logger.log(level, `[${instanceId}] ${message}`);
   }
 
   // Method to enable/disable debug logging
