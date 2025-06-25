@@ -854,6 +854,20 @@ class ScannerController {
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
 
+    // --- NEW: Debug TcpScannerService instance identification ---
+    const instanceId =
+      tcpScannerService === this.tcpScannerService
+        ? "MAIN"
+        : tcpScannerService === this.middleScannerService
+          ? "MIDDLE"
+          : "UNKNOWN";
+    logger.info(`[DEBUG] Using TcpScannerService instance: ${instanceId}`);
+    if (tcpScannerService.options) {
+      logger.info(
+        `[DEBUG] Scanner config: ${tcpScannerService.options.host}:${tcpScannerService.options.port}`
+      );
+    }
+
     // Prevent multiple triggers
     if (this.isScanning) {
       logger.warn("Scanner already in progress, skipping new trigger");
@@ -877,6 +891,11 @@ class ScannerController {
         logger.info(
           `[DEBUG] Data queue length before scan: ${tcpScannerService.dataQueue.length}`
         );
+        if (tcpScannerService.dataQueue.length > 0) {
+          logger.warn(
+            `[DEBUG] WARNING: Data queue has ${tcpScannerService.dataQueue.length} items before scan!`
+          );
+        }
       }
 
       // Clear any existing event listeners to prevent conflicts
@@ -1594,6 +1613,20 @@ class ScannerController {
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
 
+    // --- NEW: Debug TcpScannerService instance identification ---
+    const instanceId =
+      this.middleScannerService === this.tcpScannerService
+        ? "MAIN"
+        : this.middleScannerService === this.middleScannerService
+          ? "MIDDLE"
+          : "UNKNOWN";
+    logger.info(`[DEBUG] Using TcpScannerService instance: ${instanceId}`);
+    if (this.middleScannerService.options) {
+      logger.info(
+        `[DEBUG] Scanner config: ${this.middleScannerService.options.host}:${this.middleScannerService.options.port}`
+      );
+    }
+
     // Prevent multiple triggers
     if (this.isScanning) {
       logger.warn("Scanner already in progress, skipping new trigger");
@@ -1605,6 +1638,24 @@ class ScannerController {
       logger.info(
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
+
+      // --- NEW: Debug buffer and queue state before scan ---
+      if (this.middleScannerService.getBufferStatus) {
+        const bufStatus = this.middleScannerService.getBufferStatus();
+        logger.info(
+          `[DEBUG] Buffer status before scan: ${JSON.stringify(bufStatus)}`
+        );
+      }
+      if (this.middleScannerService.dataQueue) {
+        logger.info(
+          `[DEBUG] Data queue length before scan: ${this.middleScannerService.dataQueue.length}`
+        );
+        if (this.middleScannerService.dataQueue.length > 0) {
+          logger.warn(
+            `[DEBUG] WARNING: Data queue has ${this.middleScannerService.dataQueue.length} items before scan!`
+          );
+        }
+      }
 
       // Clear any existing event listeners to prevent conflicts
       logger.info(
@@ -1624,6 +1675,18 @@ class ScannerController {
         if (this.middleScannerService.clearBuffer) {
           logger.info("🧹 Clearing middle TCP scanner data buffer...");
           this.middleScannerService.clearBuffer();
+        }
+        // --- NEW: Debug buffer and queue state after clearBuffer ---
+        if (this.middleScannerService.getBufferStatus) {
+          const bufStatus = this.middleScannerService.getBufferStatus();
+          logger.info(
+            `[DEBUG] Buffer status after clearBuffer: ${JSON.stringify(bufStatus)}`
+          );
+        }
+        if (this.middleScannerService.dataQueue) {
+          logger.info(
+            `[DEBUG] Data queue length after clearBuffer: ${this.middleScannerService.dataQueue.length}`
+          );
         }
 
         let isResolved = false;
@@ -1681,6 +1744,12 @@ class ScannerController {
         logger.info(
           `🔍 Event listener count for dataGot: ${this.middleScannerService.listenerCount("dataGot")}`
         );
+        // --- NEW: Debug queue state after listener attach ---
+        if (this.middleScannerService.dataQueue) {
+          logger.info(
+            `[DEBUG] Data queue length after listener attach: ${this.middleScannerService.dataQueue.length}`
+          );
+        }
 
         // Configure timeout with better debugging
         timeoutId = setTimeout(() => {
