@@ -1800,6 +1800,26 @@ class ScannerController {
       throw error;
     }
   }
+
+  getLastResetTime() {
+    const now = new Date();
+    const resetTime = new Date(now);
+
+    // Use the reset time from SerialNumberGeneratorService if available
+    const resetHour =
+      this.barcodeGenerator?.serialNumberService?.resetHour || 0;
+    const resetMinute =
+      this.barcodeGenerator?.serialNumberService?.resetMinute || 0;
+
+    resetTime.setHours(resetHour, resetMinute, 0, 0);
+
+    // If current time is before reset time, set reset time to previous day
+    if (now < resetTime) {
+      resetTime.setDate(resetTime.getDate() - 1);
+    }
+
+    return resetTime;
+  }
 }
 
 // Export singleton instance
