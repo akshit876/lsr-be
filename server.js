@@ -3,6 +3,7 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import logger from "./logger.js";
 import { fileURLToPath } from "url";
+import { dirname } from "path";
 import {
   connect,
   readBit,
