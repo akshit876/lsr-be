@@ -183,13 +183,28 @@ io.on("connection", (socket) => {
         throw new Error("Register and bit are required");
       }
 
+      // Define descriptive messages for common operations
+      const getOperationDescription = (register, bit) => {
+        const operations = {
+          "1481.0": "Scanner ON",
+          "1480.0": "Mark ON",
+          "1482.0": "Light ON",
+        };
+        return (
+          operations[`${register}.${bit}`] ||
+          `Bit ${register}.${bit} set to ${value}`
+        );
+      };
+
       await writeBit(register, bit, value);
-      logger.info(`Client ${socket.id} set bit ${register}.${bit} to ${value}`);
+      const description = getOperationDescription(register, bit);
+
+      logger.info(`Client ${socket.id} triggered: ${description}`);
       socket.emit("manualRunBitsSuccess", {
         register,
         bit,
         value,
-        message: `Bit ${register}.${bit} set to ${value}`,
+        message: description,
       });
     } catch (error) {
       logger.error(`Error setting bit for client ${socket.id}:`, error);

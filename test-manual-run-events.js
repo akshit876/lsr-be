@@ -4,9 +4,9 @@ const socket = io("http://localhost:3002");
 
 let testStep = 0;
 const testBits = [
-  { register: 1481, bit: 0, name: "Manual Scan" },
-  { register: 1480, bit: 0, name: "Manual Mark On" },
-  { register: 1482, bit: 0, name: "Manual Light" },
+  { register: 1481, bit: 0, name: "Scanner ON" },
+  { register: 1480, bit: 0, name: "Mark ON" },
+  { register: 1482, bit: 0, name: "Light ON" },
 ];
 
 socket.on("connect", () => {

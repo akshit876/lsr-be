@@ -24,6 +24,7 @@ socket.emit("manual-run-bits", { register: 1482, bit: 0, value: 1 });
 socket.on("manualRunBitsSuccess", (data) => {
   console.log("Success:", data.message);
   // data = { register, bit, value, message }
+  // Example messages: "Scanner ON", "Mark ON", "Light ON"
 });
 ```
 
