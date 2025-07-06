@@ -7,14 +7,15 @@
 ```javascript
 // Event name: 'manual-run-bits'
 // Parameters: { register, bit, value }
+// Auto-off: Bits automatically turn OFF after 200ms
 
-// Manual Scan (1481.0)
+// Manual Scan (1481.0) - Creates 200ms pulse
 socket.emit("manual-run-bits", { register: 1481, bit: 0, value: 1 });
 
-// Manual Mark On (1480.0)
+// Manual Mark On (1480.0) - Creates 200ms pulse
 socket.emit("manual-run-bits", { register: 1480, bit: 0, value: 1 });
 
-// Manual Light (1482.0)
+// Manual Light (1482.0) - Creates 200ms pulse
 socket.emit("manual-run-bits", { register: 1482, bit: 0, value: 1 });
 ```
 

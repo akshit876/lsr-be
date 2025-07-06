@@ -206,6 +206,16 @@ io.on("connection", (socket) => {
         value,
         message: description,
       });
+
+      // Automatically turn off the bit after 200ms
+      setTimeout(async () => {
+        try {
+          await writeBit(register, bit, 0);
+          logger.info(`Client ${socket.id} auto-off: ${description}`);
+        } catch (error) {
+          logger.error(`Error turning off bit ${register}.${bit}:`, error);
+        }
+      }, 200);
     } catch (error) {
       logger.error(`Error setting bit for client ${socket.id}:`, error);
       socket.emit("error", {

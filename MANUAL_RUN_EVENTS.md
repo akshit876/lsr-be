@@ -2,7 +2,7 @@
 
 ## Overview
 
-A single Socket.IO event has been added to the backend for manual run operations that control any PLC bit. This approach is more flexible and allows the UI to specify which bit to control.
+A single Socket.IO event has been added to the backend for manual run operations that control any PLC bit. This approach is more flexible and allows the UI to specify which bit to control. Bits automatically turn OFF after 200ms to create a pulse effect.
 
 ## Event
 
