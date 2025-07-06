@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
 import TcpScannerService from "./TcpScannerService.js";
+import { alarmMonitor } from "./alarmMonitor.js";
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -314,6 +315,9 @@ class ScannerController {
       let checkCount = 0;
       const CHECK_INTERVAL = 100;
 
+      // Start alarm monitoring during PLC wait
+      alarmMonitor.startMonitoring();
+
       const cleanup = () => {
         if (timeoutId) {
           clearTimeout(timeoutId);
@@ -324,6 +328,9 @@ class ScannerController {
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
+
+        // Stop alarm monitoring when PLC wait is complete
+        alarmMonitor.stopMonitoring();
       };
 
       // Reset check interval
@@ -342,6 +349,9 @@ class ScannerController {
               resolve("timeout");
             }
           }
+
+          // Check for alarms
+          await alarmMonitor.checkForAlarms();
         } catch (error) {
           logger.error(`Error checking reset signal: ${error.message}`);
         }

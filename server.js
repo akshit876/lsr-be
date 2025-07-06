@@ -1,17 +1,8 @@
 import { createServer } from "http";
-import fs from "fs";
 import morgan from "morgan";
 import { Server } from "socket.io";
 import logger from "./logger.js";
-import {
-  handleFirstScan,
-  handleSecondScan,
-  watchCodeFile,
-} from "./services/serialPortService.js";
-import { MockSerialPort } from "./services/mockSerialPort.js";
 import { fileURLToPath } from "url";
-import path, { dirname } from "path";
-import { getCurrentDate } from "./services/scanUtils.js";
 import {
   connect,
   readBit,
@@ -21,11 +12,7 @@ import {
 } from "./services/modbus.js";
 import { manualRun } from "./services/manualRunService.js";
 import mongoDbService from "./services/mongoDbService.js";
-import { runContinuousScan } from "./services/testCycle.js";
 import cronService from "./services/cronService.js";
-import ShiftUtility from "./services/ShiftUtility.js";
-import TcpScannerService from "./services/TcpScannerService.js";
-import BarcodeGenerator from "./services/barcodeGenrator.js";
 import { MongoClient } from "mongodb";
 import { scannerController } from "./services/scanCycles.js";
 
@@ -181,6 +168,32 @@ io.on("connection", (socket) => {
       );
       socket.emit("error", {
         message: "Failed to execute manual run",
+        details: error.message,
+      });
+    }
+  });
+
+  // Manual run bits event - single event for all manual operations
+  socket.on("manual-run-bits", async (data) => {
+    try {
+      const { register, bit, value = 1 } = data;
+
+      if (register === undefined || bit === undefined) {
+        throw new Error("Register and bit are required");
+      }
+
+      await writeBit(register, bit, value);
+      logger.info(`Client ${socket.id} set bit ${register}.${bit} to ${value}`);
+      socket.emit("manualRunBitsSuccess", {
+        register,
+        bit,
+        value,
+        message: `Bit ${register}.${bit} set to ${value}`,
+      });
+    } catch (error) {
+      logger.error(`Error setting bit for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to set bit",
         details: error.message,
       });
     }
