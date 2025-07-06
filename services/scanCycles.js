@@ -242,6 +242,10 @@ class ScannerController {
         await this.tcpScannerService.closeConnection();
       }
 
+      // Cleanup alarm monitor
+      logger.info("🚨 Cleaning up alarm monitor...");
+      alarmMonitor.cleanup();
+
       logger.info("📦 Disconnecting from MongoDB...");
       await mongoDbService.disconnect();
 
@@ -564,6 +568,10 @@ class ScannerController {
     this.io = io;
     this.currentPartNumber = partNumber;
     this.isRunning = true;
+
+    // Set Socket.IO instance for alarm monitor
+    alarmMonitor.setSocketIO(io);
+
     // Don't reset cycle count here - let it persist across runs
     // this.cycleCount = 0;
     logger.info(
