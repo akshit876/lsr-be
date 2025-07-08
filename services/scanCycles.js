@@ -864,15 +864,25 @@ class ScannerController {
       return { shouldContinue: true };
     }
 
-    // TESTING MODE: Always continue regardless of any scan result
+    // DEBUG MODE: Always continue regardless of scan result
+    if (scannerData && scannerData.trim() !== "") {
     logger.info(
-      "🧪 TESTING MODE: First scan completed, continuing workflow regardless of result"
+        "🔧 DEBUG MODE: First scan received data, but continuing workflow anyway"
     );
-    logger.info(`📋 First scan data: "${scannerData}"`);
+      logger.info(`📋 Received data: "${scannerData}"`);
 
-    // Always write NG signal to continue workflow
-    logger.info("✍️ Writing bit 1414.7 to signal NG scan (testing mode)");
+      // Emit the data to the UI for debugging
+      if (this.io) {
+        this.io.emit("first_scan_debug", {
+          timestamp: new Date(),
+          scannerData: scannerData,
+          message: "DEBUG: First scan received data, continuing workflow",
+        });
+      }
+
+      logger.info("✍️ Writing bit 1414.7 to signal NG scan (debug mode)");
     await writeBit(1414, 7, 1);
+    }
 
     return { shouldContinue: true };
   }
