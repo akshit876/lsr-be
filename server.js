@@ -169,6 +169,69 @@ io.on("connection", (socket) => {
     }
   });
 
+  // UI Scanner Trigger Event
+  socket.on("scanner_trigger", async () => {
+    try {
+      logger.info(`Client ${socket.id} triggered scanner (1481.0)`);
+      await writeBit(1481, 0, 1);
+      logger.info("✅ Scanner trigger bit 1481.0 set to 1");
+      socket.emit("scanner_trigger_success", {
+        timestamp: new Date().toISOString(),
+        register: 1481,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(`Error triggering scanner for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to trigger scanner",
+        details: error.message,
+      });
+    }
+  });
+
+  // UI Mark On Event
+  socket.on("mark_on", async () => {
+    try {
+      logger.info(`Client ${socket.id} triggered mark on (1480.0)`);
+      await writeBit(1480, 0, 1);
+      logger.info("✅ Mark on bit 1480.0 set to 1");
+      socket.emit("mark_on_success", {
+        timestamp: new Date().toISOString(),
+        register: 1480,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(`Error triggering mark on for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to trigger mark on",
+        details: error.message,
+      });
+    }
+  });
+
+  // UI Light On Event
+  socket.on("light_on", async () => {
+    try {
+      logger.info(`Client ${socket.id} triggered light on (1482.0)`);
+      await writeBit(1482, 0, 1);
+      logger.info("✅ Light on bit 1482.0 set to 1");
+      socket.emit("light_on_success", {
+        timestamp: new Date().toISOString(),
+        register: 1482,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(`Error triggering light on for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to trigger light on",
+        details: error.message,
+      });
+    }
+  });
+
   socket.on("manual-run", async (operation) => {
     try {
       const result = await manualRun(operation);

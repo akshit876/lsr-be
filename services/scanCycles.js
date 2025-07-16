@@ -272,6 +272,12 @@ class ScannerController {
           value,
           timeout
         );
+        if (result === "safety_violation") {
+          logger.error(
+            "🚨 SAFETY VIOLATION DETECTED - Stopping cycle immediately"
+          );
+          throw new Error("SAFETY_VIOLATION");
+        }
         if (result !== "timeout") {
           return result;
         }
@@ -314,7 +320,80 @@ class ScannerController {
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
+        if (safetyCheckInterval) {
+          clearInterval(safetyCheckInterval);
+        }
       };
+
+      // Safety check interval - runs in parallel every 500ms
+      const safetyCheckInterval = setInterval(async () => {
+        try {
+          // Read safety bits from register 1490
+          const [partPresent, emergencyStop, safetySensor] = await Promise.all([
+            readBit(1490, 0), // Part not present. 1490.0
+            readBit(1490, 1), // Emergency stop. 1490.1
+            readBit(1490, 2), // Safety sensor. 1490.2
+          ]);
+
+          // Check safety conditions
+          if (!partPresent) {
+            cleanup();
+            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Part not present ",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          if (emergencyStop) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency stop activated ",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          if (!safetySensor) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 0)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety sensor not engaged",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error checking safety conditions: ${error.message}`);
+        }
+      }, 500);
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
@@ -594,121 +673,140 @@ class ScannerController {
 
   // New method to encapsulate the main scan cycle logic
   async executeScanCycle(comService, partNumber) {
-    // First check for 1410.0 (start signal)
-    logger.info("Waiting for start signal (1410.0)...");
-    const resetResult = await this.checkResetOrBit(1410, 0, 1);
-    if (resetResult === true) {
-      logger.info("Reset detected, restarting cycle");
-      return;
-    }
-
-    // Step 1: First Scanner Check
-    const firstScanResult = await this.handleFirstScan(comService);
-    if (!firstScanResult.shouldContinue) {
-      logger.info("Cycle stopped after first scan");
-      return;
-    }
-
-    // Step 2: Generate and Write Barcode (simplified, no OCR)
-    const barcodeData = await this.generateAndWriteBarcode(partNumber);
-    if (!barcodeData) {
-      return;
-    }
-
-    // Step 3: Signal Transfer and Wait
-    logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
-    await writeBit(1414, 15, 1);
-
-    logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-    if (await this.checkResetOrBit(1410, 3, 1)) {
-      logger.warn(
-        "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
-      );
-      await sleep(1000);
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
-        scannerData: "N/A",
-        result: "NG",
-        grading: "N/A",
-        isUpdate: true,
-      });
-      return;
-    }
-
-    // Step 4: Verification Scanner Check
-    const verificationScanResult = await this.handleVerificationScan(
-      comService,
-      barcodeData
-    );
-
-    // Step 5: Final Checks and Cleanup
-    logger.info("🔍 Starting final checks and cycle completion...");
-    const finalChecksResult = await this.performFinalChecks();
-    logger.info(`📋 Final checks result: ${finalChecksResult}`);
-    logger.info(
-      `🔍 Verification scan result: ${verificationScanResult.success}`
-    );
-
-    if (finalChecksResult) {
-      this.cycleCount++;
-      logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
-      logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
-
-      // Trigger UI refresh on successful cycle completion
-      if (this.io) {
-        logger.info("📡 Broadcasting cycle completion to UI...");
-        await mongoDbService.broadcastDataToAllClients(
-          this.io,
-          "main-data",
-          "records"
-        );
-
-        // Also emit a specific cycle completion event
-        this.io.emit("scan-cycle-completed", {
-          cycleNumber: this.cycleCount,
-          timestamp: new Date().toISOString(),
-          success: true,
-          result: verificationScanResult.success ? "OK" : "NG",
-        });
+    try {
+      // First check for 1410.0 (start signal)
+      logger.info("Waiting for start signal (1410.0)...");
+      const resetResult = await this.checkResetOrBit(1410, 0, 1);
+      if (resetResult === true) {
+        logger.info("Reset detected, restarting cycle");
+        return;
       }
 
-      // Add 2-second delay after cycle completion
-      logger.info(
-        "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
-      );
-      await sleep(2000);
-    } else {
-      logger.warn(`❌ Cycle completion failed:`);
-      logger.warn(`   - Final checks: ${finalChecksResult}`);
-      logger.warn(
-        `   - Verification success: ${verificationScanResult.success}`
-      );
-      logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
+      // Step 1: First Scanner Check
+      const firstScanResult = await this.handleFirstScan(comService);
+      if (!firstScanResult.shouldContinue) {
+        logger.info("Cycle stopped after first scan");
+        return;
+      }
 
-      // Trigger UI refresh even for failed cycles
-      if (this.io) {
-        logger.info("📡 Broadcasting failed cycle data to UI...");
-        await mongoDbService.broadcastDataToAllClients(
-          this.io,
-          "main-data",
-          "records"
+      // Step 2: Generate and Write Barcode (simplified, no OCR)
+      const barcodeData = await this.generateAndWriteBarcode(partNumber);
+      if (!barcodeData) {
+        return;
+      }
+
+      // Step 3: Signal Transfer and Wait
+      logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
+      await writeBit(1414, 15, 1);
+
+      logger.info("🔍 Checking for reset or waiting for bit 1410.3");
+      if (await this.checkResetOrBit(1410, 3, 1)) {
+        logger.warn(
+          "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
         );
-
-        // Emit failed cycle event
-        this.io.emit("scan-cycle-completed", {
-          cycleNumber: this.cycleCount,
-          timestamp: new Date().toISOString(),
-          success: false,
+        await sleep(1000);
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: barcodeData.serialNo,
+          markingData: barcodeData.text,
+          scannerData: "N/A",
           result: "NG",
-          error: "Cycle completion failed",
+          grading: "N/A",
+          isUpdate: true,
         });
+        return;
       }
 
-      // Add 2-second delay even for failed cycles
-      logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
-      await sleep(2000);
+      // Step 4: Verification Scanner Check
+      const verificationScanResult = await this.handleVerificationScan(
+        comService,
+        barcodeData
+      );
+
+      // Step 5: Final Checks and Cleanup
+      logger.info("🔍 Starting final checks and cycle completion...");
+      const finalChecksResult = await this.performFinalChecks();
+      logger.info(`📋 Final checks result: ${finalChecksResult}`);
+      logger.info(
+        `🔍 Verification scan result: ${verificationScanResult.success}`
+      );
+
+      if (finalChecksResult) {
+        this.cycleCount++;
+        logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
+        logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
+
+        // Trigger UI refresh on successful cycle completion
+        if (this.io) {
+          logger.info("📡 Broadcasting cycle completion to UI...");
+          await mongoDbService.broadcastDataToAllClients(
+            this.io,
+            "main-data",
+            "records"
+          );
+
+          // Also emit a specific cycle completion event
+          this.io.emit("scan-cycle-completed", {
+            cycleNumber: this.cycleCount,
+            timestamp: new Date().toISOString(),
+            success: true,
+            result: verificationScanResult.success ? "OK" : "NG",
+          });
+        }
+
+        // Add 2-second delay after cycle completion
+        logger.info(
+          "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
+        );
+        await sleep(2000);
+      } else {
+        logger.warn(`❌ Cycle completion failed:`);
+        logger.warn(`   - Final checks: ${finalChecksResult}`);
+        logger.warn(
+          `   - Verification success: ${verificationScanResult.success}`
+        );
+        logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
+
+        // Trigger UI refresh even for failed cycles
+        if (this.io) {
+          logger.info("📡 Broadcasting failed cycle data to UI...");
+          await mongoDbService.broadcastDataToAllClients(
+            this.io,
+            "main-data",
+            "records"
+          );
+
+          // Emit failed cycle event
+          this.io.emit("scan-cycle-completed", {
+            cycleNumber: this.cycleCount,
+            timestamp: new Date().toISOString(),
+            success: false,
+            result: "NG",
+            error: "Cycle completion failed",
+          });
+        }
+
+        // Add 2-second delay even for failed cycles
+        logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
+        await sleep(2000);
+      }
+    } catch (error) {
+      if (error.message === "SAFETY_VIOLATION") {
+        logger.error("🚨 SAFETY VIOLATION - Current cycle stopped");
+        logger.error(
+          "⏸️ Waiting for safety conditions to be resolved before next cycle"
+        );
+
+        // The safety violation event is already emitted in singleCheckAttempt
+        // Just log the current cycle termination
+
+        // Don't stop the continuous scan - just end this cycle
+        // The next cycle will start when safety conditions are met again
+        return;
+      } else {
+        logger.error(`❌ Error in executeScanCycle: ${error.message}`);
+        throw error;
+      }
     }
   }
 
