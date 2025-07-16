@@ -514,6 +514,7 @@ class ScannerController {
       if (io) {
         // Use broadcast method to refresh all connected clients
         mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
+        console.log("broadcastDataToAllClients");
       }
     } catch (error) {
       console.error({ error });
