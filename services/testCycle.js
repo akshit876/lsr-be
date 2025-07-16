@@ -52,7 +52,7 @@ async function saveToMongoDB({
     logger.info("Data saved to MongoDB");
 
     if (io) {
-      mongoDbService.sendMongoDbDataToClient(io, "main-data", "records");
+      mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
     }
   } catch (error) {
     console.error({ error });
