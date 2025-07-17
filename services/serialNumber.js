@@ -135,8 +135,8 @@ class SerialNumberGeneratorService {
         this.currentSerialNumber = modelStartingSerial;
         this.lastResetDate = new Date();
 
-        // Save this initial configuration to modelSerialConfig
-        await this.saveUsedSerialNumber(this.currentSerialNumber - 1); // Save starting serial - 1 so next call returns starting serial
+        // Removed: await this.saveUsedSerialNumber(this.currentSerialNumber - 1);
+        // Do NOT save here. Let the first use save the serial number.
       }
 
       // Check if a reset is needed when initializing
