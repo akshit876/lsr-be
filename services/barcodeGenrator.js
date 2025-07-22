@@ -44,9 +44,6 @@ class BarcodeGenerator {
       const fullYear = now.getFullYear().toString();
       // Use the last two digits of the year (e.g., "25" for 2025)
       const year = fullYear.slice(-2);
-      const month = format(now, "MM");
-      const day = format(now, "dd");
-      const shift = this.shiftUtility.getCurrentShift(now);
 
       // Get Julian date (day of year)
       const startOfYear = new Date(now.getFullYear(), 0, 0);
@@ -100,50 +97,19 @@ class BarcodeGenerator {
       const fields = configData.currentModelConfig.fields.map((field) => {
         let mappedValue;
         switch (field.fieldName) {
-          case "PART NO":
-            mappedValue = field.value || ""; // Use configured value
-            break;
-          case "Serial Number": // Note: "Serial Number" not "SERIAL NUMBER"
-            mappedValue = serialString;
-            break;
-          case "FOR STORE":
-            mappedValue = field.value || ""; // Use configured value
-            break;
-          case "Shift": // Note: "Shift" not "SHIFT"
-            mappedValue = shift;
-            break;
-          case "STORE":
-            mappedValue = field.value || ""; // Use configured value
-            break;
-          case "Year": // Note: "Year" not "YEAR"
+          case "Production year":
             mappedValue = year;
             break;
-          case "Julian Date": // Note: "Julian Date" not "JULIAN DATE"
+          case "Day of production year":
             mappedValue = julianDate;
             break;
-          case "SUPPLIER CODE":
-            mappedValue = field.value || ""; // Use configured value
-            break;
-          case "Month": // Note: "Month" not "MONTH"
-            mappedValue = month;
-            break;
-          case "Date": // Note: "Date" not "DATE"
-            mappedValue = day;
-            break;
-          case "MACHINE NO":
-            mappedValue = field.value || "";
-            break;
-          case "COMPANY CODE":
-            mappedValue = field.value || "";
-            break;
-          case "Model Number":
-            mappedValue = field.value || "";
+          case "Day production counter (Serial number)":
+            mappedValue = serialString;
             break;
           default:
             mappedValue = field.value || "";
             break;
         }
-
         const mappedField = { ...field, value: mappedValue };
         logger.info(
           `🔍 Debug - Mapped ${field.fieldName}: "${field.value}" → "${mappedValue}"`
@@ -161,9 +127,9 @@ class BarcodeGenerator {
           );
         });
 
-      // Generate barcode by combining only checked fields in order
+      // Generate barcode by combining only checked fields in order, EXCLUDING Buffer 1
       const barcodeText = fields
-        .filter((field) => field.isChecked) // Only include checked fields
+        .filter((field) => field.isChecked && field.fieldName !== "Buffer 1") // Exclude Buffer 1
         .sort((a, b) => a.order - b.order) // Sort by order
         .map((field) => field.value || "") // Get values
         .join(""); // Join without separator
@@ -171,10 +137,37 @@ class BarcodeGenerator {
       logger.info("Generated barcode text:", barcodeText);
       logger.info("Serial number:", serialString);
 
+      // --- Generate codeToPrint ---
+      // Helper to get field value by name
+      function getFieldValue(name) {
+        const f = configData.currentModelConfig.fields.find(
+          (f) => f.fieldName === name
+        );
+        return f ? f.value : "";
+      }
+      const partNo = getFieldValue(
+        "Part number according to GS 90019 (alphanumeric)"
+      );
+      const changeIndex = getFieldValue("Change index according to GS 91005-8");
+      const buffer1 = getFieldValue("Buffer 1");
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, "0");
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const yy = String(today.getFullYear()).slice(-2);
+      const dateStr = `${dd}-${mm}-${yy}`;
+      const codeToPrint = [
+        partNo,
+        changeIndex,
+        serialString,
+        dateStr,
+        buffer1,
+      ].join("\n");
+
       return {
         text: barcodeText,
         serialNo: serialString,
         fields: fields,
+        codeToPrint,
       };
     } catch (error) {
       console.error("Error generating barcode:", error);

@@ -1010,19 +1010,22 @@ class ScannerController {
 
       // Generate barcode data using simplified method
       logger.info("🔄 Calling barcodeGenerator.generateBarcodeData...");
-      const { text: barcodeText, serialNo: serialString } =
-        await this.barcodeGenerator.generateBarcodeData({
-          mongoDbService,
-          partNumber,
-        });
+      const {
+        text: barcodeText,
+        serialNo: serialString,
+        codeToPrint,
+      } = await this.barcodeGenerator.generateBarcodeData({
+        mongoDbService,
+        partNumber,
+      });
       logger.info(`✅ Barcode generated: ${barcodeText}`);
       logger.info(`🔢 Serial Number: ${serialString}`);
 
       // Write both files using the reusable function
       logger.info("📁 Writing barcode data to files...");
       await Promise.all([
-        this.writeToFile(CODE_FILE_PATH, barcodeText, "Barcode data"),
-        this.writeToFile(TEXT_FILE_PATH, barcodeText, "Barcode text"),
+        this.writeToFile(CODE_FILE_PATH, barcodeText, "Barcode text"),
+        this.writeToFile(TEXT_FILE_PATH, codeToPrint, "Code to print"),
       ]);
       logger.info("✅ Files written successfully");
 
