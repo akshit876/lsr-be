@@ -218,7 +218,7 @@ class SerialNumberGeneratorService {
 
   async getNextSerialNumber() {
     await this.checkAndResetSerialNumber();
-    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
+    const serialNumber = this.currentSerialNumber.toString().padStart(5, "0");
 
     // Save the USED serial number to model-wise configuration
     await this.saveUsedSerialNumber(this.currentSerialNumber);
@@ -287,7 +287,7 @@ class SerialNumberGeneratorService {
     }
 
     // Format the serial number
-    const serialNumber = serialToUse.toString().padStart(4, "0");
+    const serialNumber = serialToUse.toString().padStart(5, "0");
 
     // Save the USED serial number to modelSerialConfig
     await this.saveUsedSerialNumber(serialToUse);
@@ -398,7 +398,7 @@ class SerialNumberGeneratorService {
       this.lastResetDate = now;
 
       logger.info(
-        `🔄 FIRST RUN AFTER 6:00 AM RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+        `🔄 FIRST RUN AFTER 6:00 AM RESET (${currentModel}): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(5, "0")}) at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
       );
       logger.info(
         `📅 Reset trigger: This is the first machine operation after ${format(resetTime, "HH:mm:ss")} today for model ${currentModel}. Previous reset for this model: ${modelSpecificLastResetDate ? format(modelSpecificLastResetDate, "yyyy-MM-dd HH:mm:ss") : "Never"}`
@@ -414,11 +414,11 @@ class SerialNumberGeneratorService {
     } else {
       if (isBefore(now, resetTime)) {
         logger.info(
-          `✅ NO RESET (${currentModel}): Current time ${format(now, "HH:mm:ss")} is before reset time ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+          `✅ NO RESET (${currentModel}): Current time ${format(now, "HH:mm:ss")} is before reset time ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(5, "0")})`
         );
       } else {
         logger.info(
-          `✅ NO RESET (${currentModel}): Model ${currentModel} already reset today after ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+          `✅ NO RESET (${currentModel}): Model ${currentModel} already reset today after ${format(resetTime, "HH:mm:ss")}. Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(5, "0")})`
         );
         logger.info(
           `🔑 NOTE: Other models can still reset independently if they haven't reset today yet.`
@@ -437,29 +437,29 @@ class SerialNumberGeneratorService {
         // Model-specific starting serial configurations for ALL models
         if (modelNumber === "CMB-877") {
           logger.info(
-            `✅ Model ${modelNumber} → starting serial: 7001 (S7001)`
+            `✅ Model ${modelNumber} → starting serial: 7001 (S07001)`
           );
           return 7001;
         } else if (modelNumber === "CMB-778") {
           // CMB-778 starts from 1
-          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S0001)`);
+          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S00001)`);
           return 1;
         } else {
           // All other models start from 1
           logger.info(
-            `✅ Model ${modelNumber} → starting serial: 1 (S0001) [default for this model]`
+            `✅ Model ${modelNumber} → starting serial: 1 (S00001) [default for this model]`
           );
           return 1;
         }
       } else {
         logger.warn(
-          "⚠️ No model number found, using default starting serial: 1 (S0001)"
+          "⚠️ No model number found, using default starting serial: 1 (S00001)"
         );
         return this.modelStartingSerials["default"];
       }
     } catch (error) {
       logger.error("❌ Error fetching model starting serial:", error);
-      logger.warn("⚠️ Defaulting to serial number 1 (S0001) due to error");
+      logger.warn("⚠️ Defaulting to serial number 1 (S00001) due to error");
       return this.modelStartingSerials["default"];
     }
   }

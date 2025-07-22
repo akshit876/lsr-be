@@ -42,7 +42,7 @@ const codeFormat = () => {
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const yy = String(now.getFullYear()).slice(-2);
-  const increment = String(specialCodeCounter).padStart(4, "0");
+  const increment = String(specialCodeCounter).padStart(5, "0");
   return `${dd}${mm}${yy}${increment}`;
 };
 

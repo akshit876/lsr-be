@@ -63,8 +63,9 @@ class BarcodeGenerator {
       logger.info(`🔍 Debug - provided partNumber: "${partNumber}"`);
 
       // Get next serial number
-      const serialString =
+      let serialString =
         await this.serialNumberService.getNextDecSerialNumber2();
+      serialString = String(serialString).padStart(5, "0");
 
       // Check if configData has the expected structure
       if (
