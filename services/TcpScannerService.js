@@ -100,7 +100,7 @@ class TcpScannerService extends EventEmitter {
       });
 
       this.client.on("error", (err) => {
-        this.log(`Error connecting to TCP scanner: ${err.message}", "error");
+        this.log(`Error connecting to TCP scanner: ${err.message}`, "error");
         this.isConnected = false;
         reject(err);
       });
@@ -150,7 +150,7 @@ class TcpScannerService extends EventEmitter {
     });
 
     this.client.on("error", (err) => {
-      this.log(`TCP scanner error: ${err.message}", "error");
+      this.log(`TCP scanner error: ${err.message}`, "error");
       this.isConnected = false;
       this.emit("error", err);
       this.scheduleReconnect();
@@ -194,7 +194,7 @@ class TcpScannerService extends EventEmitter {
         await this.initTcpConnection();
         this.log("TCP scanner reconnected successfully");
       } catch (error) {
-        this.log(`Reconnection failed: ${error.message}", "error");
+        this.log(`Reconnection failed: ${error.message}`, "error");
         // scheduleReconnect will be called again from the error handler
       }
     }, this.options.reconnectInterval);
@@ -262,7 +262,7 @@ class TcpScannerService extends EventEmitter {
 
       this.client.write(command + "\n", (err) => {
         if (err) {
-          this.log(`Error sending command: ${err.message}", "error");
+          this.log(`Error sending command: ${err.message}`, "error");
           reject(err);
         } else {
           this.log(`Command sent successfully: "${command}"`);
@@ -334,4 +334,4 @@ class TcpScannerService extends EventEmitter {
   }
 }
 
-export default TcpScannerService; 
+export default TcpScannerService;
