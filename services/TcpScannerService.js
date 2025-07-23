@@ -10,7 +10,7 @@ class TcpScannerService extends EventEmitter {
     super(); // Initialize EventEmitter
     this.options = {
       host: options.host || process.env.SCANNER_HOST || "192.168.3.146",
-      port: parseInt(options.port || process.env.SCANNER_PORT, 10) || 502,
+      port: parseInt(options.port || process.env.SCANNER_PORT, 10) || 5024,
       timeout: options.timeout || 5000,
       reconnectInterval: options.reconnectInterval || 3000,
       keepAlive: options.keepAlive !== false, // Enable keep-alive by default
