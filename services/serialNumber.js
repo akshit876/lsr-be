@@ -6,8 +6,8 @@ class SerialNumberGeneratorService {
   constructor() {
     this.currentSerialNumber = 1;
     this.lastResetDate = new Date();
-    this.resetHour = 6;
-    this.resetMinute = 0;
+    this.resetHour = 0; // <-- Set default reset hour to 0 (midnight)
+    this.resetMinute = 0; // <-- Set default reset minute to 0
     this.isInitialized = false;
     this.currentModelNumber = null; // Track current model for separate sequences
     this.modelStartingSerials = {
@@ -472,23 +472,23 @@ class SerialNumberGeneratorService {
 
       if (serialConfig && serialConfig.resetTime) {
         // Parse the resetTime format "06:00" into hour and minute
-        const [hour, minute] = serialConfig.resetTime.split(":").map(Number);
         logger.info(
           `Found serial number reset configuration: ${serialConfig.resetTime}, interval: ${serialConfig.resetInterval}`
         );
 
         // Only apply if reset is enabled (daily interval)
         if (serialConfig.resetInterval === "daily") {
-          this.resetHour = hour || 6;
-          this.resetMinute = minute || 0;
+          // ENFORCE 12:00 AM RESET FOR ALL MODELS
+          this.resetHour = 0;
+          this.resetMinute = 0;
           logger.info(
-            `Reset time updated from serialNoconfig: ${this.resetHour}:${this.resetMinute}`
+            `Reset time enforced to 00:00 (12:00 AM) for all models.`
           );
         } else {
           logger.info(
             `Reset interval is '${serialConfig.resetInterval}', using default reset time`
           );
-          this.resetHour = 6;
+          this.resetHour = 0;
           this.resetMinute = 0;
         }
 
@@ -499,15 +499,15 @@ class SerialNumberGeneratorService {
         }
       } else {
         logger.warn(
-          "No serial number reset configuration found, using defaults (6:00)"
+          "No serial number reset configuration found, using defaults (00:00)"
         );
-        this.resetHour = 6;
+        this.resetHour = 0;
         this.resetMinute = 0;
       }
     } catch (error) {
       logger.error("Error fetching serial number reset configuration:", error);
-      logger.warn("Using default reset time (6:00) due to error");
-      this.resetHour = 6;
+      logger.warn("Using default reset time (00:00) due to error");
+      this.resetHour = 0;
       this.resetMinute = 0;
     }
   }
@@ -534,10 +534,10 @@ class SerialNumberGeneratorService {
 
       const now = new Date();
 
-      // Update or create model-specific serial configuration
+      // Save currentValue as startingSerial - 1 so that next serial is startingSerial
       const updateData = {
         modelNumber: modelNumber,
-        currentValue: this.currentSerialNumber.toString(),
+        currentValue: (dynamicStartingSerial - 1).toString(), // <-- FIXED: Save as startingSerial - 1
         lastUpdated: now, // ← Latest activity timestamp
         startingSerial: dynamicStartingSerial, // Use dynamic calculation
         lastReset: now, // ← When reset happened
@@ -564,7 +564,7 @@ class SerialNumberGeneratorService {
           {},
           {
             $set: {
-              currentValue: this.currentSerialNumber.toString(),
+              currentValue: (dynamicStartingSerial - 1).toString(), // <-- FIXED: Save as startingSerial - 1
               lastReset: now,
             },
           }
