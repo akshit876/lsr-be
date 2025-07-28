@@ -46,11 +46,17 @@ class TCPClient {
     }
 
     return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Timeout waiting for TCP data"));
+      }, 15000); // 15 second timeout
+
       this.client.once("data", (data) => {
+        clearTimeout(timeoutId);
         resolve(data?.toString()?.trim());
       });
 
       this.client.on("error", (err) => {
+        clearTimeout(timeoutId);
         console.error("Error while receiving data:", err.message);
         reject(err);
       });
@@ -80,15 +86,37 @@ class TCPClient {
       let concatenatedData = firstData;
       let secondData = "";
 
-      if (firstData == "0\r\n0" || firstData == "0") {
+      // Check if the data contains "0" or is essentially empty/error data
+      if (
+        firstData.includes("0") ||
+        firstData.trim() === "" ||
+        firstData === "0\r\n0\r\n\\"
+      ) {
         concatenatedData = "NG";
+        console.log("Data converted to NG due to zero/empty content");
       }
 
-      if (isSecond && concatenatedData != "NG") {
-        secondData = await this.readData();
-        console.log("Second data received:", { secondData });
-        concatenatedData += secondData;
-        console.log("Concatenated data:", concatenatedData);
+      if (isSecond && concatenatedData !== "NG") {
+        console.log("Waiting for second data...");
+        try {
+          // Add timeout to prevent hanging
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(
+              () => reject(new Error("Timeout waiting for second data")),
+              10000
+            ); // 10 second timeout
+          });
+
+          secondData = await Promise.race([this.readData(), timeoutPromise]);
+          console.log("Second data received:", { secondData });
+          concatenatedData += secondData;
+          console.log("Concatenated data:", concatenatedData);
+        } catch (error) {
+          console.log(
+            "Timeout or error reading second data, proceeding with first data only"
+          );
+          // If timeout occurs, just proceed with the first data
+        }
       }
 
       // Save to CSV

@@ -943,13 +943,18 @@ class ScannerController {
       const secondScannerData = await this.fetchScannerData(comService, {
         isSecondScan: true,
       });
-      logger.info(`🔄 Second scanner data (attempt ${retryCount + 1}):`, secondScannerData);
+      logger.info(
+        `🔄 Second scanner data (attempt ${retryCount + 1}):`,
+        secondScannerData
+      );
 
       // Check if scanner data is "NG"
       if (secondScannerData.trim().toUpperCase() === "NG") {
         if (retryCount < MAX_RETRIES) {
-          logger.info(`🔄 Second scan resulted in NG, retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          logger.info(
+            `🔄 Second scan resulted in NG, retrying in ${RETRY_DELAY / 1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+          );
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
           retryCount++;
           continue;
         }
@@ -1033,19 +1038,28 @@ class ScannerController {
       logger.info("🔄 Grade acceptance ", checkGrading);
 
       // If grade is not A or B, retry
-      const acceptableGrades = ['A', 'B'];
+      const acceptableGrades = ["A", "B"];
       if (!acceptableGrades.includes(grading.toUpperCase())) {
         if (retryCount < MAX_RETRIES) {
-          logger.info(`🔄 Grade ${grading.toUpperCase() || 'MISSING'} detected (not A/B), retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          logger.info(
+            `🔄 Grade ${grading.toUpperCase() || "MISSING"} detected (not A/B), retrying in ${RETRY_DELAY / 1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+          );
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
           retryCount++;
           continue;
         }
-        logger.info(`🔄 Still getting grade ${grading.toUpperCase() || 'MISSING'} after all retries`);
+        logger.info(
+          `🔄 Still getting grade ${grading.toUpperCase() || "MISSING"} after all retries`
+        );
       }
 
       // Handle image backup and save to MongoDB
-      const success = await this.handleImageAndSave(barcodeData, secondScannerData, grading, isDataMatching && checkGrading);
+      const success = await this.handleImageAndSave(
+        barcodeData,
+        secondScannerData,
+        grading,
+        isDataMatching && checkGrading
+      );
       if (!success) {
         return { success: false };
       }
@@ -1098,7 +1112,10 @@ class ScannerController {
 
     // Move image to backup folder
     try {
-      const backupPath = path.join(path.join("D:", "img_backups"), matchingImage);
+      const backupPath = path.join(
+        path.join("D:", "img_backups"),
+        matchingImage
+      );
       fs.copyFileSync(actualImagePath, backupPath);
       fs.unlinkSync(actualImagePath); // Delete original after successful copy
       logger.info(`Image backed up to: ${backupPath}`);
@@ -1169,6 +1186,14 @@ class ScannerController {
       return null;
     }
     this.isScanning = true;
+
+    // Add overall timeout for the entire method
+    const overallTimeout = setTimeout(() => {
+      logger.error(
+        `⏰ Overall timeout for ${scannerLabel.toLowerCase()} scanner data acquisition`
+      );
+      this.isScanning = false;
+    }, 30000); // 30 second overall timeout
 
     try {
       logger.info(
@@ -1241,11 +1266,21 @@ class ScannerController {
       //   reject(err);
       // });
 
-      const result = await tcpClient.getDataTwiceAndConcat({
-        isFirst: isSecondScan == false,
-        isSecond: isSecondScan,
-      });
-      logger.info(`📝 Scanner result: ${result}`);
+      let result;
+      try {
+        result = await tcpClient.getDataTwiceAndConcat({
+          isFirst: isSecondScan === false,
+          isSecond: isSecondScan,
+        });
+        logger.info(`📝 Scanner result: ${result}`);
+      } catch (error) {
+        logger.error(
+          `❌ TCP timeout or error during ${scannerLabel.toLowerCase()} scan:`,
+          error.message
+        );
+        // Return "NG" as fallback for timeout/error cases
+        result = "NG";
+      }
 
       // Process result to take only 29 digits if not "NG"
       const processedResult =
@@ -1273,6 +1308,7 @@ class ScannerController {
       );
       throw error;
     } finally {
+      clearTimeout(overallTimeout); // Clear the overall timeout
       this.isScanning = false; // Always reset the scanning flag
     }
   }
