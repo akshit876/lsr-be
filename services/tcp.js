@@ -45,13 +45,16 @@ class TCPClient {
       throw new Error("TCP client is not connected.");
     }
 
+    console.log("Waiting for TCP data...");
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
+        console.log("TCP data timeout after 30 seconds");
         reject(new Error("Timeout waiting for TCP data"));
-      }, 15000); // 15 second timeout
+      }, 30000); // 30 second timeout
 
       this.client.once("data", (data) => {
         clearTimeout(timeoutId);
+        console.log("TCP data received:", data?.toString()?.trim());
         resolve(data?.toString()?.trim());
       });
 
@@ -68,7 +71,17 @@ class TCPClient {
       throw new Error("TCP client is not connected.");
     }
 
-    console.log("Reading data from TCP server...");
+    // Check connection health
+    if (this.client.destroyed) {
+      throw new Error("TCP connection has been destroyed");
+    }
+
+    console.log(
+      `Reading data from TCP server... (isFirst: ${isFirst}, isSecond: ${isSecond})`
+    );
+    console.log(
+      `TCP client connected: ${this.client.connecting ? "connecting" : this.client.destroyed ? "destroyed" : "connected"}`
+    );
     try {
       const firstData = await this.readData();
       const timestamp = new Date()
@@ -103,8 +116,8 @@ class TCPClient {
           const timeoutPromise = new Promise((_, reject) => {
             setTimeout(
               () => reject(new Error("Timeout waiting for second data")),
-              10000
-            ); // 10 second timeout
+              25000
+            ); // 25 second timeout
           });
 
           secondData = await Promise.race([this.readData(), timeoutPromise]);

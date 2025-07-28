@@ -1193,7 +1193,7 @@ class ScannerController {
         `⏰ Overall timeout for ${scannerLabel.toLowerCase()} scanner data acquisition`
       );
       this.isScanning = false;
-    }, 30000); // 30 second overall timeout
+    }, 60000); // 60 second overall timeout
 
     try {
       logger.info(
@@ -1267,19 +1267,37 @@ class ScannerController {
       // });
 
       let result;
-      try {
-        result = await tcpClient.getDataTwiceAndConcat({
-          isFirst: isSecondScan === false,
-          isSecond: isSecondScan,
-        });
-        logger.info(`📝 Scanner result: ${result}`);
-      } catch (error) {
-        logger.error(
-          `❌ TCP timeout or error during ${scannerLabel.toLowerCase()} scan:`,
-          error.message
-        );
-        // Return "NG" as fallback for timeout/error cases
-        result = "NG";
+      const maxRetries = 2;
+      let retryCount = 0;
+
+      while (retryCount <= maxRetries) {
+        try {
+          logger.info(
+            `🔄 Attempt ${retryCount + 1}/${maxRetries + 1} for ${scannerLabel.toLowerCase()} scan`
+          );
+          result = await tcpClient.getDataTwiceAndConcat({
+            isFirst: isSecondScan === false,
+            isSecond: isSecondScan,
+          });
+          logger.info(`📝 Scanner result: ${result}`);
+          break; // Success, exit retry loop
+        } catch (error) {
+          retryCount++;
+          logger.error(
+            `❌ TCP timeout or error during ${scannerLabel.toLowerCase()} scan (attempt ${retryCount}/${maxRetries + 1}):`,
+            error.message
+          );
+
+          if (retryCount > maxRetries) {
+            // All retries exhausted, use fallback
+            logger.warn(`⚠️ All retries exhausted, using "NG" as fallback`);
+            result = "NG";
+          } else {
+            // Wait before retry
+            logger.info(`⏳ Waiting 2 seconds before retry...`);
+            await sleep(2000);
+          }
+        }
       }
 
       // Process result to take only 29 digits if not "NG"
