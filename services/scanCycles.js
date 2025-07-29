@@ -943,13 +943,18 @@ class ScannerController {
       const secondScannerData = await this.fetchScannerData(comService, {
         isSecondScan: true,
       });
-      logger.info(`🔄 Second scanner data (attempt ${retryCount + 1}):`, secondScannerData);
+      logger.info(
+        `🔄 Second scanner data (attempt ${retryCount + 1}):`,
+        secondScannerData
+      );
 
       // Check if scanner data is "NG"
       if (secondScannerData.trim().toUpperCase() === "NG") {
         if (retryCount < MAX_RETRIES) {
-          logger.info(`🔄 Second scan resulted in NG, retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          logger.info(
+            `🔄 Second scan resulted in NG, retrying in ${RETRY_DELAY / 1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+          );
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
           retryCount++;
           continue;
         }
@@ -1033,19 +1038,28 @@ class ScannerController {
       logger.info("🔄 Grade acceptance ", checkGrading);
 
       // If grade is not A or B, retry
-      const acceptableGrades = ['A', 'B'];
+      const acceptableGrades = ["A", "B"];
       if (!acceptableGrades.includes(grading.toUpperCase())) {
         if (retryCount < MAX_RETRIES) {
-          logger.info(`🔄 Grade ${grading.toUpperCase() || 'MISSING'} detected (not A/B), retrying in ${RETRY_DELAY/1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          logger.info(
+            `🔄 Grade ${grading.toUpperCase() || "MISSING"} detected (not A/B), retrying in ${RETRY_DELAY / 1000} seconds... (Attempt ${retryCount + 1}/${MAX_RETRIES})`
+          );
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
           retryCount++;
           continue;
         }
-        logger.info(`🔄 Still getting grade ${grading.toUpperCase() || 'MISSING'} after all retries`);
+        logger.info(
+          `🔄 Still getting grade ${grading.toUpperCase() || "MISSING"} after all retries`
+        );
       }
 
       // Handle image backup and save to MongoDB
-      const success = await this.handleImageAndSave(barcodeData, secondScannerData, grading, isDataMatching && checkGrading);
+      const success = await this.handleImageAndSave(
+        barcodeData,
+        secondScannerData,
+        grading,
+        isDataMatching && checkGrading
+      );
       if (!success) {
         return { success: false };
       }
@@ -1098,7 +1112,10 @@ class ScannerController {
 
     // Move image to backup folder
     try {
-      const backupPath = path.join(path.join("D:", "img_backups"), matchingImage);
+      const backupPath = path.join(
+        path.join("D:", "img_backups"),
+        matchingImage
+      );
       fs.copyFileSync(actualImagePath, backupPath);
       fs.unlinkSync(actualImagePath); // Delete original after successful copy
       logger.info(`Image backed up to: ${backupPath}`);
@@ -1159,6 +1176,7 @@ class ScannerController {
       bit = isSecondScan ? 15 : 0,
       timeout = isSecondScan ? 100 * 1000 : 100 * 1000,
       scannerLabel = isSecondScan ? "Second" : "First",
+      tcpTimeout = 10000, // 10 seconds default TCP timeout for scanner
     } = options;
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);
@@ -1175,75 +1193,11 @@ class ScannerController {
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      // const scannerDataPromise = new Promise((resolve, reject) => {
-      //   // Remove any existing listeners first
-      //   this.comService.removeAllListeners("dataGot");
-
-      //   const dataHandler = (data) => {
-      //     logger.success(
-      //       `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-      //     );
-
-      //     if (this.io) {
-      //       this.io.emit("scanner_read", {
-      //         timestamp: new Date(),
-      //         scannerType: scannerLabel,
-      //         data: data,
-      //       });
-      //     }
-
-      //     clearTimeout(timeoutId);
-      //     this.isScanning = false; // Reset the scanning flag
-      //     resolve(data);
-      //     this.comService.off("dataGot", dataHandler);
-      //   };
-
-      //   logger.info("👂 Adding event listener for scanner data");
-      //   this.comService.on("dataGot", dataHandler);
-
-      //   const timeoutId = setTimeout(() => {
-      //     logger.error(
-      //       `⏰ Timeout waiting for ${scannerLabel.toLowerCase()} scanner data`
-      //     );
-      //     this.comService.off("dataGot", dataHandler);
-      //     this.isScanning = false; // Reset the scanning flag
-      //     reject(new Error(`${scannerLabel} scanner data timeout`));
-      //   }, timeout);
-
-      //   // Only trigger scanner if not already scanning
-      //   logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-      //   writeBit(register, bit, 1)
-      //     .then(() =>
-      //       logger.success(`${scannerLabel} scanner triggered successfully`)
-      //     )
-      //     .catch((err) => {
-      //       logger.error(
-      //         `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-      //         err
-      //       );
-      //       clearTimeout(timeoutId);
-      //       this.isScanning = false; // Reset the scanning flag
-      //       reject(err);
-      //     });
-      // });
-
       await writeBit(register, bit, 1);
-      // .then(() =>
-      //   logger.success(`${scannerLabel} scanner triggered successfully`)
-      // )
-      // .catch((err) => {
-      //   logger.error(
-      //     `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-      //     err
-      //   );
-      //   clearTimeout(timeoutId);
-      //   this.isScanning = false; // Reset the scanning flag
-      //   reject(err);
-      // });
 
       const result = await tcpClient.getDataTwiceAndConcat({
-        isFirst: isSecondScan == false,
         isSecond: isSecondScan,
+        timeout: tcpTimeout, // Pass the timeout to TCP client
       });
       logger.info(`📝 Scanner result: ${result}`);
 

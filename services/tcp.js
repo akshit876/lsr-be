@@ -1,6 +1,5 @@
 import net from "net";
 import fs from "fs";
-import path, { dirname } from "path";
 
 class TCPClient {
   constructor() {
@@ -40,31 +39,48 @@ class TCPClient {
     });
   }
 
-  async readData() {
+  async readData(timeout = 10000) {
+    // 10 seconds default timeout for scanner
     if (!this.client) {
       throw new Error("TCP client is not connected.");
     }
 
+    console.log(`Waiting for TCP data with ${timeout}ms timeout...`);
+
     return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        console.error(`Timeout waiting for TCP data after ${timeout}ms`);
+        reject(
+          new Error(
+            `TCP data timeout - no response received after ${timeout}ms`
+          )
+        );
+      }, timeout);
+
+      // Set up data listener
       this.client.once("data", (data) => {
+        clearTimeout(timeoutId); // Clear timeout when data is received
+        console.log(`TCP data received: ${data?.toString()?.trim()}`);
         resolve(data?.toString()?.trim());
       });
 
-      this.client.on("error", (err) => {
-        console.error("Error while receiving data:", err.message);
+      // Set up error listener
+      this.client.once("error", (err) => {
+        clearTimeout(timeoutId); // Clear timeout on error
+        console.error("TCP error while receiving data:", err.message);
         reject(err);
       });
     });
   }
 
-  async getDataTwiceAndConcat({ isFirst = true, isSecond = false }) {
+  async getDataTwiceAndConcat({ isSecond = false, timeout = 10000 }) {
     if (!this.client) {
       throw new Error("TCP client is not connected.");
     }
 
     console.log("Reading data from TCP server...");
     try {
-      const firstData = await this.readData();
+      const firstData = await this.readData(timeout);
       const timestamp = new Date()
         .toLocaleString("en-GB", {
           day: "2-digit",
@@ -80,12 +96,12 @@ class TCPClient {
       let concatenatedData = firstData;
       let secondData = "";
 
-      if (firstData == "0\r\n0" || firstData == "0") {
+      if (firstData === "0\r\n0" || firstData === "0") {
         concatenatedData = "NG";
       }
 
-      if (isSecond && concatenatedData != "NG") {
-        secondData = await this.readData();
+      if (isSecond && concatenatedData !== "NG") {
+        secondData = await this.readData(timeout);
         console.log("Second data received:", { secondData });
         concatenatedData += secondData;
         console.log("Concatenated data:", concatenatedData);
