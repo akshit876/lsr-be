@@ -1176,7 +1176,7 @@ class ScannerController {
       bit = isSecondScan ? 15 : 0,
       timeout = isSecondScan ? 100 * 1000 : 100 * 1000,
       scannerLabel = isSecondScan ? "Second" : "First",
-      tcpTimeout = 10000, // 10 seconds default TCP timeout for scanner
+      tcpTimeout = 20000, // 20 seconds default TCP timeout for scanner
     } = options;
 
     logger.section(`${scannerLabel} Scanner Data Acquisition`);

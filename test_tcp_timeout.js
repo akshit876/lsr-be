@@ -8,12 +8,12 @@ async function testTcpTimeout() {
     await tcpClient.connect({ port: 5024, host: "192.168.3.147" });
     console.log("✅ TCP connection established");
 
-    // Test with the new default timeout (10 seconds)
-    console.log("Testing with 10 second timeout...");
+    // Test with the new default timeout (20 seconds)
+    console.log("Testing with 20 second timeout...");
     try {
       const result = await tcpClient.getDataTwiceAndConcat({
         isSecond: false,
-        timeout: 10000,
+        timeout: 20000,
       });
       console.log("✅ Data received:", result);
     } catch (timeoutError) {

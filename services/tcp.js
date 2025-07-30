@@ -39,8 +39,8 @@ class TCPClient {
     });
   }
 
-  async readData(timeout = 10000) {
-    // 10 seconds default timeout for scanner
+  async readData(timeout = 20000) {
+    // 20 seconds default timeout for scanner
     if (!this.client) {
       throw new Error("TCP client is not connected.");
     }
@@ -73,7 +73,7 @@ class TCPClient {
     });
   }
 
-  async getDataTwiceAndConcat({ isSecond = false, timeout = 10000 }) {
+  async getDataTwiceAndConcat({ isSecond = false, timeout = 20000 }) {
     if (!this.client) {
       throw new Error("TCP client is not connected.");
     }
