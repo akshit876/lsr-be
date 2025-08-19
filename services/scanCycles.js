@@ -23,7 +23,7 @@ const TIMEOUT = 100 * 1000;
 
 // TCP Scanner configuration
 const TCP_SCANNER_CONFIG = {
-  host: process.env.SCANNER_HOST || "192.168.3.145", // Default TCP scanner IP
+  host: process.env.SCANNER_HOST || "192.168.72.118", // Default TCP scanner IP
   port: parseInt(process.env.SCANNER_PORT, 10) || 502, // Default TCP scanner port
   timeout: 5000,
   reconnectInterval: 3000,
@@ -845,6 +845,18 @@ class ScannerController {
         `📊 ${scannerLabel} scanner data received: ${scannerData}`
       );
 
+      // If we have valid scanner data (not NG or timeout), process it
+      if (scannerData && scannerData !== "NG" && scannerData.trim() !== "") {
+        try {
+          await this.handleSuccessfulScan(scannerData, scanType);
+        } catch (scanError) {
+          logger.error(
+            `❌ Error processing successful scan: ${scanError.message}`
+          );
+          // Continue with the workflow even if PLC write or file save fails
+        }
+      }
+
       // Emit scanner read event to UI
       if (this.io) {
         this.io.emit("scanner_read", {
@@ -1266,6 +1278,62 @@ class ScannerController {
         await this.handleReset();
         throw error;
       }
+      throw error;
+    }
+  }
+
+  async handleSuccessfulScan(scannerData, scanType) {
+    try {
+      logger.info(
+        `🎯 Processing successful ${scanType} scan data: ${scannerData}`
+      );
+
+      // Write scanner data to PLC register 3000
+      logger.info("📡 Writing scanner data to PLC register 3000...");
+      await writeRegister(3000, scannerData);
+      logger.success(
+        `✅ Scanner data "${scannerData}" written to PLC register 3000`
+      );
+
+      // Save ONLY scanner data to scan_data.txt file in D directory (override each time)
+      const fileName = "scan_data.txt";
+      const filePath = `D:/${fileName}`;
+
+      try {
+        // Write ONLY the scanner data (override the file each time)
+        await fs.writeFileSync(filePath, scannerData, "utf8");
+        logger.success(
+          `✅ Scanner data "${scannerData}" written to ${filePath}`
+        );
+
+        // Emit event to UI
+        if (this.io) {
+          this.io.emit("scan_data_saved", {
+            timestamp: new Date(),
+            scanType: scanType,
+            data: scannerData,
+            filePath: filePath,
+          });
+        }
+      } catch (fileError) {
+        logger.error(
+          `❌ Error saving scanned data to file: ${fileError.message}`
+        );
+        // Try alternative path if D: drive is not accessible
+        const altPath = `./${fileName}`;
+        try {
+          await fs.writeFileSync(altPath, scannerData, "utf8");
+          logger.success(
+            `✅ Scanner data "${scannerData}" written to alternative path: ${altPath}`
+          );
+        } catch (altError) {
+          logger.error(
+            `❌ Error saving to alternative path: ${altError.message}`
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(`❌ Error handling successful scan: ${error.message}`);
       throw error;
     }
   }
