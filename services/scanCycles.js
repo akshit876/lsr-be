@@ -2,7 +2,13 @@ import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
 import mongoDbService from "./mongoDbService.js";
-import { readBit, readRegister, writeBit, writeRegister } from "./modbus.js";
+import {
+  readBit,
+  readRegister,
+  writeBit,
+  writeRegister,
+  writeRegisterFull,
+} from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
 import { promisify } from "util";
@@ -24,7 +30,7 @@ const SCANNER_TIMEOUT = 30 * 1000; // 30 seconds scanner timeout
 
 // TCP Scanner configuration
 const TCP_SCANNER_CONFIG = {
-  host: process.env.SCANNER_HOST || "192.168.3.145", // Default TCP scanner IP
+  host: process.env.SCANNER_HOST || "192.168.72.146", // Default TCP scanner IP
   port: parseInt(process.env.SCANNER_PORT, 10) || 502, // Default TCP scanner port
   timeout: 5000,
   reconnectInterval: 3000,
@@ -35,7 +41,7 @@ const TCP_SCANNER_CONFIG = {
 
 // Middle Scanner configuration
 const MIDDLE_SCANNER_CONFIG = {
-  host: process.env.MIDDLE_SCANNER_HOST || "192.168.3.144", // Middle scanner IP
+  host: process.env.MIDDLE_SCANNER_HOST || "192.168.72.145", // Middle scanner IP
   port: parseInt(process.env.MIDDLE_SCANNER_PORT, 10) || 502, // Middle scanner port
   timeout: 5000,
   reconnectInterval: 3000,
@@ -76,6 +82,171 @@ class ScannerController {
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
+  }
+
+  async handleSuccessfulScan(scannerData, scanType) {
+    try {
+      logger.info(`🎯 Processing ${scanType} scan data: ${scannerData}`);
+
+      // Always write scanner data to multiple PLC registers starting from 3000
+      // Even if data is "NG" or empty, we still want to record the scan attempt
+      logger.info(
+        "📡 Writing scanner data to multiple PLC registers starting from 3000..."
+      );
+
+      // Try to write to PLC registers, but don't let failures stop file writing
+      try {
+        await this.writeScannerDataToMultipleRegisters(scannerData);
+        logger.success(
+          `✅ Scanner data "${scannerData}" written to multiple PLC registers starting from 3000`
+        );
+      } catch (plcError) {
+        logger.error(
+          `❌ PLC write failed, but continuing with file save: ${plcError.message}`
+        );
+        // Continue with file writing even if PLC fails
+      }
+
+      // Always save scanner data to scan_data.txt file in D directory (override each time)
+      // This ensures we have a record of every scan attempt
+      const fileName = "scan_data.txt";
+      const filePath = `D:/${fileName}`;
+
+      try {
+        // Write the scanner data (override the file each time)
+        // Use "NG" if scannerData is null/undefined, or the actual data
+        const dataToWrite = scannerData || "NG";
+        await fs.writeFileSync(filePath, dataToWrite, "utf8");
+        logger.success(
+          `✅ Scanner data "${dataToWrite}" written to ${filePath}`
+        );
+
+        // Emit event to UI
+        if (this.io) {
+          this.io.emit("scan_data_saved", {
+            timestamp: new Date(),
+            scanType: scanType,
+            data: dataToWrite,
+            filePath: filePath,
+          });
+        }
+      } catch (fileError) {
+        logger.error(
+          `❌ Error saving scanned data to file: ${fileError.message}`
+        );
+        // Try alternative path if D: drive is not accessible
+        const altPath = `./${fileName}`;
+        try {
+          const dataToWrite = scannerData || "NG";
+          await fs.writeFileSync(altPath, dataToWrite, "utf8");
+          logger.success(
+            `✅ Scanner data "${dataToWrite}" written to alternative path: ${altPath}`
+          );
+        } catch (altError) {
+          logger.error(
+            `❌ Error saving to alternative path: ${altError.message}`
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(`❌ Error handling scan data: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async writeScannerDataToMultipleRegisters(scannerData) {
+    try {
+      const START_REGISTER = 3000;
+      const CHARS_PER_REGISTER = 2; // Each 16-bit register can hold 2 characters (8 bits per char)
+
+      // Configuration: Set to true if PLC reads bytes in reverse order (little-endian)
+      const REVERSE_BYTE_ORDER = true; // Change this to true if data appears in reverse order
+
+      // Convert scanner data to string and handle edge cases
+      const dataString = (scannerData || "NG").toString();
+      logger.info(`📊 Scanner data length: ${dataString.length} characters`);
+      logger.info(
+        `🔧 Byte order: ${REVERSE_BYTE_ORDER ? "REVERSE (little-endian)" : "NORMAL (big-endian)"}`
+      );
+
+      // Calculate how many registers we need
+      const numRegisters = Math.ceil(dataString.length / CHARS_PER_REGISTER);
+      logger.info(`🔢 Number of registers needed: ${numRegisters}`);
+
+      // Split data into chunks for each register
+      const registerValues = [];
+      for (let i = 0; i < numRegisters; i++) {
+        const startIndex = i * CHARS_PER_REGISTER;
+        const endIndex = startIndex + CHARS_PER_REGISTER;
+        const chunk = dataString.slice(startIndex, endIndex);
+
+        // Convert chunk to register value (16-bit integer)
+        let registerValue = 0;
+        if (chunk.length === 2) {
+          // Two characters: pack them into 16 bits
+          const char1 = chunk.charCodeAt(0);
+          const char2 = chunk.charCodeAt(1);
+
+          if (REVERSE_BYTE_ORDER) {
+            // Reverse byte order: char2 in high byte, char1 in low byte
+            registerValue = (char2 << 8) | char1;
+            logger.info(
+              `📝 Register ${START_REGISTER + i}: "${chunk}" → REVERSE: char2(${chunk[1]}=${char2}) << 8 | char1(${chunk[0]}=${char1}) = ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+            );
+          } else {
+            // Normal byte order: char1 in high byte, char2 in low byte
+            registerValue = (char1 << 8) | char2;
+            logger.info(
+              `📝 Register ${START_REGISTER + i}: "${chunk}" → NORMAL: char1(${chunk[0]}=${char1}) << 8 | char2(${chunk[1]}=${char2}) = ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+            );
+          }
+        } else if (chunk.length === 1) {
+          // Single character: just use its ASCII value
+          registerValue = chunk.charCodeAt(0);
+          logger.info(
+            `📝 Register ${START_REGISTER + i}: "${chunk}" → single char ${chunk[0]}=${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+          );
+        }
+
+        registerValues.push(registerValue);
+      }
+
+      // Write all registers at once using writeRegisterFull
+      await writeRegisterFull(START_REGISTER, registerValues);
+      logger.success(
+        `✅ Successfully wrote ${numRegisters} registers starting from ${START_REGISTER}`
+      );
+
+      // Also write the total number of registers used to a status register (e.g., 2999)
+      await writeRegister(2999, numRegisters);
+      logger.info(
+        `📊 Status register 2999 updated with number of registers used: ${numRegisters}`
+      );
+
+      // Log the expected reading order for debugging
+      logger.info("\n📖 Expected PLC Reading Order:");
+      logger.info("=".repeat(50));
+      for (let i = 0; i < numRegisters; i++) {
+        const startIndex = i * CHARS_PER_REGISTER;
+        const endIndex = startIndex + CHARS_PER_REGISTER;
+        const chunk = dataString.slice(startIndex, endIndex);
+
+        if (REVERSE_BYTE_ORDER) {
+          logger.info(
+            `Register ${START_REGISTER + i}: Should read as "${chunk.split("").reverse().join("")}" (REVERSE order)`
+          );
+        } else {
+          logger.info(
+            `Register ${START_REGISTER + i}: Should read as "${chunk}" (NORMAL order)`
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(
+        `❌ Error writing scanner data to multiple registers: ${error.message}`
+      );
+      throw error;
+    }
   }
 
   async initialize() {
@@ -866,9 +1037,9 @@ class ScannerController {
 
     // DEBUG MODE: Always continue regardless of scan result
     if (scannerData && scannerData.trim() !== "") {
-    logger.info(
+      logger.info(
         "🔧 DEBUG MODE: First scan received data, but continuing workflow anyway"
-    );
+      );
       logger.info(`📋 Received data: "${scannerData}"`);
 
       // Emit the data to the UI for debugging
@@ -881,7 +1052,7 @@ class ScannerController {
       }
 
       logger.info("✍️ Writing bit 1414.7 to signal NG scan (debug mode)");
-    await writeBit(1414, 7, 1);
+      await writeBit(1414, 7, 1);
     }
 
     return { shouldContinue: true };
@@ -1186,6 +1357,24 @@ class ScannerController {
       logger.success(
         `📊 ${scannerLabel} scanner data received: ${scannerData}`
       );
+
+      // NEW: Automatically process verification scan data for PLC and file writing
+      if (scanType === "verification") {
+        try {
+          logger.info(
+            "🎯 Verification scan data detected - processing for PLC and file..."
+          );
+          await this.handleSuccessfulScan(scannerData, "verification");
+          logger.success(
+            "✅ Verification scan data processed and saved successfully"
+          );
+        } catch (scanError) {
+          logger.error(
+            `❌ Error processing verification scan data: ${scanError.message}`
+          );
+          // Continue with verification even if PLC write or file save fails
+        }
+      }
 
       // Emit scanner read event to UI
       if (this.io) {
