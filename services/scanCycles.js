@@ -851,16 +851,16 @@ class ScannerController {
         `📊 ${scannerLabel} scanner data received: ${scannerData}`
       );
 
-      // If we have valid scanner data (not NG or timeout), process it
-      if (scannerData && scannerData !== "NG" && scannerData.trim() !== "") {
-        try {
-          await this.handleSuccessfulScan(scannerData, scanType);
-        } catch (scanError) {
-          logger.error(
-            `❌ Error processing successful scan: ${scanError.message}`
-          );
-          // Continue with the workflow even if PLC write or file save fails
-        }
+      // Process ALL scanner data received (including NG, empty, or any other data)
+      // This ensures every scan attempt gets processed and logged
+      try {
+        await this.handleSuccessfulScan(scannerData, scanType);
+        logger.success(
+          `✅ Scanner data processed successfully: ${scannerData}`
+        );
+      } catch (scanError) {
+        logger.error(`❌ Error processing scanner data: ${scanError.message}`);
+        // Continue with the workflow even if PLC write or file save fails
       }
 
       // Emit scanner read event to UI
@@ -1290,11 +1290,10 @@ class ScannerController {
 
   async handleSuccessfulScan(scannerData, scanType) {
     try {
-      logger.info(
-        `🎯 Processing successful ${scanType} scan data: ${scannerData}`
-      );
+      logger.info(`🎯 Processing ${scanType} scan data: ${scannerData}`);
 
-      // Write scanner data to multiple PLC registers starting from 3000
+      // Always write scanner data to multiple PLC registers starting from 3000
+      // Even if data is "NG" or empty, we still want to record the scan attempt
       logger.info(
         "📡 Writing scanner data to multiple PLC registers starting from 3000..."
       );
@@ -1303,15 +1302,18 @@ class ScannerController {
         `✅ Scanner data "${scannerData}" written to multiple PLC registers starting from 3000`
       );
 
-      // Save ONLY scanner data to scan_data.txt file in D directory (override each time)
+      // Always save scanner data to scan_data.txt file in D directory (override each time)
+      // This ensures we have a record of every scan attempt
       const fileName = "scan_data.txt";
       const filePath = `D:/${fileName}`;
 
       try {
-        // Write ONLY the scanner data (override the file each time)
-        await fs.writeFileSync(filePath, scannerData, "utf8");
+        // Write the scanner data (override the file each time)
+        // Use "NG" if scannerData is null/undefined, or the actual data
+        const dataToWrite = scannerData || "NG";
+        await fs.writeFileSync(filePath, dataToWrite, "utf8");
         logger.success(
-          `✅ Scanner data "${scannerData}" written to ${filePath}`
+          `✅ Scanner data "${dataToWrite}" written to ${filePath}`
         );
 
         // Emit event to UI
@@ -1319,7 +1321,7 @@ class ScannerController {
           this.io.emit("scan_data_saved", {
             timestamp: new Date(),
             scanType: scanType,
-            data: scannerData,
+            data: dataToWrite,
             filePath: filePath,
           });
         }
@@ -1330,9 +1332,10 @@ class ScannerController {
         // Try alternative path if D: drive is not accessible
         const altPath = `./${fileName}`;
         try {
-          await fs.writeFileSync(altPath, scannerData, "utf8");
+          const dataToWrite = scannerData || "NG";
+          await fs.writeFileSync(altPath, dataToWrite, "utf8");
           logger.success(
-            `✅ Scanner data "${scannerData}" written to alternative path: ${altPath}`
+            `✅ Scanner data "${dataToWrite}" written to alternative path: ${altPath}`
           );
         } catch (altError) {
           logger.error(
@@ -1341,7 +1344,7 @@ class ScannerController {
         }
       }
     } catch (error) {
-      logger.error(`❌ Error handling successful scan: ${error.message}`);
+      logger.error(`❌ Error handling scan data: ${error.message}`);
       throw error;
     }
   }
@@ -1351,8 +1354,8 @@ class ScannerController {
       const START_REGISTER = 3000;
       const CHARS_PER_REGISTER = 8; // Each register can hold 8 characters (16 bits = 2 bytes per char)
 
-      // Convert scanner data to string and pad if necessary
-      const dataString = scannerData.toString();
+      // Convert scanner data to string and handle edge cases
+      const dataString = (scannerData || "NG").toString();
       logger.info(`📊 Scanner data length: ${dataString.length} characters`);
 
       // Calculate how many registers we need
@@ -1381,7 +1384,7 @@ class ScannerController {
         );
       }
 
-      // Write all registers at once using writeRegistersFull
+      // Write all registers at once using writeRegisterFull
       await writeRegisterFull(START_REGISTER, registerValues);
       logger.success(
         `✅ Successfully wrote ${numRegisters} registers starting from ${START_REGISTER}`
