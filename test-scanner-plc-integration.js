@@ -1,5 +1,5 @@
 import TcpScannerService from "./services/TcpScannerService.js";
-import { writeRegister, writeRegistersFull } from "./services/modbus.js";
+import { writeRegister, writeRegisterFull } from "./services/modbus.js";
 import logger from "./logger.js";
 import fs from "fs";
 
@@ -163,7 +163,7 @@ async function testMultipleRegisterWrite(scannerData) {
     logger.info(
       `🔌 Testing writeRegistersFull to registers ${START_REGISTER} to ${START_REGISTER + numRegisters - 1}...`
     );
-    await writeRegistersFull(START_REGISTER, registerValues);
+    await writeRegisterFull(START_REGISTER, registerValues);
     logger.success(
       `✅ Successfully wrote ${numRegisters} registers starting from ${START_REGISTER}`
     );

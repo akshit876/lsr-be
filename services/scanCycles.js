@@ -7,7 +7,7 @@ import {
   readRegister,
   writeBit,
   writeRegister,
-  writeRegistersFull,
+  writeRegisterFull,
 } from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
@@ -1382,7 +1382,7 @@ class ScannerController {
       }
 
       // Write all registers at once using writeRegistersFull
-      await writeRegistersFull(START_REGISTER, registerValues);
+      await writeRegisterFull(START_REGISTER, registerValues);
       logger.success(
         `✅ Successfully wrote ${numRegisters} registers starting from ${START_REGISTER}`
       );

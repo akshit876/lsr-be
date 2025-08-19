@@ -28,7 +28,7 @@ This update implements automatic writing of scanner data to PLC register 3000 an
 - **Register 3002**: Next 8 characters of scanner data
 - **...and so on** until all scanner data is written
 - **Register 2999**: Status register containing the total number of registers used
-- Uses the existing `writeRegistersFull` function for efficient bulk writing
+- Uses the existing `writeRegisterFull` function for efficient bulk writing
 - Each register can hold 8 characters (16 bits = 2 bytes per character)
 - Automatically calculates how many registers are needed based on scanner data length
 
@@ -71,7 +71,7 @@ This method:
 - Converts each chunk to a 16-bit register value
 - Writes to consecutive registers starting from 3000
 - Updates status register 2999 with the total number of registers used
-- Uses efficient bulk writing with `writeRegistersFull`
+- Uses efficient bulk writing with `writeRegisterFull`
 
 ### 5. Error Handling
 
