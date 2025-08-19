@@ -23,13 +23,13 @@ This update implements automatic writing of scanner data to PLC register 3000 an
 #### PLC Register Writing
 
 - When scanner successfully reads data, it automatically writes to **multiple consecutive PLC registers starting from 3000**
-- **Register 3000**: First 8 characters of scanner data
-- **Register 3001**: Next 8 characters of scanner data
-- **Register 3002**: Next 8 characters of scanner data
+- **Register 3000**: First 2 characters of scanner data
+- **Register 3001**: Next 2 characters of scanner data
+- **Register 3002**: Next 2 characters of scanner data
 - **...and so on** until all scanner data is written
 - **Register 2999**: Status register containing the total number of registers used
 - Uses the existing `writeRegisterFull` function for efficient bulk writing
-- Each register can hold 8 characters (16 bits = 2 bytes per character)
+- Each register can hold 2 characters (16 bits = 8 bits per character)
 - Automatically calculates how many registers are needed based on scanner data length
 
 #### File Saving
@@ -127,26 +127,40 @@ ABC123456
 
 **Register Distribution**:
 
-- **Register 3000**: `"ABC12345"` (first 8 characters)
-- **Register 3001**: `"6"` (remaining 1 character)
-- **Register 2999**: `2` (total number of registers used)
+- **Register 3000**: `"AB"` (characters 1-2)
+- **Register 3001**: `"C1"` (characters 3-4)
+- **Register 3002**: `"23"` (characters 5-6)
+- **Register 3003**: `"45"` (characters 7-8)
+- **Register 3004**: `"6"` (character 9)
+- **Register 2999**: `5` (total number of registers used)
 
 **Scanner Data**: `"SHORT"` (5 characters)
 
 **Register Distribution**:
 
-- **Register 3000**: `"SHORT"` (all 5 characters fit in one register)
-- **Register 2999**: `1` (total number of registers used)
+- **Register 3000**: `"SH"` (characters 1-2)
+- **Register 3001**: `"OR"` (characters 3-4)
+- **Register 3002**: `"T"` (character 5)
+- **Register 2999**: `3` (total number of registers used)
 
 **Scanner Data**: `"VERY_LONG_SCANNER_DATA_123"` (25 characters)
 
 **Register Distribution**:
 
-- **Register 3000**: `"VERY_LONG"` (characters 1-8)
-- **Register 3001**: `"_SCANNER"` (characters 9-16)
-- **Register 3002**: `"_DATA_12"` (characters 17-24)
-- **Register 3003**: `"3"` (character 25)
-- **Register 2999**: `4` (total number of registers used)
+- **Register 3000**: `"VE"` (characters 1-2)
+- **Register 3001**: `"RY"` (characters 3-4)
+- **Register 3002**: `"_L"` (characters 5-6)
+- **Register 3003**: `"ON"` (characters 7-8)
+- **Register 3004**: `"G_"` (characters 9-10)
+- **Register 3005**: `"SC"` (characters 11-12)
+- **Register 3006**: `"AN"` (characters 13-14)
+- **Register 3007**: `"NE"` (characters 15-16)
+- **Register 3008**: `"R_"` (characters 17-18)
+- **Register 3009**: `"DA"` (characters 19-20)
+- **Register 3010**: `"TA"` (characters 21-22)
+- **Register 3011**: `"_1"` (characters 23-24)
+- **Register 3012**: `"2"` (character 25)
+- **Register 2999**: `13` (total number of registers used)
 
 ## Monitoring
 

@@ -1297,10 +1297,19 @@ class ScannerController {
       logger.info(
         "📡 Writing scanner data to multiple PLC registers starting from 3000..."
       );
-      await this.writeScannerDataToMultipleRegisters(scannerData);
-      logger.success(
-        `✅ Scanner data "${scannerData}" written to multiple PLC registers starting from 3000`
-      );
+
+      // Try to write to PLC registers, but don't let failures stop file writing
+      try {
+        await this.writeScannerDataToMultipleRegisters(scannerData);
+        logger.success(
+          `✅ Scanner data "${scannerData}" written to multiple PLC registers starting from 3000`
+        );
+      } catch (plcError) {
+        logger.error(
+          `❌ PLC write failed, but continuing with file save: ${plcError.message}`
+        );
+        // Continue with file writing even if PLC fails
+      }
 
       // Always save scanner data to scan_data.txt file in D directory (override each time)
       // This ensures we have a record of every scan attempt
@@ -1352,7 +1361,7 @@ class ScannerController {
   async writeScannerDataToMultipleRegisters(scannerData) {
     try {
       const START_REGISTER = 3000;
-      const CHARS_PER_REGISTER = 8; // Each register can hold 8 characters (16 bits = 2 bytes per char)
+      const CHARS_PER_REGISTER = 2; // Each 16-bit register can hold 2 characters (8 bits per char)
 
       // Convert scanner data to string and handle edge cases
       const dataString = (scannerData || "NG").toString();
@@ -1370,12 +1379,16 @@ class ScannerController {
         const chunk = dataString.slice(startIndex, endIndex);
 
         // Convert chunk to register value (16-bit integer)
-        // Each character takes 2 bytes, so we can fit 8 characters per register
+        // Each register can hold 2 characters: (char1 << 8) | char2
         let registerValue = 0;
-        for (let j = 0; j < chunk.length; j++) {
-          const charCode = chunk.charCodeAt(j);
-          // Shift left by 2 bytes (16 bits) for each character position
-          registerValue |= charCode << (j * 16);
+        if (chunk.length === 2) {
+          // Two characters: pack them into 16 bits
+          const char1 = chunk.charCodeAt(0);
+          const char2 = chunk.charCodeAt(1);
+          registerValue = (char1 << 8) | char2;
+        } else if (chunk.length === 1) {
+          // Single character: just use its ASCII value
+          registerValue = chunk.charCodeAt(0);
         }
 
         registerValues.push(registerValue);

@@ -15,6 +15,7 @@ async function testScanFlow() {
       null,
       "VERY_LONG_SCANNER_DATA_123",
       "SHORT",
+      "A19H25A009", // The actual data from the logs
     ];
 
     for (const testData of testCases) {
