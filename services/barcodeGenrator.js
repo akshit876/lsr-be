@@ -44,7 +44,9 @@ class BarcodeGenerator {
       const fullYear = now.getFullYear().toString();
       // Use the last two digits of the year (e.g., "25" for 2025)
       const year = fullYear.slice(-2);
-      const month = format(now, "MM");
+      // Convert month from number to alphabet: 1=A, 2=B, 3=C, ..., 12=L
+      const monthNumber = now.getMonth() + 1; // getMonth() returns 0-11, so +1 gives 1-12
+      const month = String.fromCharCode(64 + monthNumber); // ASCII 65=A, 66=B, etc.
       const day = format(now, "dd");
       const shift = this.shiftUtility.getCurrentShift(now);
 
