@@ -1363,9 +1363,15 @@ class ScannerController {
       const START_REGISTER = 3000;
       const CHARS_PER_REGISTER = 2; // Each 16-bit register can hold 2 characters (8 bits per char)
 
+      // Configuration: Set to true if PLC reads bytes in reverse order (little-endian)
+      const REVERSE_BYTE_ORDER = false; // Change this to true if data appears in reverse order
+
       // Convert scanner data to string and handle edge cases
       const dataString = (scannerData || "NG").toString();
       logger.info(`📊 Scanner data length: ${dataString.length} characters`);
+      logger.info(
+        `🔧 Byte order: ${REVERSE_BYTE_ORDER ? "REVERSE (little-endian)" : "NORMAL (big-endian)"}`
+      );
 
       // Calculate how many registers we need
       const numRegisters = Math.ceil(dataString.length / CHARS_PER_REGISTER);
@@ -1379,22 +1385,34 @@ class ScannerController {
         const chunk = dataString.slice(startIndex, endIndex);
 
         // Convert chunk to register value (16-bit integer)
-        // Each register can hold 2 characters: (char1 << 8) | char2
         let registerValue = 0;
         if (chunk.length === 2) {
           // Two characters: pack them into 16 bits
           const char1 = chunk.charCodeAt(0);
           const char2 = chunk.charCodeAt(1);
-          registerValue = (char1 << 8) | char2;
+
+          if (REVERSE_BYTE_ORDER) {
+            // Reverse byte order: char2 in high byte, char1 in low byte
+            registerValue = (char2 << 8) | char1;
+            logger.info(
+              `📝 Register ${START_REGISTER + i}: "${chunk}" → REVERSE: char2(${chunk[1]}=${char2}) << 8 | char1(${chunk[0]}=${char1}) = ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+            );
+          } else {
+            // Normal byte order: char1 in high byte, char2 in low byte
+            registerValue = (char1 << 8) | char2;
+            logger.info(
+              `📝 Register ${START_REGISTER + i}: "${chunk}" → NORMAL: char1(${chunk[0]}=${char1}) << 8 | char2(${chunk[1]}=${char2}) = ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+            );
+          }
         } else if (chunk.length === 1) {
           // Single character: just use its ASCII value
           registerValue = chunk.charCodeAt(0);
+          logger.info(
+            `📝 Register ${START_REGISTER + i}: "${chunk}" → single char ${chunk[0]}=${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+          );
         }
 
         registerValues.push(registerValue);
-        logger.info(
-          `📝 Register ${START_REGISTER + i}: "${chunk}" → ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
-        );
       }
 
       // Write all registers at once using writeRegisterFull
@@ -1408,6 +1426,25 @@ class ScannerController {
       logger.info(
         `📊 Status register 2999 updated with number of registers used: ${numRegisters}`
       );
+
+      // Log the expected reading order for debugging
+      logger.info("\n📖 Expected PLC Reading Order:");
+      logger.info("=".repeat(50));
+      for (let i = 0; i < numRegisters; i++) {
+        const startIndex = i * CHARS_PER_REGISTER;
+        const endIndex = startIndex + CHARS_PER_REGISTER;
+        const chunk = dataString.slice(startIndex, endIndex);
+
+        if (REVERSE_BYTE_ORDER) {
+          logger.info(
+            `Register ${START_REGISTER + i}: Should read as "${chunk.split("").reverse().join("")}" (REVERSE order)`
+          );
+        } else {
+          logger.info(
+            `Register ${START_REGISTER + i}: Should read as "${chunk}" (NORMAL order)`
+          );
+        }
+      }
     } catch (error) {
       logger.error(
         `❌ Error writing scanner data to multiple registers: ${error.message}`
