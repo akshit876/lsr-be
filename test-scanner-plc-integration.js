@@ -85,18 +85,14 @@ async function testScannerPlcIntegration() {
 
     // Test TCP scanner connection
     logger.info("🔌 Testing TCP scanner connection...");
-    const tcpScannerService = new TcpScannerService({
-      host: "192.168.72.118",
+    const tcpScanner = new TcpScannerService({
+      host: "192.168.72.142",
       port: 502,
-      timeout: 5000,
-      reconnectInterval: 3000,
-      keepAlive: true,
-      keepAliveInitialDelay: 1000,
-      logDir: "test_scanner_logs",
+      timeout: 30000,
     });
 
     try {
-      await tcpScannerService.initTcpConnection();
+      await tcpScanner.initTcpConnection();
       logger.success("✅ TCP scanner connected successfully");
 
       // Test data handling
@@ -104,12 +100,12 @@ async function testScannerPlcIntegration() {
       const mockScannerData = "MOCK_SCANNER_DATA_456";
 
       // Simulate receiving scanner data
-      tcpScannerService.emit("dataGot", mockScannerData);
+      tcpScanner.emit("dataGot", mockScannerData);
 
       logger.success("✅ Scanner data handling test completed");
 
       // Close connection
-      await tcpScannerService.closeConnection();
+      await tcpScanner.closeConnection();
       logger.info("🔌 TCP scanner connection closed");
     } catch (scannerError) {
       logger.warn(`⚠️ TCP scanner test failed: ${scannerError.message}`);

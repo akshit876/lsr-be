@@ -8,8 +8,21 @@ This update implements automatic writing of scanner data to PLC register 3000 an
 
 ### 1. IP Address Updates
 
-- **PLC IP**: Updated from `192.168.3.146` to `192.168.72.116`
-- **Scanner IP**: Updated from `192.168.3.145` to `192.168.72.118`
+### **PLC IP Address**
+
+- **Previous**: `192.168.3.146`
+- **Current**: `192.168.72.140`
+- **Updated in**: `services/modbus.js`
+
+### **Scanner IP Address**
+
+- **Previous**: `192.168.3.145`
+- **Current**: `192.168.72.142`
+- **Updated in**:
+  - `services/scanCycles.js`
+  - `services/TcpScannerService.js`
+  - `test-tcp-scanner.js`
+  - `test-scanner-plc-integration.js`
 
 ### 2. Files Modified
 

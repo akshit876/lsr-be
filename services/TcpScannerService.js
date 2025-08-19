@@ -9,7 +9,7 @@ class TcpScannerService extends EventEmitter {
   constructor(options = {}) {
     super(); // Initialize EventEmitter
     this.options = {
-      host: options.host || process.env.SCANNER_HOST || "192.168.72.118",
+      host: options.host || process.env.SCANNER_HOST || "192.168.72.142",
       port: parseInt(options.port || process.env.SCANNER_PORT, 10) || 502,
       timeout: options.timeout || 5000,
       reconnectInterval: options.reconnectInterval || 3000,

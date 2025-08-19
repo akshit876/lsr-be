@@ -4,38 +4,34 @@ import logger from "./logger.js";
 async function testTcpScanner() {
   logger.info("🧪 Starting TCP Scanner Service Test");
 
-  const tcpScannerService = new TcpScannerService({
-    host: process.env.SCANNER_HOST || "192.168.72.118",
-    port: parseInt(process.env.SCANNER_PORT, 10) || 502,
-    timeout: 5000,
-    reconnectInterval: 3000,
-    keepAlive: true,
-    keepAliveInitialDelay: 1000,
-    logDir: "scanner_logs",
+  const tcpScanner = new TcpScannerService({
+    host: "192.168.72.142",
+    port: 502,
+    timeout: 30000,
   });
 
   try {
     logger.info("🔌 Testing TCP scanner connection...");
 
     // Set up data listener
-    tcpScannerService.on("dataGot", (data) => {
+    tcpScanner.on("dataGot", (data) => {
       logger.success(`📥 Scanner data received: "${data}"`);
     });
 
-    tcpScannerService.on("error", (error) => {
+    tcpScanner.on("error", (error) => {
       logger.error(`❌ Scanner error: ${error.message}`);
     });
 
     // Initialize connection
-    await tcpScannerService.initTcpConnection();
+    await tcpScanner.initTcpConnection();
     logger.success("✅ TCP scanner connected successfully");
 
     // Get connection status
-    const status = tcpScannerService.getStatus();
+    const status = tcpScanner.getStatus();
     logger.info("📊 Scanner Status:", status);
 
     // Test if scanner is ready
-    logger.info(`🔍 Scanner ready: ${tcpScannerService.isReady()}`);
+    logger.info(`🔍 Scanner ready: ${tcpScanner.isReady()}`);
 
     // Keep the connection alive for testing
     logger.info("⏳ Waiting for scanner data... (Press Ctrl+C to exit)");
@@ -58,7 +54,7 @@ async function testTcpScanner() {
   process.on("SIGINT", async () => {
     logger.info("🧹 Cleaning up TCP scanner connection...");
     try {
-      await tcpScannerService.closeConnection();
+      await tcpScanner.closeConnection();
       logger.info("✅ TCP scanner connection closed");
     } catch (error) {
       logger.error("❌ Error closing TCP scanner:", error);
