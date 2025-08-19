@@ -1,5 +1,5 @@
 import TcpScannerService from "./services/TcpScannerService.js";
-import { writeRegister } from "./services/modbus.js";
+import { writeRegister, writeRegistersFull } from "./services/modbus.js";
 import logger from "./logger.js";
 import fs from "fs";
 
@@ -7,11 +7,12 @@ async function testScannerPlcIntegration() {
   logger.info("🧪 Starting Scanner PLC Integration Test");
 
   try {
-    // Test PLC connection and write to register 3000
-    logger.info("🔌 Testing PLC connection and register 3000 write...");
+    // Test PLC connection and write to multiple registers starting from 3000
+    logger.info("🔌 Testing PLC connection and multiple register write...");
     const testData = "TEST_SCAN_DATA_123";
-    await writeRegister(3000, testData);
-    logger.success(`✅ Successfully wrote "${testData}" to PLC register 3000`);
+
+    // Test the new multiple register approach
+    await testMultipleRegisterWrite(testData);
 
     // Test file saving to D: drive
     logger.info("💾 Testing file saving to D: drive...");
@@ -120,6 +121,61 @@ async function testScannerPlcIntegration() {
     logger.success("🎉 Scanner PLC Integration Test completed successfully!");
   } catch (error) {
     logger.error("❌ Scanner PLC Integration Test failed:", error);
+    throw error;
+  }
+}
+
+async function testMultipleRegisterWrite(scannerData) {
+  try {
+    const START_REGISTER = 3000;
+    const CHARS_PER_REGISTER = 8; // Each register can hold 8 characters
+
+    // Convert scanner data to string
+    const dataString = scannerData.toString();
+    logger.info(`📊 Test scanner data length: ${dataString.length} characters`);
+
+    // Calculate how many registers we need
+    const numRegisters = Math.ceil(dataString.length / CHARS_PER_REGISTER);
+    logger.info(`🔢 Number of registers needed: ${numRegisters}`);
+
+    // Split data into chunks for each register
+    const registerValues = [];
+    for (let i = 0; i < numRegisters; i++) {
+      const startIndex = i * CHARS_PER_REGISTER;
+      const endIndex = startIndex + CHARS_PER_REGISTER;
+      const chunk = dataString.slice(startIndex, endIndex);
+
+      // Convert chunk to register value (16-bit integer)
+      let registerValue = 0;
+      for (let j = 0; j < chunk.length; j++) {
+        const charCode = chunk.charCodeAt(j);
+        // Shift left by 2 bytes (16 bits) for each character position
+        registerValue |= charCode << (j * 16);
+      }
+
+      registerValues.push(registerValue);
+      logger.info(
+        `📝 Register ${START_REGISTER + i}: "${chunk}" → ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+      );
+    }
+
+    // Test writing all registers at once
+    logger.info(
+      `🔌 Testing writeRegistersFull to registers ${START_REGISTER} to ${START_REGISTER + numRegisters - 1}...`
+    );
+    await writeRegistersFull(START_REGISTER, registerValues);
+    logger.success(
+      `✅ Successfully wrote ${numRegisters} registers starting from ${START_REGISTER}`
+    );
+
+    // Test writing status register
+    logger.info("🔌 Testing status register write...");
+    await writeRegister(2999, numRegisters);
+    logger.success(
+      `✅ Status register 2999 updated with number of registers used: ${numRegisters}`
+    );
+  } catch (error) {
+    logger.error(`❌ Error testing multiple register write: ${error.message}`);
     throw error;
   }
 }

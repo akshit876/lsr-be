@@ -22,9 +22,15 @@ This update implements automatic writing of scanner data to PLC register 3000 an
 
 #### PLC Register Writing
 
-- When scanner successfully reads data, it automatically writes to PLC register 3000
-- Uses the existing `writeRegister` function from modbus service
-- Logs success/failure of PLC write operations
+- When scanner successfully reads data, it automatically writes to **multiple consecutive PLC registers starting from 3000**
+- **Register 3000**: First 8 characters of scanner data
+- **Register 3001**: Next 8 characters of scanner data
+- **Register 3002**: Next 8 characters of scanner data
+- **...and so on** until all scanner data is written
+- **Register 2999**: Status register containing the total number of registers used
+- Uses the existing `writeRegistersFull` function for efficient bulk writing
+- Each register can hold 8 characters (16 bits = 2 bytes per character)
+- Automatically calculates how many registers are needed based on scanner data length
 
 #### File Saving
 
@@ -48,10 +54,24 @@ async handleSuccessfulScan(scannerData, scanType)
 
 This method:
 
-- Writes scanner data to PLC register 3000
-- Saves scanned data to D: directory with timestamp
+- Writes scanner data to multiple PLC registers starting from 3000
+- Saves scanned data to D: directory
 - Emits UI events for real-time monitoring
 - Handles errors gracefully without stopping the workflow
+
+### 5. New Method: `writeScannerDataToMultipleRegisters`
+
+```javascript
+async writeScannerDataToMultipleRegisters(scannerData)
+```
+
+This method:
+
+- Splits scanner data into 8-character chunks
+- Converts each chunk to a 16-bit register value
+- Writes to consecutive registers starting from 3000
+- Updates status register 2999 with the total number of registers used
+- Uses efficient bulk writing with `writeRegistersFull`
 
 ### 5. Error Handling
 
@@ -100,6 +120,33 @@ ABC123456
 ```
 
 **Note**: The file contains only the scanner data. Each new scan overwrites the previous content.
+
+## PLC Register Distribution Example
+
+**Scanner Data**: `"ABC123456"` (9 characters)
+
+**Register Distribution**:
+
+- **Register 3000**: `"ABC12345"` (first 8 characters)
+- **Register 3001**: `"6"` (remaining 1 character)
+- **Register 2999**: `2` (total number of registers used)
+
+**Scanner Data**: `"SHORT"` (5 characters)
+
+**Register Distribution**:
+
+- **Register 3000**: `"SHORT"` (all 5 characters fit in one register)
+- **Register 2999**: `1` (total number of registers used)
+
+**Scanner Data**: `"VERY_LONG_SCANNER_DATA_123"` (25 characters)
+
+**Register Distribution**:
+
+- **Register 3000**: `"VERY_LONG"` (characters 1-8)
+- **Register 3001**: `"_SCANNER"` (characters 9-16)
+- **Register 3002**: `"_DATA_12"` (characters 17-24)
+- **Register 3003**: `"3"` (character 25)
+- **Register 2999**: `4` (total number of registers used)
 
 ## Monitoring
 

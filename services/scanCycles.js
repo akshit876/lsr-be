@@ -2,7 +2,13 @@ import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
 import mongoDbService from "./mongoDbService.js";
-import { readBit, readRegister, writeBit, writeRegister } from "./modbus.js";
+import {
+  readBit,
+  readRegister,
+  writeBit,
+  writeRegister,
+  writeRegistersFull,
+} from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
 import { promisify } from "util";
@@ -1288,11 +1294,13 @@ class ScannerController {
         `🎯 Processing successful ${scanType} scan data: ${scannerData}`
       );
 
-      // Write scanner data to PLC register 3000
-      logger.info("📡 Writing scanner data to PLC register 3000...");
-      await writeRegister(3000, scannerData);
+      // Write scanner data to multiple PLC registers starting from 3000
+      logger.info(
+        "📡 Writing scanner data to multiple PLC registers starting from 3000..."
+      );
+      await this.writeScannerDataToMultipleRegisters(scannerData);
       logger.success(
-        `✅ Scanner data "${scannerData}" written to PLC register 3000`
+        `✅ Scanner data "${scannerData}" written to multiple PLC registers starting from 3000`
       );
 
       // Save ONLY scanner data to scan_data.txt file in D directory (override each time)
@@ -1334,6 +1342,60 @@ class ScannerController {
       }
     } catch (error) {
       logger.error(`❌ Error handling successful scan: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async writeScannerDataToMultipleRegisters(scannerData) {
+    try {
+      const START_REGISTER = 3000;
+      const CHARS_PER_REGISTER = 8; // Each register can hold 8 characters (16 bits = 2 bytes per char)
+
+      // Convert scanner data to string and pad if necessary
+      const dataString = scannerData.toString();
+      logger.info(`📊 Scanner data length: ${dataString.length} characters`);
+
+      // Calculate how many registers we need
+      const numRegisters = Math.ceil(dataString.length / CHARS_PER_REGISTER);
+      logger.info(`🔢 Number of registers needed: ${numRegisters}`);
+
+      // Split data into chunks for each register
+      const registerValues = [];
+      for (let i = 0; i < numRegisters; i++) {
+        const startIndex = i * CHARS_PER_REGISTER;
+        const endIndex = startIndex + CHARS_PER_REGISTER;
+        const chunk = dataString.slice(startIndex, endIndex);
+
+        // Convert chunk to register value (16-bit integer)
+        // Each character takes 2 bytes, so we can fit 8 characters per register
+        let registerValue = 0;
+        for (let j = 0; j < chunk.length; j++) {
+          const charCode = chunk.charCodeAt(j);
+          // Shift left by 2 bytes (16 bits) for each character position
+          registerValue |= charCode << (j * 16);
+        }
+
+        registerValues.push(registerValue);
+        logger.info(
+          `📝 Register ${START_REGISTER + i}: "${chunk}" → ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+        );
+      }
+
+      // Write all registers at once using writeRegistersFull
+      await writeRegistersFull(START_REGISTER, registerValues);
+      logger.success(
+        `✅ Successfully wrote ${numRegisters} registers starting from ${START_REGISTER}`
+      );
+
+      // Also write the total number of registers used to a status register (e.g., 2999)
+      await writeRegister(2999, numRegisters);
+      logger.info(
+        `📊 Status register 2999 updated with number of registers used: ${numRegisters}`
+      );
+    } catch (error) {
+      logger.error(
+        `❌ Error writing scanner data to multiple registers: ${error.message}`
+      );
       throw error;
     }
   }
