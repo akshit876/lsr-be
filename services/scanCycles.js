@@ -1364,7 +1364,7 @@ class ScannerController {
       const CHARS_PER_REGISTER = 2; // Each 16-bit register can hold 2 characters (8 bits per char)
 
       // Configuration: Set to true if PLC reads bytes in reverse order (little-endian)
-      const REVERSE_BYTE_ORDER = false; // Change this to true if data appears in reverse order
+      const REVERSE_BYTE_ORDER = true; // Change this to true if data appears in reverse order
 
       // Convert scanner data to string and handle edge cases
       const dataString = (scannerData || "NG").toString();
