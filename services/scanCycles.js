@@ -288,6 +288,12 @@ class ScannerController {
           value,
           timeout
         );
+        if (result === "safety_violation") {
+          logger.error(
+            "🚨 SAFETY VIOLATION DETECTED - Stopping cycle immediately"
+          );
+          throw new Error("SAFETY_VIOLATION");
+        }
         if (result !== "timeout") {
           return result;
         }
@@ -324,6 +330,9 @@ class ScannerController {
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
+        if (safetyCheckInterval) {
+          clearInterval(safetyCheckInterval);
+        }
         if (resetCheckInterval) {
           clearInterval(resetCheckInterval);
         }
@@ -331,6 +340,75 @@ class ScannerController {
           clearInterval(bitCheckInterval);
         }
       };
+
+      // Safety check interval - runs in parallel every 500ms
+      const safetyCheckInterval = setInterval(async () => {
+        try {
+          // Read safety bits from register 1490
+          const [partPresent, emergencyStop, safetySensor] = await Promise.all([
+            readBit(1490, 0), // Part not present. 1490.0
+            readBit(1490, 1), // Emergency stop. 1490.1
+            readBit(1490, 2), // Safety sensor interrupted. 1490.2
+          ]);
+
+          // Check safety conditions
+          if (!partPresent) {
+            cleanup();
+            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
+            // Emit validation_error event for safety violations
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
+                violation: "Part not present",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (emergencyStop) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+            );
+            // Emit validation_error event for safety violations
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details: "🚨 SAFETY VIOLATION: Emergency stop activated",
+                violation: "Emergency stop activated",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (!safetySensor) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0)"
+            );
+            // Emit validation_error event for safety violations
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
+                violation: "Safety sensor interrupted",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error checking safety conditions: ${error.message}`);
+        }
+      }, 500);
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
@@ -589,7 +667,23 @@ class ScannerController {
           // Cleanup monitoring after cycle
           this.cleanupResetListeners();
         } catch (error) {
-          if (error.message === "RESET_DETECTED") {
+          if (error.message === "SAFETY_VIOLATION") {
+            logger.error(
+              "🚨 SAFETY VIOLATION - Stopping all cycles immediately"
+            );
+            this.isRunning = false;
+            // Emit validation_error event for safety violations
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: System stopped due to safety violation - Please check all safety conditions",
+                violation: "System stopped - safety violation",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            throw error; // Re-throw to stop the entire process
+          } else if (error.message === "RESET_DETECTED") {
             logger.warn("⚠️ Reset detected, restarting cycle");
             continue;
           } else if (error.message === "RESTART_CYCLE") {
@@ -1120,6 +1214,8 @@ class ScannerController {
           scannerData: scannerData,
           message:
             "Part detected with existing marking. Please use an unmarked part.",
+          violation: "Part already marked",
+          cycleNumber: this.cycleCount,
         });
       }
 
