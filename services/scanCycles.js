@@ -137,7 +137,8 @@ class ScannerController {
 
       // Initialize barcode generator
       logger.info("🏷️ Setting up barcode generator...");
-      this.shiftUtility = new ShiftUtility();
+      // Initialize shift utility first
+      await this.shiftUtility.initialize();
       this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
       await this.barcodeGenerator.initialize("main-data", "records");
       logger.success("Barcode generator initialized");
@@ -601,9 +602,11 @@ class ScannerController {
       }
 
       if (io) {
-        // Use broadcast method to refresh all connected clients
-        mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
-        console.log("broadcastDataToAllClients");
+        // Emit UI refresh event
+        io.emit("data_updated", {
+          timestamp: new Date().toISOString(),
+          message: "Data saved to MongoDB",
+        });
       }
     } catch (error) {
       console.error({ error });
@@ -746,11 +749,11 @@ class ScannerController {
       // Trigger UI refresh on successful cycle completion
       if (this.io) {
         logger.info("📡 Broadcasting cycle completion to UI...");
-        await mongoDbService.broadcastDataToAllClients(
-          this.io,
-          "main-data",
-          "records"
-        );
+        this.io.emit("cycle_completed", {
+          timestamp: new Date().toISOString(),
+          cycleNumber: this.cycleCount,
+          success: true,
+        });
 
         // Also emit a specific cycle completion event
         this.io.emit("scan-cycle-completed", {
@@ -777,11 +780,11 @@ class ScannerController {
       // Trigger UI refresh even for failed cycles
       if (this.io) {
         logger.info("📡 Broadcasting failed cycle data to UI...");
-        await mongoDbService.broadcastDataToAllClients(
-          this.io,
-          "main-data",
-          "records"
-        );
+        this.io.emit("cycle_failed", {
+          timestamp: new Date().toISOString(),
+          cycleNumber: this.cycleCount,
+          success: false,
+        });
 
         // Emit failed cycle event
         this.io.emit("scan-cycle-completed", {
@@ -1096,7 +1099,7 @@ class ScannerController {
     const dmcCode = "DMC001";
 
     // Format: 1234 as ordering (not key-value pairs)
-    const content = `${julianDate}${yearCode}${companyCode}`;
+    const content = `${julianDate}${yearCode}${companyCode}${dmcCode}`;
 
     return content;
   }

@@ -94,6 +94,15 @@ class ShiftUtility {
   }
 
   getShifts() {
+    // Safety check: ensure shiftConfig is initialized
+    if (!this.shiftConfig) {
+      logger.warn("ShiftUtility not initialized, using default config");
+      this.shiftConfig = {
+        A: { start: "06:00", end: "14:30" },
+        B: { start: "14:30", end: "23:00" },
+        C: { start: "23:00", end: "06:00" },
+      };
+    }
     return this.shiftConfig;
   }
 
@@ -102,6 +111,16 @@ class ShiftUtility {
   }
 
   getCurrentShift(currentTime = new Date()) {
+    // Safety check: ensure shiftConfig is initialized
+    if (!this.shiftConfig) {
+      logger.warn("ShiftUtility not initialized, using default config");
+      this.shiftConfig = {
+        A: { start: "06:00", end: "14:30" },
+        B: { start: "14:30", end: "23:00" },
+        C: { start: "23:00", end: "06:00" },
+      };
+    }
+
     for (const [shift, times] of Object.entries(this.shiftConfig)) {
       const start = this._parseTime(times.start, currentTime);
       let end = this._parseTime(times.end, currentTime);
