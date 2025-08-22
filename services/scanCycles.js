@@ -911,19 +911,30 @@ class ScannerController {
 
       // Generate barcode data using simplified method
       logger.info("🔄 Calling barcodeGenerator.generateBarcodeData...");
-      const { text: barcodeText, serialNo: serialString } =
-        await this.barcodeGenerator.generateBarcodeData({
-          mongoDbService,
-          partNumber,
-        });
+      const {
+        text: barcodeText,
+        serialNo: serialString,
+        fields,
+      } = await this.barcodeGenerator.generateBarcodeData({
+        mongoDbService,
+        partNumber,
+      });
       logger.info(`✅ Barcode generated: ${barcodeText}`);
       logger.info(`🔢 Serial Number: ${serialString}`);
 
       // Write both files using the reusable function
       logger.info("📁 Writing barcode data to files...");
+
+      // Generate text file with the specified format: 1=julian date, 2=year code, 3=company code, 4=DMCcode
+      const textFileContent = this.generateTextFileContent();
+
       await Promise.all([
         this.writeToFile(CODE_FILE_PATH, barcodeText, "Barcode data"),
-        this.writeToFile(TEXT_FILE_PATH, barcodeText, "Barcode text"),
+        this.writeToFile(
+          TEXT_FILE_PATH,
+          textFileContent,
+          "Text file with format"
+        ),
       ]);
       logger.info("✅ Files written successfully");
 
@@ -973,6 +984,33 @@ class ScannerController {
       });
       throw error;
     }
+  }
+
+  // Generate text file content with the specified format
+  generateTextFileContent() {
+    const now = new Date();
+
+    // 1 = Julian date (day of year)
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    const julianDate = Math.floor(diff / oneDay);
+
+    // 2 = Single digit year code (last digit of year)
+    const yearCode = now.getFullYear() % 10;
+
+    // 3 = Company code (fixed as 'R')
+    const companyCode = "R";
+
+    // 4 = DMC code (you can customize this)
+    const dmcCode = "DMC001";
+
+    const content = `1=${julianDate}
+2=${yearCode}
+3=${companyCode}
+4=${dmcCode}`;
+
+    return content;
   }
 
   // Reusable file writing function
