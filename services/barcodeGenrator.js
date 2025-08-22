@@ -46,6 +46,25 @@ class BarcodeGenerator {
     }
   }
 
+  // Generate text file content with the specified format: 1=julian date, 2=year code, 3=company code, 4=DMCcode
+  generateTextFileContent() {
+    const now = new Date();
+    // 1 = Julian date (day of year)
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    const julianDate = Math.floor(diff / oneDay);
+    // 2 = Single digit year code (last digit of year)
+    const yearCode = now.getFullYear() % 10;
+    // 3 = Company code (fixed as 'R')
+    // const companyCode = "R";
+    // // 4 = DMC code (you can customize this)
+    // const dmcCode = "DMC001";
+    // Format: concatenated string (e.g., 243RDMC001)
+    const content = `${julianDate}${yearCode}`;
+    return content;
+  }
+
   async generateBarcodeData({ mongoDbService, partNumber }) {
     try {
       // Use current date for all timestamp-based fields
@@ -134,9 +153,16 @@ class BarcodeGenerator {
         const simpleBarcodeText = `${finalPartNumber}${julianDate}${paddedSerialString}`;
         logger.info("Generated fallback barcode text:", simpleBarcodeText);
 
+        // Generate text file content for fallback too
+        const textFileContent = this.generateTextFileContent();
+        logger.info(
+          `📄 Fallback text file content generated: ${textFileContent}`
+        );
+
         return {
           text: simpleBarcodeText,
           serialNo: serialString,
+          textFileContent: textFileContent, // Add text file content to fallback return
           fields: [],
         };
       }
@@ -223,9 +249,14 @@ class BarcodeGenerator {
       logger.info("Generated barcode text:", barcodeText);
       logger.info("Serial number:", serialString);
 
+      // Generate text file content for the specified format
+      const textFileContent = this.generateTextFileContent();
+      logger.info(`📄 Text file content generated: ${textFileContent}`);
+
       return {
         text: barcodeText,
         serialNo: serialString, // This is already padded to 4 digits from earlier
+        textFileContent: textFileContent, // Add text file content to return object
         fields: fields,
       };
     } catch (error) {
@@ -262,9 +293,14 @@ class BarcodeGenerator {
       // Generate the final barcode string including the part number
       const barcodeText = `${fetchedPartNumber || ""}04101${julianDate}${paddedSerialString}`;
 
+      // Generate text file content for legacy method too
+      const textFileContent = this.generateTextFileContent();
+      logger.info(`📄 Legacy text file content generated: ${textFileContent}`);
+
       return {
         text: barcodeText,
         serialNo: paddedSerialString,
+        textFileContent: textFileContent,
       };
     } else {
       const serialString =
@@ -281,9 +317,14 @@ class BarcodeGenerator {
         barcodeText,
       });
 
+      // Generate text file content for legacy method too
+      const textFileContent = this.generateTextFileContent();
+      logger.info(`📄 Legacy text file content generated: ${textFileContent}`);
+
       return {
         text: barcodeText,
         serialNo: paddedSerialString,
+        textFileContent: textFileContent,
       };
     }
   }
