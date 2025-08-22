@@ -76,44 +76,48 @@ class BarcodeGenerator {
       logger.info(`🔍 Debug - fetchedPartNumber: "${fetchedPartNumber}"`);
       logger.info(`🔍 Debug - provided partNumber: "${partNumber}"`);
 
-             // Get next serial number with better error handling
-       let serialString;
-       try {
-         serialString = await this.serialNumberService.getNextDecSerialNumber2();
+      // Get next serial number with better error handling
+      let serialString;
+      try {
+        serialString = await this.serialNumberService.getNextDecSerialNumber2();
 
-         // Safety check for serial number
-         if (
-           !serialString ||
-           serialString === "undefined" ||
-           serialString === "null" ||
-           isNaN(serialString)
-         ) {
-           logger.error("❌ Invalid serial number generated:", serialString);
-           logger.error("❌ Serial number type:", typeof serialString);
+        // Safety check for serial number
+        if (
+          !serialString ||
+          serialString === "undefined" ||
+          serialString === "null" ||
+          isNaN(serialString)
+        ) {
+          logger.error("❌ Invalid serial number generated:", serialString);
+          logger.error("❌ Serial number type:", typeof serialString);
 
-           // Try to get a fallback serial number
-           logger.info("🔄 Attempting to get fallback serial number...");
-           serialString = "0001"; // Use a default serial number (4 digits)
-           logger.info("✅ Using fallback serial number:", serialString);
-         } else {
-           // Ensure serial number is always 4 digits
-           const serialNumber = parseInt(serialString, 10);
-           if (!isNaN(serialNumber)) {
-             serialString = serialNumber.toString().padStart(4, "0");
-             logger.info(`🔢 Serial number formatted to 4 digits: ${serialString}`);
-           } else {
-             logger.warn("⚠️ Serial number is not a valid number, using fallback");
-             serialString = "0001";
-           }
-           logger.info(
-             `🔢 Serial number generated successfully: ${serialString}`
-           );
-         }
-       } catch (serialError) {
-         logger.error("❌ Error generating serial number:", serialError);
-         logger.info("🔄 Using fallback serial number: 0001");
-         serialString = "0001";
-       }
+          // Try to get a fallback serial number
+          logger.info("🔄 Attempting to get fallback serial number...");
+          serialString = "0001"; // Use a default serial number (4 digits)
+          logger.info("✅ Using fallback serial number:", serialString);
+        } else {
+          // Ensure serial number is always 4 digits
+          const serialNumber = parseInt(serialString, 10);
+          if (!isNaN(serialNumber)) {
+            serialString = serialNumber.toString().padStart(4, "0");
+            logger.info(
+              `🔢 Serial number formatted to 4 digits: ${serialString}`
+            );
+          } else {
+            logger.warn(
+              "⚠️ Serial number is not a valid number, using fallback"
+            );
+            serialString = "0001";
+          }
+          logger.info(
+            `🔢 Serial number generated successfully: ${serialString}`
+          );
+        }
+      } catch (serialError) {
+        logger.error("❌ Error generating serial number:", serialError);
+        logger.info("🔄 Using fallback serial number: 0001");
+        serialString = "0001";
+      }
 
       // Check if configData has the expected structure
       if (
@@ -124,11 +128,11 @@ class BarcodeGenerator {
         logger.warn(
           "⚠️ Config data structure not found, using fallback barcode generation"
         );
-                 // Fallback to simple barcode generation
-         // Ensure serial number is 4 digits for fallback too
-         const paddedSerialString = serialString.toString().padStart(4, "0");
-         const simpleBarcodeText = `${finalPartNumber}${julianDate}${paddedSerialString}`;
-         logger.info("Generated fallback barcode text:", simpleBarcodeText);
+        // Fallback to simple barcode generation
+        // Ensure serial number is 4 digits for fallback too
+        const paddedSerialString = serialString.toString().padStart(4, "0");
+        const simpleBarcodeText = `${finalPartNumber}${julianDate}${paddedSerialString}`;
+        logger.info("Generated fallback barcode text:", simpleBarcodeText);
 
         return {
           text: simpleBarcodeText,
@@ -248,30 +252,34 @@ class BarcodeGenerator {
       const { partNumber: fetchedPartNumber } =
         await fetchPartNumberAndData(mongoDbService);
       console.log({ partNumber: fetchedPartNumber });
-             // Fetch the next serial number
-       const serialString =
-         await this.serialNumberService.getNextDecSerialNumber2();
+      // Fetch the next serial number
+      const serialString =
+        await this.serialNumberService.getNextDecSerialNumber2();
 
-       // Ensure serial number is 4 digits
-       const paddedSerialString = serialString.toString().padStart(4, "0");
+      // Ensure serial number is 4 digits
+      const paddedSerialString = serialString.toString().padStart(4, "0");
 
-       // Generate the final barcode string including the part number
-       const barcodeText = `${fetchedPartNumber || ""}04101${julianDate}${paddedSerialString}`;
+      // Generate the final barcode string including the part number
+      const barcodeText = `${fetchedPartNumber || ""}04101${julianDate}${paddedSerialString}`;
 
       return {
         text: barcodeText,
         serialNo: paddedSerialString,
       };
     } else {
-             const serialString =
-         await this.serialNumberService.getNextDecSerialNumber2();
+      const serialString =
+        await this.serialNumberService.getNextDecSerialNumber2();
 
-       // Ensure serial number is 4 digits
-       const paddedSerialString = serialString.toString().padStart(4, "0");
+      // Ensure serial number is 4 digits
+      const paddedSerialString = serialString.toString().padStart(4, "0");
 
-       // Generate the final barcode string including the part number
-       const barcodeText = `${partNumber || ""}04101${julianDate}${paddedSerialString}`;
-       console.log({ serialString: paddedSerialString, partNumber, barcodeText });
+      // Generate the final barcode string including the part number
+      const barcodeText = `${partNumber || ""}04101${julianDate}${paddedSerialString}`;
+      console.log({
+        serialString: paddedSerialString,
+        partNumber,
+        barcodeText,
+      });
 
       return {
         text: barcodeText,
