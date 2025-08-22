@@ -359,7 +359,7 @@ class ScannerController {
             `🔍 Safety Check - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
           );
 
-          // Check safety conditions
+          // Check safety conditions and log violations continuously
           if (!partPresent) {
             logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
             // Continuously emit validation_error event while violation persists
@@ -370,11 +370,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
                 violation: "Part not present",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
           }
 
           if (emergencyStop) {
@@ -389,11 +388,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
                 violation: "Emergency stop activated",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
           }
 
           if (!safetySensor) {
@@ -408,16 +406,29 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
                 violation: "Safety sensor interrupted",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
+          }
+
+          // If all safety conditions are met, emit safety restored event
+          if (partPresent && !emergencyStop && safetySensor) {
+            if (this.io) {
+              this.io.emit("safety_restored", {
+                timestamp: new Date().toISOString(),
+                details: "✅ All safety conditions are now met",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            logger.success(
+              "✅ All safety conditions are now met - Safety restored"
+            );
           }
         } catch (error) {
           logger.error(`Error checking safety conditions: ${error.message}`);
         }
-      }, 200);
+      }, 100); // Increased frequency to 100ms for better monitoring
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
@@ -493,7 +504,7 @@ class ScannerController {
             `🔍 Initial Safety Check - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
           );
 
-          // Check safety violations first
+          // Check safety violations first and log them
           if (!partPresent) {
             logger.error(
               "🚨 SAFETY VIOLATION: Part not present (1490.0 = 0) - Initial Check"
@@ -505,11 +516,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
                 violation: "Part not present",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
           }
 
           if (emergencyStop) {
@@ -523,11 +533,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
                 violation: "Emergency stop activated",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
           }
 
           if (!safetySensor) {
@@ -541,11 +550,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
                 violation: "Safety sensor interrupted",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
           }
 
           if (resetSignal) {
@@ -594,11 +602,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
                 violation: "Emergency stop activated",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
           }
 
           // Check other safety conditions
@@ -614,11 +621,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
                 violation: "Part not present",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
           }
 
           if (!safetySensor) {
@@ -633,11 +639,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
                 violation: "Safety sensor interrupted",
                 cycleNumber: this.cycleCount,
-                isActive: true, // Indicate this is an active violation
+                isActive: true,
               });
             }
-            // Don't resolve yet - keep monitoring until resolved
-            return;
+            // Continue monitoring - don't return, let other checks continue
           }
 
           // If we reach here, all safety conditions are met
