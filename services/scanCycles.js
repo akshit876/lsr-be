@@ -409,6 +409,21 @@ class ScannerController {
           if (resetSignal) {
             cleanup();
             logger.info("Reset signal (1600.0) detected");
+
+            // Emit event to force close all validation toasts on UI
+            if (this.io) {
+              this.io.emit("reset_detected", {
+                timestamp: new Date().toISOString(),
+                message:
+                  "Reset signal detected - clearing all validation messages",
+                cycleNumber: this.cycleCount,
+                action: "clear_toasts",
+              });
+              logger.info(
+                "📡 Emitted reset_detected event to clear UI validation toasts"
+              );
+            }
+
             try {
               await writeBit(1500, 3, 1);
               logger.info("Reset bits completed, restarting cycle");
@@ -476,6 +491,21 @@ class ScannerController {
           if (resetSignal) {
             cleanup();
             logger.info("Reset signal detected on initial check");
+
+            // Emit event to force close all validation toasts on UI
+            if (this.io) {
+              this.io.emit("reset_detected", {
+                timestamp: new Date().toISOString(),
+                message:
+                  "Reset signal detected on initial check - clearing all validation messages",
+                cycleNumber: this.cycleCount,
+                action: "clear_toasts",
+              });
+              logger.info(
+                "📡 Emitted reset_detected event to clear UI validation toasts"
+              );
+            }
+
             await this.resetBits();
             resolve(true);
             return;
