@@ -324,7 +324,7 @@ class ScannerController {
       }
 
       let checkCount = 0;
-      const CHECK_INTERVAL = 100;
+      const CHECK_INTERVAL = 500;
 
       // Define registers to monitor for safety
       const REGISTERS_TO_MONITOR = [
