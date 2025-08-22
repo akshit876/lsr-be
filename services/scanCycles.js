@@ -361,9 +361,8 @@ class ScannerController {
 
           // Check safety conditions
           if (!partPresent) {
-            cleanup();
             logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
-            // Emit validation_error event for safety violations
+            // Continuously emit validation_error event while violation persists
             if (this.io) {
               this.io.emit("validation_error", {
                 timestamp: new Date().toISOString(),
@@ -371,18 +370,18 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
                 violation: "Part not present",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
 
           if (emergencyStop) {
-            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
             );
-            // Emit validation_error event for safety violations
+            // Continuously emit validation_error event while violation persists
             if (this.io) {
               this.io.emit("validation_error", {
                 timestamp: new Date().toISOString(),
@@ -390,18 +389,18 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
                 violation: "Emergency stop activated",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
 
           if (!safetySensor) {
-            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0)"
             );
-            // Emit validation_error event for safety violations
+            // Continuously emit validation_error event while violation persists
             if (this.io) {
               this.io.emit("validation_error", {
                 timestamp: new Date().toISOString(),
@@ -409,9 +408,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
                 violation: "Safety sensor interrupted",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
         } catch (error) {
@@ -495,7 +495,6 @@ class ScannerController {
 
           // Check safety violations first
           if (!partPresent) {
-            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Part not present (1490.0 = 0) - Initial Check"
             );
@@ -506,14 +505,14 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
                 violation: "Part not present",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
 
           if (emergencyStop) {
-            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1) - Initial Check"
             );
@@ -524,14 +523,14 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
                 violation: "Emergency stop activated",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
 
           if (!safetySensor) {
-            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0) - Initial Check"
             );
@@ -542,9 +541,10 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
                 violation: "Safety sensor interrupted",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
 
@@ -583,10 +583,10 @@ class ScannerController {
 
           // Check for emergency stop immediately
           if (emergencyStop) {
-            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1) - Continuous Monitor"
             );
+            // Continuously emit UI event while emergency stop is active
             if (this.io) {
               this.io.emit("validation_error", {
                 timestamp: new Date().toISOString(),
@@ -594,18 +594,19 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
                 violation: "Emergency stop activated",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
 
           // Check other safety conditions
           if (!partPresent) {
-            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Part not present (1490.0 = 0) - Continuous Monitor"
             );
+            // Continuously emit UI event while part is not present
             if (this.io) {
               this.io.emit("validation_error", {
                 timestamp: new Date().toISOString(),
@@ -613,17 +614,18 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
                 violation: "Part not present",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
 
           if (!safetySensor) {
-            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0) - Continuous Monitor"
             );
+            // Continuously emit UI event while safety sensor is interrupted
             if (this.io) {
               this.io.emit("validation_error", {
                 timestamp: new Date().toISOString(),
@@ -631,11 +633,25 @@ class ScannerController {
                   "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
                 violation: "Safety sensor interrupted",
                 cycleNumber: this.cycleCount,
+                isActive: true, // Indicate this is an active violation
               });
             }
-            resolve("safety_violation");
+            // Don't resolve yet - keep monitoring until resolved
             return;
           }
+
+          // If we reach here, all safety conditions are met
+          // Emit a "safety restored" event to clear the UI warning
+          if (this.io) {
+            this.io.emit("safety_restored", {
+              timestamp: new Date().toISOString(),
+              details: "✅ All safety conditions are now met",
+              cycleNumber: this.cycleCount,
+            });
+          }
+          logger.success(
+            "✅ All safety conditions are now met - Safety restored"
+          );
         } catch (error) {
           logger.error(`Error in continuous safety monitor: ${error.message}`);
         }
