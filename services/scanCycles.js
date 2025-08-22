@@ -326,12 +326,71 @@ class ScannerController {
       let checkCount = 0;
       const CHECK_INTERVAL = 100;
 
+      // Define registers to monitor for safety
+      const REGISTERS_TO_MONITOR = [
+        { register: 1490, bit: 0, name: "Part Present", expectedValue: 1 },
+        { register: 1490, bit: 1, name: "Emergency Stop", expectedValue: 0 },
+        { register: 1490, bit: 2, name: "Safety Sensor", expectedValue: 1 },
+      ];
+
+      // Function to check register bits and emit UI events
+      const checkRegisterBits = async (registerConfig) => {
+        try {
+          const bitValue = await readBit(
+            registerConfig.register,
+            registerConfig.bit
+          );
+          const currentValue = Number(bitValue);
+          const expectedValue = Number(registerConfig.expectedValue);
+
+          // Check if safety condition is violated
+          if (currentValue !== expectedValue) {
+            let violationMessage = "";
+            let details = "";
+
+            if (registerConfig.name === "Part Present" && currentValue === 0) {
+              violationMessage = "Part not present";
+              details =
+                "🚨 SAFETY VIOLATION: Part not present - Please check part placement";
+            } else if (
+              registerConfig.name === "Emergency Stop" &&
+              currentValue === 1
+            ) {
+              violationMessage = "Emergency stop activated";
+              details =
+                "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button";
+            } else if (
+              registerConfig.name === "Safety Sensor" &&
+              currentValue === 0
+            ) {
+              violationMessage = "Safety sensor interrupted";
+              details =
+                "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors";
+            }
+
+            if (violationMessage && this.io) {
+              logger.error(
+                `🚨 SAFETY VIOLATION: ${violationMessage} (${registerConfig.register}.${registerConfig.bit} = ${currentValue})`
+              );
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details: details,
+                violation: violationMessage,
+                cycleNumber: this.cycleCount,
+                isActive: true,
+              });
+            }
+          }
+        } catch (error) {
+          logger.error(
+            `Error checking register ${registerConfig.register}.${registerConfig.bit}: ${error.message}`
+          );
+        }
+      };
+
       const cleanup = () => {
         if (timeoutId) {
           clearTimeout(timeoutId);
-        }
-        if (safetyCheckInterval) {
-          clearInterval(safetyCheckInterval);
         }
         if (resetCheckInterval) {
           clearInterval(resetCheckInterval);
@@ -339,96 +398,7 @@ class ScannerController {
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
-        if (continuousSafetyMonitor) {
-          clearInterval(continuousSafetyMonitor);
-        }
       };
-
-      // Safety check interval - runs in parallel every 100ms for immediate response
-      const safetyCheckInterval = setInterval(async () => {
-        try {
-          // Read safety bits from register 1490
-          const [partPresent, emergencyStop, safetySensor] = await Promise.all([
-            readBit(1490, 0), // Part not present. 1490.0
-            readBit(1490, 1), // Emergency stop. 1490.1
-            readBit(1490, 2), // Safety sensor interrupted. 1490.2
-          ]);
-
-          // Log every safety check for debugging
-          logger.info(
-            `🔍 Safety Check - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
-          );
-
-          // Check safety conditions and log violations continuously
-          if (!partPresent) {
-            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
-            // Continuously emit validation_error event while violation persists
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
-                violation: "Part not present",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
-          }
-
-          if (emergencyStop) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
-            );
-            // Continuously emit validation_error event while violation persists
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
-                violation: "Emergency stop activated",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
-          }
-
-          if (!safetySensor) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0)"
-            );
-            // Continuously emit validation_error event while violation persists
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
-                violation: "Safety sensor interrupted",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
-          }
-
-          // If all safety conditions are met, emit safety restored event
-          if (partPresent && !emergencyStop && safetySensor) {
-            if (this.io) {
-              this.io.emit("safety_restored", {
-                timestamp: new Date().toISOString(),
-                details: "✅ All safety conditions are now met",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            logger.success(
-              "✅ All safety conditions are now met - Safety restored"
-            );
-          }
-        } catch (error) {
-          logger.error(`Error checking safety conditions: ${error.message}`);
-        }
-      }, 100); // Increased frequency to 100ms for better monitoring
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
@@ -459,6 +429,11 @@ class ScannerController {
           const currentValue = Number(bitValue);
           const expectedValue = Number(value);
 
+          // Check all monitored registers
+          for (const registerConfig of REGISTERS_TO_MONITOR) {
+            await checkRegisterBits(registerConfig);
+          }
+
           if (currentValue === expectedValue) {
             cleanup();
             logger.info(
@@ -483,77 +458,17 @@ class ScannerController {
         }
       }, CHECK_INTERVAL);
 
-      // Initial checks including safety
+      // Initial checks
       const performInitialCheck = async () => {
         try {
-          const [
-            resetSignal,
-            bitValue,
-            partPresent,
-            emergencyStop,
-            safetySensor,
-          ] = await Promise.all([
+          const [resetSignal, bitValue] = await Promise.all([
             readBit(1600, 0),
             readBit(register, bit),
-            readBit(1490, 0), // Part present
-            readBit(1490, 1), // Emergency stop
-            readBit(1490, 2), // Safety sensor
           ]);
 
-          logger.info(
-            `🔍 Initial Safety Check - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
-          );
-
-          // Check safety violations first and log them
-          if (!partPresent) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Part not present (1490.0 = 0) - Initial Check"
-            );
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
-                violation: "Part not present",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
-          }
-
-          if (emergencyStop) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1) - Initial Check"
-            );
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
-                violation: "Emergency stop activated",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
-          }
-
-          if (!safetySensor) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0) - Initial Check"
-            );
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
-                violation: "Safety sensor interrupted",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
+          // Initial check of all monitored registers
+          for (const registerConfig of REGISTERS_TO_MONITOR) {
+            await checkRegisterBits(registerConfig);
           }
 
           if (resetSignal) {
@@ -574,93 +489,6 @@ class ScannerController {
           logger.error(`Error in initial checks: ${error.message}`);
         }
       };
-
-      // Add continuous safety monitoring that runs every 50ms
-      const continuousSafetyMonitor = setInterval(async () => {
-        try {
-          const [partPresent, emergencyStop, safetySensor] = await Promise.all([
-            readBit(1490, 0), // Part present
-            readBit(1490, 1), // Emergency stop
-            readBit(1490, 2), // Safety sensor
-          ]);
-
-          // Log every safety check for debugging
-          logger.info(
-            `🚨 CONTINUOUS Safety Monitor - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
-          );
-
-          // Check for emergency stop immediately
-          if (emergencyStop) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1) - Continuous Monitor"
-            );
-            // Continuously emit UI event while emergency stop is active
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
-                violation: "Emergency stop activated",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
-          }
-
-          // Check other safety conditions
-          if (!partPresent) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Part not present (1490.0 = 0) - Continuous Monitor"
-            );
-            // Continuously emit UI event while part is not present
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
-                violation: "Part not present",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
-          }
-
-          if (!safetySensor) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0) - Continuous Monitor"
-            );
-            // Continuously emit UI event while safety sensor is interrupted
-            if (this.io) {
-              this.io.emit("validation_error", {
-                timestamp: new Date().toISOString(),
-                details:
-                  "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
-                violation: "Safety sensor interrupted",
-                cycleNumber: this.cycleCount,
-                isActive: true,
-              });
-            }
-            // Continue monitoring - don't return, let other checks continue
-          }
-
-          // If we reach here, all safety conditions are met
-          // Emit a "safety restored" event to clear the UI warning
-          if (this.io) {
-            this.io.emit("safety_restored", {
-              timestamp: new Date().toISOString(),
-              details: "✅ All safety conditions are now met",
-              cycleNumber: this.cycleCount,
-            });
-          }
-          logger.success(
-            "✅ All safety conditions are now met - Safety restored"
-          );
-        } catch (error) {
-          logger.error(`Error in continuous safety monitor: ${error.message}`);
-        }
-      }, 50);
 
       performInitialCheck();
     });
