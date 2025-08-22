@@ -329,7 +329,7 @@ class ScannerController {
       // Define registers to monitor for safety
       const REGISTERS_TO_MONITOR = [
         { register: 1490, bit: 0, name: "Part Present", expectedValue: 1 },
-        { register: 1490, bit: 1, name: "Emergency Stop", expectedValue: 0 },
+        { register: 1490, bit: 1, name: "Emergency Stop", expectedValue: 1 },
         { register: 1490, bit: 2, name: "Safety Sensor", expectedValue: 1 },
       ];
 
@@ -341,19 +341,17 @@ class ScannerController {
             registerConfig.bit
           );
           const currentValue = Number(bitValue);
-          const expectedValue = Number(registerConfig.expectedValue);
 
-          // Check if safety condition is violated - ONLY emit for actual violations, not for normal 0 values
-          if (currentValue !== expectedValue) {
+          // ONLY emit UI events when safety bits are 1 (active/violation), NOT when they are 0 (normal/safe)
+          if (currentValue === 1) {
             let violationMessage = "";
             let details = "";
 
-            // Only emit events for actual safety violations, not for normal 0 states
-            if (registerConfig.name === "Part Present" && currentValue === 0) {
-              // Part not present (1490.0 = 0) - this is a violation
-              violationMessage = "Part not present";
-              details =
-                "🚨 SAFETY VIOLATION: Part not present - Please check part placement";
+            // Only emit events when bits are 1 (active state)
+            if (registerConfig.name === "Part Present" && currentValue === 1) {
+              // Part present (1490.0 = 1) - this is normal, but we emit for monitoring
+              violationMessage = "Part present";
+              details = "✅ Part is present and ready";
             } else if (
               registerConfig.name === "Emergency Stop" &&
               currentValue === 1
@@ -364,18 +362,17 @@ class ScannerController {
                 "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button";
             } else if (
               registerConfig.name === "Safety Sensor" &&
-              currentValue === 0
+              currentValue === 1
             ) {
-              // Safety sensor interrupted (1490.2 = 0) - this is a violation
-              violationMessage = "Safety sensor interrupted";
-              details =
-                "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors";
+              // Safety sensor engaged (1490.2 = 1) - this is normal, but we emit for monitoring
+              violationMessage = "Safety sensor engaged";
+              details = "✅ Safety sensor is engaged and working";
             }
 
-            // Only emit events for actual violations
+            // Emit events only when bits are 1
             if (violationMessage && this.io) {
-              logger.error(
-                `🚨 SAFETY VIOLATION: ${violationMessage} (${registerConfig.register}.${registerConfig.bit} = ${currentValue})`
+              logger.info(
+                `📡 Safety bit ${registerConfig.register}.${registerConfig.bit} is ${currentValue}: ${violationMessage}`
               );
               this.io.emit("validation_error", {
                 timestamp: new Date().toISOString(),
