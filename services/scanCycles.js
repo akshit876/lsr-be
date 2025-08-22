@@ -24,7 +24,7 @@ const TIMEOUT = 100 * 1000;
 // TCP Scanner configuration
 const TCP_SCANNER_CONFIG = {
   host: process.env.SCANNER_HOST || "192.168.3.147", // Default TCP scanner IP
-  port: parseInt(process.env.SCANNER_PORT, 10) || 5024, // Default TCP scanner port
+  port: parseInt(process.env.SCANNER_PORT, 10) || 502, // Default TCP scanner port
   timeout: 5000,
   reconnectInterval: 3000,
   keepAlive: true, // Enable keep-alive to prevent idle timeouts
