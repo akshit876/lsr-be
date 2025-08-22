@@ -689,38 +689,35 @@ class ScannerController {
   // New method to encapsulate the main scan cycle logic
   async executeScanCycle(comService, partNumber) {
     try {
-      // await writeBit(1300, 0, 1);
-      // First check for 1410.0
+      // First check for 1410.0 (start signal)
       logger.info("Waiting for start signal (1410.0)...");
       const resetResult = await this.checkResetOrBit(1410, 0, 1);
       if (resetResult === true) {
-        logger.info(
-          "Reset detected while waiting for start signal, restarting cycle"
-        );
-        throw new Error("RESET_DETECTED");
-      }
-
-      // Step 2: Generate and Write Barcode (simplified - no OCR data)
-      logger.info("🏷️ Starting file generation and transfer process...");
-      const barcodeData = await this.generateAndWriteBarcode(partNumber, null); // No OCR data
-      if (!barcodeData) {
-        logger.error("❌ Failed to generate barcode data, ending cycle");
+        logger.info("Reset detected, restarting cycle");
         return;
       }
 
-      // Step 3: Signal File Transfer to PLC
-      logger.info("✍️ Writing bit 1414.15(F) to signal file transfer to PLC");
-      await writeBit(1414, 15, 1);
-      logger.success("📡 File transfer signal sent to PLC");
+      // Step 1: First Scanner Check
+      const firstScanResult = await this.handleFirstScan(comService);
+      if (!firstScanResult.shouldContinue) {
+        logger.info("Cycle stopped after first scan");
+        return;
+      }
 
-      // Step 4: Wait for Marking Completion Signal from PLC
-      logger.info(
-        "⏳ Waiting for marking completion signal from PLC (1410.3)..."
-      );
-      const markingResult = await this.checkResetOrBit(1410, 3, 1);
-      if (markingResult === true) {
+      // Step 2: Generate and Write Barcode (simplified, no OCR)
+      const barcodeData = await this.generateAndWriteBarcode(partNumber);
+      if (!barcodeData) {
+        return;
+      }
+
+      // Step 3: Signal Transfer and Wait
+      logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
+      await writeBit(1414, 15, 1);
+
+      logger.info("🔍 Checking for reset or waiting for bit 1410.3");
+      if (await this.checkResetOrBit(1410, 3, 1)) {
         logger.warn(
-          "⚠️ Reset detected while waiting for marking completion, restarting cycle"
+          "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
         );
         await sleep(1000);
         await this.saveToMongoDB({
@@ -732,81 +729,50 @@ class ScannerController {
           grading: "N/A",
           isUpdate: true,
         });
-        throw new Error("RESET_DETECTED");
+        return;
       }
 
-      logger.success("✅ Marking completion signal received from PLC");
-
-      // COMMENTED OUT: Step 4: Third Scanner Check
-      /*
-      const thirdScanResult = await this.handleThirdScan(
+      // Step 4: Verification Scanner Check
+      const verificationScanResult = await this.handleVerificationScan(
         comService,
         barcodeData
       );
-      */
 
-      // Step 5: Update MongoDB with marking completion
-      logger.info("💾 Updating MongoDB with marking completion...");
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
-        scannerData: "N/A",
-        result: "OK",
-        grading: "N/A",
-        isUpdate: true,
-      });
-
-      // Step 6: Final Checks and Cycle Completion
-      logger.info("🔍 Performing final checks and cycle completion...");
-      const finalChecksResult = true;
+      // Step 5: Final Checks and Cleanup
+      logger.info("🔍 Starting final checks and cycle completion...");
+      const finalChecksResult = await this.performFinalChecks();
+      logger.info(`📋 Final checks result: ${finalChecksResult}`);
+      logger.info(
+        `🔍 Verification scan result: ${verificationScanResult.success}`
+      );
 
       if (finalChecksResult) {
         this.cycleCount++;
-        logger.section(`✅ Completed Simple Marking Cycle ${this.cycleCount}`);
+        logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
         logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
 
+        // Trigger UI refresh on successful cycle completion
         if (this.io) {
           logger.info("📡 Broadcasting cycle completion to UI...");
-          mongoDbService.sendMongoDbDataToClient(this.io);
+          await mongoDbService.broadcastDataToAllClients(
+            this.io,
+            "main-data",
+            "records"
+          );
 
+          // Also emit a specific cycle completion event
           this.io.emit("scan-cycle-completed", {
             cycleNumber: this.cycleCount,
             timestamp: new Date().toISOString(),
             success: true,
-            result: "OK",
-            type: "marking-only",
+            result: verificationScanResult.success ? "OK" : "NG",
           });
         }
 
-        logger.info("📡 Sending cycle complete OK signal to PLC (1414.3)");
-        await writeBit(1414, 3, 1);
-
+        // Add 2-second delay after cycle completion
         logger.info(
           "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
         );
-        await sleep(2000);
-      } else {
-        logger.warn(
-          `❌ Cycle completion failed - final checks returned: ${finalChecksResult}`
-        );
-        logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
-
-        if (this.io) {
-          logger.info("📡 Broadcasting failed cycle data to UI...");
-          mongoDbService.sendMongoDbDataToClient(this.io);
-
-          this.io.emit("scan-cycle-completed", {
-            cycleNumber: this.cycleCount,
-            timestamp: new Date().toISOString(),
-            success: false,
-            result: "NG",
-            error: "Final checks failed",
-            type: "marking-only",
-          });
-        }
-
-        logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
         await sleep(2000);
       }
     } catch (error) {
