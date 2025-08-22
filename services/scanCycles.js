@@ -339,9 +339,12 @@ class ScannerController {
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
+        if (continuousSafetyMonitor) {
+          clearInterval(continuousSafetyMonitor);
+        }
       };
 
-      // Safety check interval - runs in parallel every 200ms for faster response
+      // Safety check interval - runs in parallel every 100ms for immediate response
       const safetyCheckInterval = setInterval(async () => {
         try {
           // Read safety bits from register 1490
@@ -351,6 +354,7 @@ class ScannerController {
             readBit(1490, 2), // Safety sensor interrupted. 1490.2
           ]);
 
+          // Log every safety check for debugging
           logger.info(
             `🔍 Safety Check - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
           );
@@ -413,7 +417,7 @@ class ScannerController {
         } catch (error) {
           logger.error(`Error checking safety conditions: ${error.message}`);
         }
-      }, 500);
+      }, 200);
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
@@ -562,6 +566,80 @@ class ScannerController {
           logger.error(`Error in initial checks: ${error.message}`);
         }
       };
+
+      // Add continuous safety monitoring that runs every 50ms
+      const continuousSafetyMonitor = setInterval(async () => {
+        try {
+          const [partPresent, emergencyStop, safetySensor] = await Promise.all([
+            readBit(1490, 0), // Part present
+            readBit(1490, 1), // Emergency stop
+            readBit(1490, 2), // Safety sensor
+          ]);
+
+          // Log every safety check for debugging
+          logger.info(
+            `🚨 CONTINUOUS Safety Monitor - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
+          );
+
+          // Check for emergency stop immediately
+          if (emergencyStop) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1) - Continuous Monitor"
+            );
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
+                violation: "Emergency stop activated",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          // Check other safety conditions
+          if (!partPresent) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Part not present (1490.0 = 0) - Continuous Monitor"
+            );
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
+                violation: "Part not present",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (!safetySensor) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0) - Continuous Monitor"
+            );
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
+                violation: "Safety sensor interrupted",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error in continuous safety monitor: ${error.message}`);
+        }
+      }, 50);
 
       performInitialCheck();
     });
