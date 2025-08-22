@@ -324,7 +324,7 @@ class ScannerController {
       }
 
       let checkCount = 0;
-      const CHECK_INTERVAL = 500;
+      const CHECK_INTERVAL = 1000;
 
       // Define registers to monitor for safety
       const REGISTERS_TO_MONITOR = [
@@ -343,12 +343,14 @@ class ScannerController {
           const currentValue = Number(bitValue);
           const expectedValue = Number(registerConfig.expectedValue);
 
-          // Check if safety condition is violated
+          // Check if safety condition is violated - ONLY emit for actual violations, not for normal 0 values
           if (currentValue !== expectedValue) {
             let violationMessage = "";
             let details = "";
 
+            // Only emit events for actual safety violations, not for normal 0 states
             if (registerConfig.name === "Part Present" && currentValue === 0) {
+              // Part not present (1490.0 = 0) - this is a violation
               violationMessage = "Part not present";
               details =
                 "🚨 SAFETY VIOLATION: Part not present - Please check part placement";
@@ -356,6 +358,7 @@ class ScannerController {
               registerConfig.name === "Emergency Stop" &&
               currentValue === 1
             ) {
+              // Emergency stop activated (1490.1 = 1) - this is a violation
               violationMessage = "Emergency stop activated";
               details =
                 "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button";
@@ -363,11 +366,13 @@ class ScannerController {
               registerConfig.name === "Safety Sensor" &&
               currentValue === 0
             ) {
+              // Safety sensor interrupted (1490.2 = 0) - this is a violation
               violationMessage = "Safety sensor interrupted";
               details =
                 "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors";
             }
 
+            // Only emit events for actual violations
             if (violationMessage && this.io) {
               logger.error(
                 `🚨 SAFETY VIOLATION: ${violationMessage} (${registerConfig.register}.${registerConfig.bit} = ${currentValue})`
