@@ -36,7 +36,7 @@ import { REGISTERS_TO_MONITOR } from "../server.js";
 
 const TCP_CONFIG = {
   PORT: 502,
-  HOST: "192.168.3.146",
+  HOST: "192.168.3.147",
 };
 
 // import logger from "your-logger-module"; // Replace with your logger module
@@ -1063,6 +1063,31 @@ class ScannerController {
     return `${day}${month}${year}`;
   }
 
+  // Generate text file content with the specified format
+  generateTextFileContent() {
+    const now = new Date();
+
+    // 1 = Julian date (day of year)
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    const julianDate = Math.floor(diff / oneDay);
+
+    // 2 = Single digit year code (last digit of year)
+    const yearCode = now.getFullYear() % 10;
+
+    // 3 = Company code (fixed as 'R')
+    const companyCode = "R";
+
+    // 4 = DMC code (you can customize this)
+    const dmcCode = "DMC001";
+
+    // Format: 1234 as ordering (not key-value pairs)
+    const content = `${julianDate}${yearCode}${companyCode}`;
+
+    return content;
+  }
+
   // Reusable file writing function
   async writeToFile(filePath, data, description = "Data") {
     try {
@@ -1088,7 +1113,7 @@ class ScannerController {
   }
 
   async generateAndWriteBarcode(partNumber, ocrScanResult) {
-    const { text, codeText, serialNo } =
+    const { codeText, serialNo } =
       await this.barcodeGenerator.generateBarcodeData({
         ocrDate: ocrScanResult?.day,
         ocrShift: ocrScanResult?.shift,
@@ -1116,9 +1141,16 @@ class ScannerController {
       // const serialWithDate = `${formattedDate}XX${serialNo}`;
 
       // Write both files using the reusable function
+      // Generate text file with the specified format: 1=julian date, 2=year code, 3=company code, 4=DMCcode
+      const textFileContent = this.generateTextFileContent();
+
       await Promise.all([
         this.writeToFile(CODE_FILE_PATH, codeText, "OCR data"),
-        this.writeToFile(TEXT_FILE_PATH, text, "Serial number with date"),
+        this.writeToFile(
+          TEXT_FILE_PATH,
+          textFileContent,
+          "Text file with format"
+        ),
       ]);
 
       // Emit marking data to UI

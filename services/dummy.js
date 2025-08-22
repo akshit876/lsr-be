@@ -4,7 +4,7 @@ const client = new ModbusRTU();
 const DEFAULT_MODBUS_IP = "192.168.3.146";
 const DEFAULT_MODBUS_PORT = 502;
 // open connection to a serial port
-const MODBUS_IP = "192.168.3.145";
+const MODBUS_IP = "192.168.3.147";
 const MODBUS_PORT = 502;
 
 (async () => {
