@@ -341,7 +341,7 @@ class ScannerController {
         }
       };
 
-      // Safety check interval - runs in parallel every 500ms
+      // Safety check interval - runs in parallel every 200ms for faster response
       const safetyCheckInterval = setInterval(async () => {
         try {
           // Read safety bits from register 1490
@@ -350,6 +350,10 @@ class ScannerController {
             readBit(1490, 1), // Emergency stop. 1490.1
             readBit(1490, 2), // Safety sensor interrupted. 1490.2
           ]);
+
+          logger.info(
+            `🔍 Safety Check - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
+          );
 
           // Check safety conditions
           if (!partPresent) {
@@ -378,7 +382,8 @@ class ScannerController {
             if (this.io) {
               this.io.emit("validation_error", {
                 timestamp: new Date().toISOString(),
-                details: "🚨 SAFETY VIOLATION: Emergency stop activated",
+                details:
+                  "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
                 violation: "Emergency stop activated",
                 cycleNumber: this.cycleCount,
               });
@@ -463,13 +468,81 @@ class ScannerController {
         }
       }, CHECK_INTERVAL);
 
-      // Initial checks
+      // Initial checks including safety
       const performInitialCheck = async () => {
         try {
-          const [resetSignal, bitValue] = await Promise.all([
+          const [
+            resetSignal,
+            bitValue,
+            partPresent,
+            emergencyStop,
+            safetySensor,
+          ] = await Promise.all([
             readBit(1600, 0),
             readBit(register, bit),
+            readBit(1490, 0), // Part present
+            readBit(1490, 1), // Emergency stop
+            readBit(1490, 2), // Safety sensor
           ]);
+
+          logger.info(
+            `🔍 Initial Safety Check - Part: ${partPresent}, Emergency: ${emergencyStop}, Sensor: ${safetySensor}`
+          );
+
+          // Check safety violations first
+          if (!partPresent) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Part not present (1490.0 = 0) - Initial Check"
+            );
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: Part not present - Please check part placement",
+                violation: "Part not present",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (emergencyStop) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1) - Initial Check"
+            );
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: Emergency stop activated - Please check emergency stop button",
+                violation: "Emergency stop activated",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (!safetySensor) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor interrupted (1490.2 = 0) - Initial Check"
+            );
+            if (this.io) {
+              this.io.emit("validation_error", {
+                timestamp: new Date().toISOString(),
+                details:
+                  "🚨 SAFETY VIOLATION: Safety sensor interrupted - Please check safety sensors",
+                violation: "Safety sensor interrupted",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
 
           if (resetSignal) {
             cleanup();
