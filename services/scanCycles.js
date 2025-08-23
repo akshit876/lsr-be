@@ -643,7 +643,7 @@ class ScannerController {
 
       while (this.isRunning) {
         try {
-          await sleep(1200);
+          await sleep(10000); // Changed from 1200ms to 10000ms (10 seconds)
 
           // Clear separator and print cycle count
           logger.separator.hash();
@@ -834,7 +834,7 @@ class ScannerController {
   async fetchScannerData(tcpScannerService, options = {}) {
     const {
       scanType = options.scanType || "first",
-      timeout = 30 * 1000, // Reduced timeout for faster debugging
+      timeout = 10 * 1000, // Changed from 30 seconds to 10 seconds
       scannerLabel = this.getScanLabel(scanType),
     } = options;
 
