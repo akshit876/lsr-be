@@ -3,7 +3,7 @@ import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
 
 // Default values
-const DEFAULT_MODBUS_IP = "192.168.3.145";
+const DEFAULT_MODBUS_IP = "192.168.3.146";
 const DEFAULT_MODBUS_PORT = 502;
 
 const MODBUS_IP = process.env.NEXT_PUBLIC_MODBUS_IP || DEFAULT_MODBUS_IP;
