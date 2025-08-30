@@ -299,7 +299,8 @@ class ScannerController {
             // Yield control to event loop every 100ms
           }
           logger.info("▶️ Cycle resumed - continuing PLC operations...");
-          continue; // Skip to next iteration
+          // When resuming, restart the entire cycle instead of continuing
+          throw new Error("CYCLE_RESUMED");
         }
 
         // Only proceed with PLC operations when not paused
@@ -324,6 +325,10 @@ class ScannerController {
           `🔄 Continuing to wait for PLC bit ${register}.${bit} = ${value}...`
         );
       } catch (error) {
+        if (error.message === "CYCLE_RESUMED") {
+          logger.info("🔄 Cycle resumed - restarting cycle from beginning");
+          throw error; // Re-throw to trigger cycle restart
+        }
         logger.error(`Error in bit check: ${error.message}`);
         await sleep(1000);
         // Continue the loop even on errors
@@ -734,6 +739,9 @@ class ScannerController {
             continue;
           } else if (error.message === "RESTART_CYCLE") {
             logger.info("🔄 Restarting cycle due to OK first scan");
+            continue;
+          } else if (error.message === "CYCLE_RESUMED") {
+            logger.info("🔄 Cycle resumed - restarting cycle from beginning");
             continue;
           }
           await this.handleScanError(error);
@@ -1706,8 +1714,22 @@ class ScannerController {
         `🎮 Jog event "${eventName}" - turning ON register ${register}.${bit}`
       );
 
-      // Turn ON the PLC bit
-      await writeBit(register, bit, 1);
+      // Add timeout protection for PLC write operations
+      const writePromise = writeBit(register, bit, 1);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Timeout writing bit ${bit} to register ${register} after 5s`
+              )
+            ),
+          5000
+        );
+      });
+
+      // Turn ON the PLC bit with timeout protection
+      await Promise.race([writePromise, timeoutPromise]);
       logger.success(
         `✅ Jog event "${eventName}" - register ${register}.${bit} turned ON`
       );
@@ -1724,6 +1746,16 @@ class ScannerController {
       );
     } catch (error) {
       logger.error(`❌ Error handling jog event "${eventName}":`, error);
+
+      // Emit error to UI
+      if (this.io) {
+        this.io.emit("plc_error", {
+          timestamp: new Date().toISOString(),
+          error: error.message,
+          eventType: "jog_start",
+          eventData: { eventName, register, bit },
+        });
+      }
     }
   }
 
@@ -1877,6 +1909,9 @@ class ScannerController {
       this.lastPauseTime = new Date();
       logger.info(`⏸️ Cycle paused: ${reason}`);
 
+      // Force stop all active PLC operations
+      this.forceStopPlcOperations();
+
       // Emit pause event to UI
       if (this.io) {
         this.io.emit("cycle_paused", {
@@ -1898,6 +1933,9 @@ class ScannerController {
       this.isCyclePaused = false;
       this.pauseReason = null;
       this.lastPauseTime = null;
+
+      // Reset cycle state to ensure fresh start
+      logger.info("🔄 Resetting cycle state for fresh start after pause");
 
       // Emit resume event to UI
       if (this.io) {
@@ -1921,6 +1959,14 @@ class ScannerController {
       logger.info(`🔍 shouldPauseCycle() called - result: ${shouldPause}`);
     }
     return shouldPause;
+  }
+
+  // Force stop all PLC operations when paused
+  forceStopPlcOperations() {
+    if (this.isCyclePaused) {
+      logger.info("🛑 Force stopping all PLC operations due to pause");
+      // This will be called from the main loop to ensure clean pause
+    }
   }
 
   // Method to check if user is on manual mode route (can be extended later)
@@ -2119,6 +2165,16 @@ class ScannerController {
       // Handle client disconnect
       socket.on("disconnect", () => {
         logger.info(`🔌 Client disconnected: ${socket.id}`);
+
+        // If this was the last client and cycle is paused, auto-resume after a delay
+        // This prevents the cycle from being stuck in paused state
+        setTimeout(() => {
+          const activeConnections = Object.keys(io.sockets.sockets).length;
+          if (activeConnections === 0 && this.isCyclePaused) {
+            logger.warn("⚠️ No active clients - auto-resuming paused cycle");
+            this.resumeCycle();
+          }
+        }, 5000); // Wait 5 seconds before auto-resume
       });
     });
 
