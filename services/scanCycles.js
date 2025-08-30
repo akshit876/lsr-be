@@ -244,6 +244,10 @@ class ScannerController {
         await this.tcpScannerService.closeConnection();
       }
 
+      // Stop all active jog events before cleanup
+      logger.info("🛑 Stopping all active jog events...");
+      await this.stopAllJogEvents();
+
       logger.info("📦 Disconnecting from MongoDB...");
       await mongoDbService.disconnect();
 
@@ -1464,6 +1468,9 @@ class ScannerController {
       logger.info("🔗 Using internal COM port service");
     }
 
+    // Setup UI event listeners for PLC control
+    this.setupUIEventListeners(io);
+
     this.setupResetMonitor();
   }
 
@@ -1622,6 +1629,238 @@ class ScannerController {
       }
       throw error;
     }
+  }
+
+  // PLC Register Control Methods for 1900 series
+  // Jog events: Keep ON until UI stop event
+  // Manual events: Auto OFF after 1 second
+
+  // Map of active jog events and their timers
+  activeJogEvents = new Map();
+
+  // Handle jog event - keep PLC bit ON until stop event
+  async handleJogEvent(register, bit, eventName) {
+    try {
+      logger.info(
+        `🎮 Jog event "${eventName}" - turning ON register ${register}.${bit}`
+      );
+
+      // Turn ON the PLC bit
+      await writeBit(register, bit, 1);
+      logger.success(
+        `✅ Jog event "${eventName}" - register ${register}.${bit} turned ON`
+      );
+
+      // Store the event info for later cleanup
+      this.activeJogEvents.set(eventName, {
+        register,
+        bit,
+        startTime: Date.now(),
+      });
+
+      logger.info(
+        `📝 Jog event "${eventName}" registered - waiting for stop signal from UI`
+      );
+    } catch (error) {
+      logger.error(`❌ Error handling jog event "${eventName}":`, error);
+    }
+  }
+
+  // Handle manual event - turn OFF PLC bit after 1 second
+  async handleManualEvent(register, bit, eventName) {
+    try {
+      logger.info(
+        `🔧 Manual event "${eventName}" - turning ON register ${register}.${bit} for 1 second`
+      );
+
+      // Turn ON the PLC bit
+      await writeBit(register, bit, 1);
+      logger.success(
+        `✅ Manual event "${eventName}" - register ${register}.${bit} turned ON`
+      );
+
+      // Schedule automatic turn OFF after 1 second
+      setTimeout(async () => {
+        try {
+          await writeBit(register, bit, 0);
+          logger.success(
+            `✅ Manual event "${eventName}" - register ${register}.${bit} auto-turned OFF after 1 second`
+          );
+        } catch (error) {
+          logger.error(
+            `❌ Error auto-turning OFF manual event "${eventName}":`,
+            error
+          );
+        }
+      }, 1000);
+    } catch (error) {
+      logger.error(`❌ Error handling manual event "${eventName}":`, error);
+    }
+  }
+
+  // Stop jog event - turn OFF PLC bit and remove from active events
+  async stopJogEvent(eventName) {
+    try {
+      const eventInfo = this.activeJogEvents.get(eventName);
+      if (!eventInfo) {
+        logger.warn(`⚠️ Jog event "${eventName}" not found in active events`);
+        return;
+      }
+
+      const { register, bit, startTime } = eventInfo;
+      const duration = Date.now() - startTime;
+
+      logger.info(
+        `🛑 Stopping jog event "${eventName}" - turning OFF register ${register}.${bit}`
+      );
+
+      // Turn OFF the PLC bit
+      await writeBit(register, bit, 0);
+      logger.success(
+        `✅ Jog event "${eventName}" stopped - register ${register}.${bit} turned OFF (duration: ${duration}ms)`
+      );
+
+      // Remove from active events
+      this.activeJogEvents.delete(eventName);
+      logger.info(`📝 Jog event "${eventName}" removed from active events`);
+    } catch (error) {
+      logger.error(`❌ Error stopping jog event "${eventName}":`, error);
+    }
+  }
+
+  // Stop all active jog events (cleanup method)
+  async stopAllJogEvents() {
+    try {
+      const eventNames = Array.from(this.activeJogEvents.keys());
+      if (eventNames.length === 0) {
+        logger.info("📝 No active jog events to stop");
+        return;
+      }
+
+      logger.info(
+        `🛑 Stopping all active jog events: ${eventNames.join(", ")}`
+      );
+
+      // Stop each active jog event
+      for (const eventName of eventNames) {
+        await this.stopJogEvent(eventName);
+      }
+
+      logger.success("✅ All jog events stopped successfully");
+    } catch (error) {
+      logger.error("❌ Error stopping all jog events:", error);
+    }
+  }
+
+  // Get list of active jog events
+  getActiveJogEvents() {
+    const events = Array.from(this.activeJogEvents.entries()).map(
+      ([eventName, info]) => ({
+        eventName,
+        register: info.register,
+        bit: info.bit,
+        startTime: info.startTime,
+        duration: Date.now() - info.startTime,
+      })
+    );
+
+    return events;
+  }
+
+  // Handle UI events for PLC control
+  handleUIEvent(eventType, eventData) {
+    try {
+      const { eventName, register, bit } = eventData;
+
+      switch (eventType) {
+        case "jog_start":
+          this.handleJogEvent(register, bit, eventName);
+          break;
+
+        case "jog_stop":
+          this.stopJogEvent(eventName);
+          break;
+
+        case "manual_action":
+          this.handleManualEvent(register, bit, eventName);
+          break;
+
+        case "emergency_stop":
+          this.stopAllJogEvents();
+          break;
+
+        default:
+          logger.warn(`⚠️ Unknown UI event type: ${eventType}`);
+      }
+
+      // Emit status update to UI
+      if (this.io) {
+        this.io.emit("plc_status_update", {
+          timestamp: new Date().toISOString(),
+          activeJogEvents: this.getActiveJogEvents(),
+          lastEvent: { type: eventType, data: eventData },
+        });
+      }
+    } catch (error) {
+      logger.error(`❌ Error handling UI event ${eventType}:`, error);
+    }
+  }
+
+  // Setup UI event listeners
+  setupUIEventListeners(io) {
+    if (!io) {
+      return;
+    }
+
+    logger.info("🎧 Setting up UI event listeners for PLC control");
+
+    // Jog start event
+    io.on("jog_start", (eventData) => {
+      logger.info(
+        `🎮 UI jog start event received: ${JSON.stringify(eventData)}`
+      );
+      this.handleUIEvent("jog_start", eventData);
+    });
+
+    // Jog stop event
+    io.on("jog_stop", (eventData) => {
+      logger.info(
+        `🛑 UI jog stop event received: ${JSON.stringify(eventData)}`
+      );
+      this.handleUIEvent("jog_stop", eventData);
+    });
+
+    // Manual action event
+    io.on("manual_action", (eventData) => {
+      logger.info(
+        `🔧 UI manual action event received: ${JSON.stringify(eventData)}`
+      );
+      this.handleUIEvent("manual_action", eventData);
+    });
+
+    // Emergency stop event
+    io.on("emergency_stop", () => {
+      logger.warn(
+        "🚨 UI emergency stop event received - stopping all jog events"
+      );
+      this.handleUIEvent("emergency_stop", {});
+    });
+
+    // Get status request
+    io.on("get_plc_status", () => {
+      logger.info("📊 UI requested PLC status");
+      io.emit("plc_status_response", {
+        timestamp: new Date().toISOString(),
+        activeJogEvents: this.getActiveJogEvents(),
+        modelSpecificBits: {
+          D1810_0: null, // Will be populated when needed
+          D1810_1: null,
+          D1810_2: null,
+        },
+      });
+    });
+
+    logger.success("✅ UI event listeners configured for PLC control");
   }
 
   // Remove testComPortCommunication (not needed for TCP scanner)
