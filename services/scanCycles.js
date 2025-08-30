@@ -643,7 +643,7 @@ class ScannerController {
 
       while (this.isRunning) {
         try {
-          await sleep(10000); // Changed from 1200ms to 10000ms (10 seconds)
+          // await sleep(10000); // Changed from 1200ms to 10000ms (10 seconds)
 
           // Clear separator and print cycle count
           logger.separator.hash();
@@ -711,7 +711,7 @@ class ScannerController {
       logger.warn(
         "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
       );
-      await sleep(1000);
+      // await sleep(1000);
       await this.saveToMongoDB({
         io: this.io,
         serialNumber: barcodeData.serialNo,
