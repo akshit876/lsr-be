@@ -953,7 +953,7 @@ class ScannerController {
     }
   }
 
-  // Helper method to clean scanner data - ignore leading zeros and extract meaningful content
+  // Helper method to clean scanner data - preserve leading zeros for valid data
   cleanScannerData(scannerData) {
     if (!scannerData) {
       return scannerData;
@@ -967,28 +967,8 @@ class ScannerController {
       return "NG";
     }
 
-    // For valid data (not NG), only remove newlines but keep leading zeros
-    // Only remove leading zeros if the data becomes empty after removal
-    const withoutLeadingZeros = cleaned.replace(/^0+/, "");
-
-    // If removing leading zeros makes the data empty, keep the original
-    if (!withoutLeadingZeros || withoutLeadingZeros === "") {
-      return cleaned; // Return original data with leading zeros
-    }
-
-    // If data is still meaningful after removing leading zeros, use that
-    // But only if it's significantly different (more than just a few zeros)
-    if (
-      withoutLeadingZeros.length < cleaned.length &&
-      withoutLeadingZeros.length > 0
-    ) {
-      // Check if the remaining data is meaningful
-      if (withoutLeadingZeros.trim() !== "") {
-        return withoutLeadingZeros.trim();
-      }
-    }
-
-    // Return the original cleaned data (with leading zeros preserved)
+    // For valid data (not NG), ONLY remove newlines and whitespace
+    // NEVER remove leading zeros - they are part of the valid data
     return cleaned;
   }
 
