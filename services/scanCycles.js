@@ -959,22 +959,36 @@ class ScannerController {
       return scannerData;
     }
 
-    // Remove leading zeros and newlines, trim whitespace
-    let cleaned = scannerData.toString().trim();
+    // Remove newlines and trim whitespace first
+    const cleaned = scannerData.toString().trim();
 
     // If data contains "NG" (case insensitive), return "NG"
     if (cleaned.toUpperCase().includes("NG")) {
       return "NG";
     }
 
-    // Remove leading zeros and newlines
-    cleaned = cleaned.replace(/^0+\s*\n?/, "").trim();
+    // For valid data (not NG), only remove newlines but keep leading zeros
+    // Only remove leading zeros if the data becomes empty after removal
+    const withoutLeadingZeros = cleaned.replace(/^0+/, "");
 
-    // If after cleaning we have nothing meaningful, return "NG"
-    if (!cleaned || cleaned === "") {
-      return "NG";
+    // If removing leading zeros makes the data empty, keep the original
+    if (!withoutLeadingZeros || withoutLeadingZeros === "") {
+      return cleaned; // Return original data with leading zeros
     }
 
+    // If data is still meaningful after removing leading zeros, use that
+    // But only if it's significantly different (more than just a few zeros)
+    if (
+      withoutLeadingZeros.length < cleaned.length &&
+      withoutLeadingZeros.length > 0
+    ) {
+      // Check if the remaining data is meaningful
+      if (withoutLeadingZeros.trim() !== "") {
+        return withoutLeadingZeros.trim();
+      }
+    }
+
+    // Return the original cleaned data (with leading zeros preserved)
     return cleaned;
   }
 
