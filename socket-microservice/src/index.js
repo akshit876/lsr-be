@@ -115,7 +115,11 @@ class SocketMicroservice {
 
   async startServer() {
     return new Promise((resolve, reject) => {
-      this.server.listen(config.server.port, (err) => {
+      logger.info(
+        `🔍 Attempting to bind server to ${config.server.host}:${config.server.port}`
+      );
+
+      this.server.listen(config.server.port, config.server.host, (err) => {
         if (err) {
           logger.error("❌ Socket service failed to start:", err.message);
           reject(err);
@@ -123,8 +127,13 @@ class SocketMicroservice {
         }
 
         logger.success(
-          `✅ Socket Microservice listening on port ${config.server.port}`
+          `✅ Socket Microservice listening on ${config.server.host}:${config.server.port}`
         );
+
+        // Log the actual address the server is bound to
+        const address = this.server.address();
+        logger.info(`📡 Server bound to: ${address.address}:${address.port}`);
+
         resolve();
       });
     });
