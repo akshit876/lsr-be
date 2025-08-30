@@ -945,6 +945,31 @@ class ScannerController {
     }
   }
 
+  // Helper method to clean scanner data - ignore leading zeros and extract meaningful content
+  cleanScannerData(scannerData) {
+    if (!scannerData) {
+      return scannerData;
+    }
+
+    // Remove leading zeros and newlines, trim whitespace
+    let cleaned = scannerData.toString().trim();
+
+    // If data contains "NG" (case insensitive), return "NG"
+    if (cleaned.toUpperCase().includes("NG")) {
+      return "NG";
+    }
+
+    // Remove leading zeros and newlines
+    cleaned = cleaned.replace(/^0+\s*\n?/, "").trim();
+
+    // If after cleaning we have nothing meaningful, return "NG"
+    if (!cleaned || cleaned === "") {
+      return "NG";
+    }
+
+    return cleaned;
+  }
+
   // Helper methods for scan configuration
   getScanRegister(scanType) {
     switch (scanType) {
@@ -1147,8 +1172,14 @@ class ScannerController {
       return { shouldContinue: false };
     }
 
+    // Clean the scanner data to handle cases like "00\nNG" -> "NG"
+    const cleanedData = this.cleanScannerData(scannerData);
+    logger.info(
+      `🧹 Original scanner data: "${scannerData}" -> Cleaned: "${cleanedData}"`
+    );
+
     // Handle timeout/null/undefined or explicit "NG" response
-    if (!scannerData || scannerData.trim().toUpperCase() === "NG") {
+    if (!cleanedData || cleanedData.trim().toUpperCase() === "NG") {
       logger.warn(
         "⚠️ First scan data is NG or timeout, proceeding with workflow"
       );
@@ -1158,14 +1189,14 @@ class ScannerController {
     }
 
     // If we get here and have valid scanner data, it means the part is already marked
-    if (scannerData && scannerData.trim() !== "") {
+    if (cleanedData && cleanedData.trim() !== "") {
       logger.warn("⚠️ Part appears to be already marked");
 
       // Emit the "part_already_marked" event to the UI
       if (this.io) {
         this.io.emit("first_scan_ok", {
           timestamp: new Date(),
-          scannerData: scannerData,
+          scannerData: cleanedData,
           message:
             "Part detected with existing marking. Please use an unmarked part.",
         });
@@ -1305,8 +1336,14 @@ class ScannerController {
         scanType: "verification",
       });
 
+      // Clean the scanner data to handle cases like "00\nNG" -> "NG"
+      const cleanedData = this.cleanScannerData(scannerData);
+      logger.info(
+        `🧹 Original verification scanner data: "${scannerData}" -> Cleaned: "${cleanedData}"`
+      );
+
       // Handle timeout/null/undefined cases as NG
-      const effectiveScannerData = scannerData || "NG";
+      const effectiveScannerData = cleanedData || "NG";
 
       if (effectiveScannerData !== "NG") {
         logger.success("Verification scan OK");
