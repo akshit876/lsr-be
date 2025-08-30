@@ -163,6 +163,9 @@ class ScannerController {
     logger.info("🔄 Resetting bits...");
     await this.resetSpecificBits(1414, [3, 4, 6, 7]);
     await this.resetSpecificBits(1415, [4]);
+
+    // Note: Model-specific bits are NOT reset here - they stay ON throughout the session
+
     logger.success("Bits reset successfully");
   }
 
@@ -689,6 +692,9 @@ class ScannerController {
       return;
     }
 
+    // Check if we need to set additional bit for specific model
+    await this.handleModelSpecificBits();
+
     // Step 1: First Scanner Check
     const firstScanResult = await this.handleFirstScan(tcpScannerService);
     if (!firstScanResult.shouldContinue) {
@@ -737,6 +743,8 @@ class ScannerController {
     logger.info(
       `🔍 Verification scan result: ${verificationScanResult.success}`
     );
+
+    // Note: Model-specific bits are kept ON throughout the session, not reset after each cycle
 
     if (finalChecksResult) {
       this.cycleCount++;
@@ -968,6 +976,97 @@ class ScannerController {
     }
 
     return cleaned;
+  }
+
+  // Handle model-specific bit operations
+  async handleModelSpecificBits() {
+    try {
+      const currentModel = await this.getCurrentModelNumber();
+
+      if (currentModel === "FRONT_LEFT 1025969") {
+        logger.info(
+          "🔧 Model FRONT_LEFT 1025969 detected - setting additional bit D1810.0"
+        );
+        await writeBit(1810, 0, 1);
+        logger.success(
+          "✅ Additional bit D1810.0 set to ON for FRONT_LEFT 1025969 model"
+        );
+      } else if (currentModel === "FRONT_RIGHT 1025974") {
+        logger.info(
+          "🔧 Model FRONT_RIGHT 1025974 detected - setting additional bit D1810.1"
+        );
+        await writeBit(1810, 1, 1);
+        logger.success(
+          "✅ Additional bit D1810.1 set to ON for FRONT_RIGHT 1025974 model"
+        );
+      } else if (currentModel) {
+        // For all other models, set D1810.2
+        logger.info(
+          `🔧 Model ${currentModel} detected - setting additional bit D1810.2 for other models`
+        );
+        await writeBit(1810, 2, 1);
+        logger.success(
+          `✅ Additional bit D1810.2 set to ON for model: ${currentModel}`
+        );
+      } else {
+        logger.info("📋 No model detected - no additional bits required");
+      }
+    } catch (error) {
+      logger.error("❌ Error handling model-specific bits:", error);
+      // Don't throw error - continue with cycle even if this fails
+    }
+  }
+
+  // Reset model-specific bits after cycle completion
+  async resetModelSpecificBits() {
+    try {
+      const currentModel = await this.getCurrentModelNumber();
+
+      if (currentModel === "FRONT_LEFT 1025969") {
+        logger.info(
+          "🔧 Resetting additional bit D1810.0 for FRONT_LEFT 1025969 model"
+        );
+        await writeBit(1810, 0, 0);
+        logger.success("✅ Additional bit D1810.0 reset to OFF");
+      } else if (currentModel === "FRONT_RIGHT 1025974") {
+        logger.info(
+          "🔧 Resetting additional bit D1810.1 for FRONT_RIGHT 1025974 model"
+        );
+        await writeBit(1810, 1, 0);
+        logger.success("✅ Additional bit D1810.1 reset to OFF");
+      } else if (currentModel) {
+        // Reset D1810.2 for all other models
+        logger.info(
+          `🔧 Resetting additional bit D1810.2 for model: ${currentModel}`
+        );
+        await writeBit(1810, 2, 0);
+        logger.success("✅ Additional bit D1810.2 reset to OFF");
+      }
+    } catch (error) {
+      logger.error("❌ Error resetting model-specific bits:", error);
+      // Don't throw error - continue with cleanup even if this fails
+    }
+  }
+
+  // Reset all model-specific bits (used during general reset operations)
+  async resetAllModelSpecificBits() {
+    try {
+      logger.info(
+        "🔧 Resetting all model-specific bits D1810.0, D1810.1, D1810.2"
+      );
+
+      // Reset all three bits to ensure clean state
+      await Promise.all([
+        writeBit(1810, 0, 0),
+        writeBit(1810, 1, 0),
+        writeBit(1810, 2, 0),
+      ]);
+
+      logger.success("✅ All model-specific bits reset to OFF");
+    } catch (error) {
+      logger.error("❌ Error resetting all model-specific bits:", error);
+      // Don't throw error - continue with cleanup even if this fails
+    }
   }
 
   // Helper methods for scan configuration
@@ -1301,6 +1400,9 @@ class ScannerController {
   async handleReset() {
     try {
       logger.info("🔄 Handling reset signal");
+
+      // Note: Model-specific bits are NOT reset during reset signals - they stay ON
+
       await writeBit(1500, 3, 1);
       await this.resetBits();
       this.barcodeGenerator.decSerialNo();
