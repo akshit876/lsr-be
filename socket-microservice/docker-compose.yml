@@ -1,0 +1,74 @@
+version: "3.8"
+
+services:
+  # Socket Microservice
+  socket-service:
+    build: .
+    container_name: lsr-socket-microservice
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - SOCKET_SERVICE_PORT=3003
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_MODBUS_IP=${NEXT_PUBLIC_MODBUS_IP:-192.168.3.146}
+      - NEXT_PUBLIC_MODBUS_PORT=${NEXT_PUBLIC_MODBUS_PORT:-502}
+      - MODBUS_IP=${MODBUS_IP:-192.168.3.146}
+      - MODBUS_PORT=${MODBUS_PORT:-502}
+      - MODBUS_TIMEOUT=${MODBUS_TIMEOUT:-5000}
+      - MODBUS_RETRIES=${MODBUS_RETRIES:-3}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - lsr-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3003/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for session management (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: lsr-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - lsr-network
+    command: redis-server --appendonly yes
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: lsr-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - socket-service
+    restart: unless-stopped
+    networks:
+      - lsr-network
+
+volumes:
+  redis_data:
+
+networks:
+  lsr-network:
+    driver: bridge

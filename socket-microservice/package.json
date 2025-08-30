@@ -1,0 +1,64 @@
+{
+  "name": "lsr-socket-microservice",
+  "version": "1.0.0",
+  "description": "Independent Socket.IO microservice for LSR PLC control events",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "docker:build": "docker build -t lsr-socket-service .",
+    "docker:run": "docker run -p 3003:3003 lsr-socket-service",
+    "docker:compose": "docker-compose up -d",
+    "docker:compose:down": "docker-compose down",
+    "health": "curl http://localhost:3003/health",
+    "clean": "rm -rf node_modules package-lock.json dist coverage"
+  },
+  "keywords": [
+    "socket.io",
+    "microservice",
+    "plc",
+    "modbus",
+    "real-time",
+    "industrial-automation"
+  ],
+  "author": "LSR Team",
+  "license": "MIT",
+  "dependencies": {
+    "socket.io": "^4.7.4",
+    "modbus-serial": "^8.0.6",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "eslint": "^8.56.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "supertest": "^6.3.3",
+    "socket.io-client": "^4.7.4"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/lsr-socket-microservice.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/lsr-socket-microservice/issues"
+  },
+  "homepage": "https://github.com/your-org/lsr-socket-microservice#readme"
+}

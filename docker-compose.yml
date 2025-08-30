@@ -1,0 +1,123 @@
+version: "3.8"
+
+services:
+  # Main LSR Backend Server
+  main-server:
+    build: .
+    container_name: lsr-main-server
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/lsr}
+      - NEXT_PUBLIC_MODBUS_IP=${NEXT_PUBLIC_MODBUS_IP:-192.168.3.146}
+      - NEXT_PUBLIC_MODBUS_PORT=${NEXT_PUBLIC_MODBUS_PORT:-502}
+      - MODBUS_IP=${MODBUS_IP:-192.168.3.146}
+      - MODBUS_PORT=${MODBUS_PORT:-502}
+    volumes:
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+      - ./data:/app/data
+    restart: unless-stopped
+    networks:
+      - lsr-network
+    depends_on:
+      - mongo
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Socket Microservice
+  socket-service:
+    build: ./socket-microservice
+    container_name: lsr-socket-microservice
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - SOCKET_SERVICE_PORT=3003
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_MODBUS_IP=${NEXT_PUBLIC_MODBUS_IP:-192.168.3.146}
+      - NEXT_PUBLIC_MODBUS_PORT=${NEXT_PUBLIC_MODBUS_PORT:-502}
+      - MODBUS_IP=${MODBUS_IP:-192.168.3.146}
+      - MODBUS_PORT=${MODBUS_PORT:-502}
+      - MODBUS_TIMEOUT=${MODBUS_TIMEOUT:-5000}
+      - MODBUS_RETRIES=${MODBUS_RETRIES:-3}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./socket-microservice/logs:/app/logs
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - lsr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MongoDB Database
+  mongo:
+    image: mongo:6.0
+    container_name: lsr-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-password}
+      - MONGO_INITDB_DATABASE=lsr
+    volumes:
+      - mongo_data:/data/db
+      - ./scripts/initializeDB.js:/docker-entrypoint-initdb.d/initializeDB.js:ro
+    restart: unless-stopped
+    networks:
+      - lsr-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for session management (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: lsr-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - lsr-network
+    command: redis-server --appendonly yes
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: lsr-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - main-server
+      - socket-service
+    restart: unless-stopped
+    networks:
+      - lsr-network
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  lsr-network:
+    driver: bridge
