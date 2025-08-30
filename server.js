@@ -190,6 +190,132 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Manual Mode Event
+  socket.on("manual-mode", async (data) => {
+    try {
+      logger.info(`Client ${socket.id} activated manual mode (1483.0)`);
+      await writeBit(1483, 0, data.mode === "on" ? 1 : 0);
+
+      // Set speed if provided
+      if (data.speed) {
+        await writeRegister(1484, data.speed);
+        logger.info(`✅ Manual mode speed set to ${data.speed}`);
+      }
+
+      logger.info(`✅ Manual mode ${data.mode} activated`);
+      socket.emit("manual_mode_success", {
+        timestamp: new Date().toISOString(),
+        mode: data.mode,
+        speed: data.speed || 100,
+        register: 1483,
+        bit: 0,
+        value: data.mode === "on" ? 1 : 0,
+      });
+    } catch (error) {
+      logger.error(
+        `Error activating manual mode for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to activate manual mode",
+        details: error.message,
+      });
+    }
+  });
+
+  // Jog Forward Event
+  socket.on("jog-forward", async (data) => {
+    try {
+      logger.info(`Client ${socket.id} activated jog forward (1485.0)`);
+      await writeBit(1485, 0, 1);
+
+      // Set jog speed if provided
+      if (data.speed) {
+        await writeRegister(1486, data.speed);
+        logger.info(`✅ Jog forward speed set to ${data.speed}`);
+      }
+
+      logger.info("✅ Jog forward activated");
+      socket.emit("jog_forward_success", {
+        timestamp: new Date().toISOString(),
+        direction: "forward",
+        speed: data.speed || 50,
+        register: 1485,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(
+        `Error activating jog forward for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to activate jog forward",
+        details: error.message,
+      });
+    }
+  });
+
+  // Jog Reverse Event
+  socket.on("jog-reverse", async (data) => {
+    try {
+      logger.info(`Client ${socket.id} activated jog reverse (1487.0)`);
+      await writeBit(1487, 0, 1);
+
+      // Set jog speed if provided
+      if (data.speed) {
+        await writeRegister(1488, data.speed);
+        logger.info(`✅ Jog reverse speed set to ${data.speed}`);
+      }
+
+      logger.info("✅ Jog reverse activated");
+      socket.emit("jog_reverse_success", {
+        timestamp: new Date().toISOString(),
+        direction: "reverse",
+        speed: data.speed || 50,
+        register: 1487,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(
+        `Error activating jog reverse for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to activate jog reverse",
+        details: error.message,
+      });
+    }
+  });
+
+  // Jog Stop Event
+  socket.on("jog-stop", async () => {
+    try {
+      logger.info(`Client ${socket.id} stopped jog operation`);
+
+      // Stop both jog directions
+      await writeBit(1485, 0, 0); // Stop forward
+      await writeBit(1487, 0, 0); // Stop reverse
+
+      logger.info("✅ Jog operation stopped");
+      socket.emit("jog_stop_success", {
+        timestamp: new Date().toISOString(),
+        message: "Jog operation stopped",
+        registers: [
+          { register: 1485, bit: 0, value: 0 },
+          { register: 1487, bit: 0, value: 0 },
+        ],
+      });
+    } catch (error) {
+      logger.error(`Error stopping jog for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to stop jog operation",
+        details: error.message,
+      });
+    }
+  });
+
   // UI Mark On Event
   socket.on("mark_on", async () => {
     try {
@@ -419,7 +545,7 @@ server.listen(PORT, async (err) => {
     // barcodeGenerator.initialize('main-data', 'records');
     // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
     // comService = new BufferedComPortService({
-    //   path: 'COM3',
+    //   path: 'COM3',s
     //   baudRate: 9600,
     //   logDir: 'com_port_logs',
     // });
