@@ -987,18 +987,44 @@ class ScannerController {
       logger.info(
         "🔧 Resetting all model-specific bits D1810.0, D1810.1, D1810.2 to OFF first"
       );
-      await Promise.all([
-        writeBit(1810, 0, 0),
-        writeBit(1810, 1, 0),
-        writeBit(1810, 2, 0),
-      ]);
+
+      // Use sequential operations instead of Promise.all to avoid hanging
+      // Add timeout protection to prevent hanging
+      const writeBitWithTimeout = async (
+        register,
+        bit,
+        value,
+        timeoutMs = 5000
+      ) => {
+        const writePromise = writeBit(register, bit, value);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Timeout writing bit ${bit} to register ${register} after ${timeoutMs}ms`
+                )
+              ),
+            timeoutMs
+          );
+        });
+        return Promise.race([writePromise, timeoutPromise]);
+      };
+
+      logger.info("🔧 Resetting bit D1810.0 to OFF...");
+      await writeBitWithTimeout(1810, 0, 0);
+      logger.info("🔧 Resetting bit D1810.1 to OFF...");
+      await writeBitWithTimeout(1810, 1, 0);
+      logger.info("🔧 Resetting bit D1810.2 to OFF...");
+      await writeBitWithTimeout(1810, 2, 0);
+
       logger.success("✅ All model-specific bits reset to OFF");
 
       if (currentModel === "FRONT_LEFT 1025969") {
         logger.info(
           "🔧 Model FRONT_LEFT 1025969 detected - setting additional bit D1810.0"
         );
-        await writeBit(1810, 0, 1);
+        await writeBitWithTimeout(1810, 0, 1);
         logger.success(
           "✅ Additional bit D1810.0 set to ON for FRONT_LEFT 1025969 model"
         );
@@ -1006,7 +1032,7 @@ class ScannerController {
         logger.info(
           "🔧 Model FRONT_RIGHT 1025974 detected - setting additional bit D1810.1"
         );
-        await writeBit(1810, 1, 1);
+        await writeBitWithTimeout(1810, 1, 1);
         logger.success(
           "✅ Additional bit D1810.1 set to ON for FRONT_RIGHT 1025974 model"
         );
@@ -1015,7 +1041,7 @@ class ScannerController {
         logger.info(
           `🔧 Model ${currentModel} detected - setting additional bit D1810.2 for other models`
         );
-        await writeBit(1810, 2, 1);
+        await writeBitWithTimeout(1810, 2, 1);
         logger.success(
           `✅ Additional bit D1810.2 set to ON for model: ${currentModel}`
         );
@@ -1033,24 +1059,46 @@ class ScannerController {
     try {
       const currentModel = await this.getCurrentModelNumber();
 
+      // Add timeout protection to prevent hanging
+      const writeBitWithTimeout = async (
+        register,
+        bit,
+        value,
+        timeoutMs = 5000
+      ) => {
+        const writePromise = writeBit(register, bit, value);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Timeout writing bit ${bit} to register ${register} after ${timeoutMs}ms`
+                )
+              ),
+            timeoutMs
+          );
+        });
+        return Promise.race([writePromise, timeoutPromise]);
+      };
+
       if (currentModel === "FRONT_LEFT 1025969") {
         logger.info(
           "🔧 Resetting additional bit D1810.0 for FRONT_LEFT 1025969 model"
         );
-        await writeBit(1810, 0, 0);
+        await writeBitWithTimeout(1810, 0, 0);
         logger.success("✅ Additional bit D1810.0 reset to OFF");
       } else if (currentModel === "FRONT_RIGHT 1025974") {
         logger.info(
           "🔧 Resetting additional bit D1810.1 for FRONT_RIGHT 1025974 model"
         );
-        await writeBit(1810, 1, 0);
+        await writeBitWithTimeout(1810, 1, 0);
         logger.success("✅ Additional bit D1810.1 reset to OFF");
       } else if (currentModel) {
         // Reset D1810.2 for all other models
         logger.info(
           `🔧 Resetting additional bit D1810.2 for model: ${currentModel}`
         );
-        await writeBit(1810, 2, 0);
+        await writeBitWithTimeout(1810, 2, 0);
         logger.success("✅ Additional bit D1810.2 reset to OFF");
       }
     } catch (error) {
@@ -1066,12 +1114,35 @@ class ScannerController {
         "🔧 Resetting all model-specific bits D1810.0, D1810.1, D1810.2"
       );
 
-      // Reset all three bits to ensure clean state
-      await Promise.all([
-        writeBit(1810, 0, 0),
-        writeBit(1810, 1, 0),
-        writeBit(1810, 2, 0),
-      ]);
+      // Reset all three bits sequentially to avoid hanging
+      // Add timeout protection to prevent hanging
+      const writeBitWithTimeout = async (
+        register,
+        bit,
+        value,
+        timeoutMs = 5000
+      ) => {
+        const writePromise = writeBit(register, bit, value);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Timeout writing bit ${bit} to register ${register} after ${timeoutMs}ms`
+                )
+              ),
+            timeoutMs
+          );
+        });
+        return Promise.race([writePromise, timeoutPromise]);
+      };
+
+      logger.info("🔧 Resetting bit D1810.0 to OFF...");
+      await writeBitWithTimeout(1810, 0, 0);
+      logger.info("🔧 Resetting bit D1810.1 to OFF...");
+      await writeBitWithTimeout(1810, 1, 0);
+      logger.info("🔧 Resetting bit D1810.2 to OFF...");
+      await writeBitWithTimeout(1810, 2, 0);
 
       logger.success("✅ All model-specific bits reset to OFF");
     } catch (error) {
