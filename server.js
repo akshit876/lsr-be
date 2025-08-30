@@ -1,17 +1,9 @@
 import { createServer } from "http";
-import fs from "fs";
 import morgan from "morgan";
 import { Server } from "socket.io";
 import logger from "./logger.js";
-import {
-  handleFirstScan,
-  handleSecondScan,
-  watchCodeFile,
-} from "./services/serialPortService.js";
-import { MockSerialPort } from "./services/mockSerialPort.js";
 import { fileURLToPath } from "url";
-import path, { dirname } from "path";
-import { getCurrentDate } from "./services/scanUtils.js";
+import { dirname } from "path";
 import {
   connect,
   readBit,
@@ -19,15 +11,11 @@ import {
   writeBit,
   writeRegister,
 } from "./services/modbus.js";
-import { manualRun } from "./services/manualRunService.js";
 import mongoDbService from "./services/mongoDbService.js";
-import { runContinuousScan } from "./services/testCycle.js";
 import cronService from "./services/cronService.js";
-import ShiftUtility from "./services/ShiftUtility.js";
-import BufferedComPortService from "./services/ComPortService.js";
-import BarcodeGenerator from "./services/barcodeGenrator.js";
 import { MongoClient } from "mongodb";
 import { scannerController } from "./services/scanCycles.js";
+import socketEventService from "./services/socketEventService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,14 +33,6 @@ function emitErrorEvent(socket, errorType, errorMessage) {
     });
   }
   logger.error(`${errorType}: ${errorMessage}`);
-}
-
-function floatToInt(value, isSpeed = false) {
-  if (isSpeed) {
-    return Math.round(parseFloat(value));
-  } else {
-    return Math.round(parseFloat(value) * 100);
-  }
 }
 
 const server = createServer((req, res) => {
@@ -169,162 +149,48 @@ io.on("connection", (socket) => {
     }
   });
 
-  // UI Scanner Trigger Event
+  // UI Scanner Trigger Event - handled by SocketEventService
   socket.on("scanner_trigger", async () => {
     try {
-      logger.info(`Client ${socket.id} triggered scanner (1481.0)`);
-      await writeBit(1481, 0, 1);
-      logger.info("✅ Scanner trigger bit 1481.0 set to 1");
-      socket.emit("scanner_trigger_success", {
-        timestamp: new Date().toISOString(),
-        register: 1481,
-        bit: 0,
-        value: 1,
-      });
+      await socketEventService.handleScannerTrigger(socket);
     } catch (error) {
-      logger.error(`Error triggering scanner for client ${socket.id}:`, error);
-      socket.emit("error", {
-        message: "Failed to trigger scanner",
-        details: error.message,
-      });
+      logger.error(`Error in scanner_trigger handler:`, error);
     }
   });
 
-  // UI Mark On Event
+  // UI Mark On Event - handled by SocketEventService
   socket.on("mark_on", async () => {
     try {
-      logger.info(`Client ${socket.id} triggered mark on (1480.0)`);
-      await writeBit(1480, 0, 1);
-      logger.info("✅ Mark on bit 1480.0 set to 1");
-      socket.emit("mark_on_success", {
-        timestamp: new Date().toISOString(),
-        register: 1480,
-        bit: 0,
-        value: 1,
-      });
+      await socketEventService.handleMarkOn(socket);
     } catch (error) {
-      logger.error(`Error triggering mark on for client ${socket.id}:`, error);
-      socket.emit("error", {
-        message: "Failed to trigger mark on",
-        details: error.message,
-      });
+      logger.error(`Error in mark_on handler:`, error);
     }
   });
 
-  // UI Light On Event
+  // UI Light On Event - handled by SocketEventService
   socket.on("light_on", async () => {
     try {
-      logger.info(`Client ${socket.id} triggered light on (1482.0)`);
-      await writeBit(1482, 0, 1);
-      logger.info("✅ Light on bit 1482.0 set to 1");
-      socket.emit("light_on_success", {
-        timestamp: new Date().toISOString(),
-        register: 1482,
-        bit: 0,
-        value: 1,
-      });
+      await socketEventService.handleLightOn(socket);
     } catch (error) {
-      logger.error(`Error triggering light on for client ${socket.id}:`, error);
-      socket.emit("error", {
-        message: "Failed to trigger light on",
-        details: error.message,
-      });
+      logger.error(`Error in light_on handler:`, error);
     }
   });
 
+  // Manual Run Event - handled by SocketEventService
   socket.on("manual-run", async (operation) => {
     try {
-      const result = await manualRun(operation);
-      logger.info(`Client ${socket.id} triggered manual run: ${operation}`);
-      socket.emit("manualRunSuccess", { operation, result });
+      await socketEventService.handleManualRun(socket, operation);
     } catch (error) {
-      logger.error(
-        `Error executing manual run for client ${socket.id}:`,
-        error
-      );
-      socket.emit("error", {
-        message: "Failed to execute manual run",
-        details: error.message,
-      });
+      logger.error(`Error in manual-run handler:`, error);
     }
   });
 
+  // Servo Setting Change Event - handled by SocketEventService
   socket.on("servo-setting-change", async (data) => {
     try {
-      const { setting, value } = data;
-      let register;
-      let intValue;
-
-      switch (setting) {
-        case "homePosition":
-          if (value.position !== undefined) {
-            register = 550;
-            intValue = floatToInt(value.position);
-          } else {
-            register = 560;
-            intValue = floatToInt(value.speed, true);
-          }
-          break;
-        case "scannerPosition":
-          if (value.position !== undefined) {
-            register = 552;
-            intValue = floatToInt(value.position);
-          } else {
-            register = 562;
-            intValue = floatToInt(value.speed, true);
-          }
-          break;
-        case "ocrPosition":
-          if (value.position !== undefined) {
-            register = 554;
-            intValue = floatToInt(value.position);
-          } else {
-            register = 564;
-            intValue = floatToInt(value.speed, true);
-          }
-          break;
-        case "markPosition":
-          if (value.position !== undefined) {
-            register = 556;
-            intValue = floatToInt(value.position);
-          } else {
-            register = 566;
-            intValue = floatToInt(value.speed, true);
-          }
-          break;
-        case "fwdEndLimit":
-          register = 574;
-          intValue = floatToInt(value.position);
-          break;
-        case "revEndLimit":
-          register = 578;
-          intValue = floatToInt(value.position);
-          break;
-        default:
-          throw new Error("Invalid setting");
-      }
-
-      await writeRegister(register, intValue);
-      logger.info(
-        `Client ${socket.id} updated ${setting} to ${JSON.stringify(
-          value
-        )} (written as ${intValue})`
-      );
-
-      socket.emit("servo-setting-change-response", {
-        success: true,
-        setting,
-      });
+      await socketEventService.handleServoSettingChange(socket, data);
     } catch (error) {
-      logger.error(
-        `Error updating servo setting for client ${socket.id}:`,
-        error
-      );
-      socket.emit("servo-setting-change-response", {
-        success: false,
-        setting: data.setting,
-        message: error.message,
-      });
+      logger.error(`Error in servo-setting-change handler:`, error);
     }
   });
 
@@ -390,6 +256,47 @@ io.on("connection", (socket) => {
         });
       });
   });
+
+  // Job Control Events - handled by SocketEventService
+  socket.on("job-control", async ({ jobType, action }) => {
+    try {
+      await socketEventService.handleJobControl(socket, jobType, action);
+    } catch (error) {
+      logger.error(`Error in job-control handler:`, error);
+    }
+  });
+
+  // Generic PLC Bit Operations - handled by SocketEventService
+  socket.on("plc-bit-operation", async (data) => {
+    try {
+      await socketEventService.handlePlcBitOperation(socket, data);
+    } catch (error) {
+      logger.error(`Error in plc-bit-operation handler:`, error);
+    }
+  });
+
+  // Generic PLC Register Operations - handled by SocketEventService
+  socket.on("plc-register-operation", async (data) => {
+    try {
+      await socketEventService.handlePlcRegisterOperation(socket, data);
+    } catch (error) {
+      logger.error(`Error in plc-register-operation handler:`, error);
+    }
+  });
+
+  // Get SocketEventService status
+  socket.on("get-event-service-status", () => {
+    try {
+      const status = socketEventService.getStatus();
+      socket.emit("event-service-status", status);
+    } catch (error) {
+      logger.error(`Error getting event service status:`, error);
+      socket.emit("error", {
+        message: "Failed to get event service status",
+        details: error.message,
+      });
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3002;
@@ -405,6 +312,10 @@ server.listen(PORT, async (err) => {
   try {
     await connect();
     logger.info("Modbus connection initialized");
+
+    // Initialize SocketEventService for parallel event handling
+    await socketEventService.initialize();
+    logger.info("SocketEventService initialized for parallel event handling");
 
     cronService.scheduleJob(
       "monthlyExport",
