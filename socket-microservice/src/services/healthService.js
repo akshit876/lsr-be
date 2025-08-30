@@ -28,14 +28,26 @@ export class HealthService {
   }
 
   setupPeriodicHealthChecks() {
-    // Run health check every 30 seconds
-    setInterval(async () => {
-      try {
-        await this.runHealthCheck();
-      } catch (error) {
-        logger.error("❌ Periodic health check failed:", error);
-      }
-    }, 30000);
+    try {
+      // Run health check every 30 seconds
+      setInterval(async () => {
+        try {
+          await this.runHealthCheck();
+        } catch (error) {
+          logger.error("❌ Periodic health check failed:", {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          });
+        }
+      }, 30000);
+    } catch (error) {
+      logger.error("❌ Failed to setup periodic health checks:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+    }
   }
 
   async runHealthCheck() {

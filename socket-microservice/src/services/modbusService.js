@@ -69,17 +69,31 @@ export class ModbusService {
   }
 
   setupConnectionMonitoring() {
-    // Monitor connection health
-    setInterval(async () => {
-      if (!this.isConnected) {
-        logger.warn("⚠️ Modbus connection lost, attempting to reconnect...");
+    try {
+      // Monitor connection health
+      setInterval(async () => {
         try {
-          await this.reconnect();
+          if (!this.isConnected) {
+            logger.warn(
+              "⚠️ Modbus connection lost, attempting to reconnect..."
+            );
+            await this.reconnect();
+          }
         } catch (error) {
-          logger.error("❌ Failed to reconnect to Modbus:", error.message);
+          logger.error("❌ Failed to reconnect to Modbus:", {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          });
         }
-      }
-    }, config.health.checkInterval);
+      }, config.health.checkInterval);
+    } catch (error) {
+      logger.error("❌ Failed to setup connection monitoring:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+    }
   }
 
   async writeBit(address, bit, value) {
@@ -163,10 +177,33 @@ export class ModbusService {
         return { status: "unhealthy", message: "Modbus not connected" };
       }
 
-      // Try to read a simple register to test connection
-      await this.readRegister(1, 1);
-      return { status: "healthy", message: "Modbus connection working" };
+      // Try to read a simple register to test connection with timeout
+      // Use a safer register address that's less likely to cause issues
+      try {
+        const healthCheckPromise = this.readRegister(1000, 1);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Health check timeout")), 5000);
+        });
+
+        await Promise.race([healthCheckPromise, timeoutPromise]);
+        return { status: "healthy", message: "Modbus connection working" };
+      } catch (readError) {
+        // If reading fails, just check if we can still communicate
+        if (this.client && this.isConnected) {
+          return {
+            status: "degraded",
+            message: "Connected but read failed: " + readError.message,
+          };
+        } else {
+          return { status: "unhealthy", message: "Connection lost" };
+        }
+      }
     } catch (error) {
+      logger.error("❌ Health check error:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
       return { status: "unhealthy", message: error.message };
     }
   }

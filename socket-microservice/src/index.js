@@ -403,13 +403,29 @@ process.on("SIGTERM", async () => {
 
 // Handle uncaught exceptions
 process.on("uncaughtException", (error) => {
-  logger.error("💥 Uncaught Exception:", error);
-  process.exit(1);
+  logger.error("💥 Uncaught Exception:", {
+    message: error.message,
+    stack: error.stack,
+    name: error.name,
+  });
+  // Don't exit immediately, give time for logging
+  setTimeout(() => process.exit(1), 1000);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  logger.error("💥 Unhandled Rejection at:", promise, "reason:", reason);
-  process.exit(1);
+  logger.error("💥 Unhandled Rejection:", {
+    reason:
+      reason instanceof Error
+        ? {
+            message: reason.message,
+            stack: reason.stack,
+            name: reason.name,
+          }
+        : reason,
+    promise: promise.toString(),
+  });
+  // Don't exit immediately, give time for logging
+  setTimeout(() => process.exit(1), 1000);
 });
 
 // Main execution
