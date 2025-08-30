@@ -279,120 +279,36 @@ class ScannerController {
 
     // For PLC bit monitoring, wait indefinitely until proper signals arrive
     // No timeout or retry limits - let PLC workflow control the timing
-    // Use a non-blocking approach to allow Socket.IO events to be processed
 
-    return new Promise((resolve, reject) => {
-      let checkCount = 0;
-      const CHECK_INTERVAL = 100; // Check every 100ms instead of blocking
-      let isResolved = false;
-
-      const performCheck = async () => {
-        if (isResolved) {
-          return;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        const result = await this.singleCheckAttempt(
+          register,
+          bit,
+          value,
+          timeout
+        );
+        if (result === "safety_violation") {
+          logger.error(
+            "🚨 SAFETY VIOLATION DETECTED - Stopping cycle immediately"
+          );
+          throw new Error("SAFETY_VIOLATION");
         }
-
-        try {
-          checkCount++;
-
-          // Check for reset signal first
-          const resetSignal = await readBit(1600, 0);
-          if (resetSignal) {
-            logger.info("Reset signal (1600.0) detected during bit check");
-            isResolved = true;
-            resolve(true);
-            return;
-          }
-
-          // Check the target bit
-          const bitValue = await readBit(register, bit);
-          const currentValue = Number(bitValue);
-          const expectedValue = Number(value);
-
-          if (currentValue === expectedValue) {
-            logger.info(
-              `✅ Target bit ${register}.${bit} is now ${value}, proceeding`
-            );
-            isResolved = true;
-            resolve(false);
-            return;
-          }
-
-          // Log status every 5 seconds
-          if (checkCount % 50 === 0) {
-            // 50 * 100ms = 5 seconds
-            logger.info(
-              `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
-            );
-            logger.info(
-              `Current state: Reset(1600.0): ${resetSignal}, ${register}.${bit}: ${currentValue}, Waiting for: ${expectedValue}`
-            );
-          }
-
-          // Safety checks
-          const [partPresent, emergencyStop, safetySensor] = await Promise.all([
-            readBit(1490, 0), // Part not present. 1490.0
-            readBit(1490, 1), // Emergency stop. 1490.1
-            readBit(1490, 2), // Safety sensor. 1490.2
-          ]);
-
-          if (!partPresent) {
-            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Part not present",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            isResolved = true;
-            reject(new Error("SAFETY_VIOLATION"));
-            return;
-          }
-
-          if (emergencyStop) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
-            );
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Emergency stop activated",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            isResolved = true;
-            reject(new Error("SAFETY_VIOLATION"));
-            return;
-          }
-
-          if (!safetySensor) {
-            logger.error(
-              "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 0)"
-            );
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Safety sensor not engaged",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            isResolved = true;
-            reject(new Error("SAFETY_VIOLATION"));
-            return;
-          }
-
-          // Schedule next check (non-blocking)
-          setTimeout(performCheck, CHECK_INTERVAL);
-        } catch (error) {
-          logger.error(`Error in bit check: ${error.message}`);
-          // Schedule retry (non-blocking)
-          setTimeout(performCheck, 1000);
+        if (result !== "timeout") {
+          return result;
         }
-      };
-
-      // Start the first check
-      performCheck();
-    });
+        // If we get a timeout from singleCheckAttempt, just continue the loop
+        // This ensures we keep waiting for PLC signals indefinitely
+        logger.info(
+          `🔄 Continuing to wait for PLC bit ${register}.${bit} = ${value}...`
+        );
+      } catch (error) {
+        logger.error(`Error in bit check: ${error.message}`);
+        await sleep(1000);
+        // Continue the loop even on errors
+      }
+    }
   }
 
   async singleCheckAttempt(register, bit, value, timeout) {
@@ -2024,19 +1940,6 @@ class ScannerController {
             D1810_1: null,
             D1810_2: null,
           },
-        });
-      });
-
-      // Test event to verify Socket.IO is working
-      socket.on("test_connection", (data) => {
-        logger.info(
-          `🧪 Test connection event received from ${socket.id}: ${JSON.stringify(data)}`
-        );
-        socket.emit("test_response", {
-          timestamp: new Date().toISOString(),
-          message: "Socket.IO connection is working!",
-          receivedData: data,
-          scannerStatus: this.getStatus(),
         });
       });
 
