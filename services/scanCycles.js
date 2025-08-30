@@ -560,7 +560,7 @@ class ScannerController {
               : "NG"
           : "NG",
         User: userDetails?.email || "Unknown",
-        Grade: grading?.toUpperCase(),
+        Grade: grading && grading !== "N/A" ? grading.toUpperCase() : "N/A",
         CurrentId: currentId,
       };
 
@@ -978,6 +978,47 @@ class ScannerController {
     return cleaned;
   }
 
+  // Helper method to extract grade from scanner data (last character)
+  extractGradeFromScannerData(scannerData) {
+    if (!scannerData || scannerData === "NG") {
+      return "N/A";
+    }
+
+    const cleaned = this.cleanScannerData(scannerData);
+
+    // If the cleaned data is "NG" or empty, return "N/A"
+    if (!cleaned || cleaned === "NG") {
+      return "N/A";
+    }
+
+    // Extract the last character as grade
+    const grade = cleaned.charAt(cleaned.length - 1);
+
+    // Validate that grade is a single character
+    if (grade && grade.length === 1) {
+      return grade.toUpperCase();
+    }
+
+    return "N/A";
+  }
+
+  // Helper method to get main data without grade (remove last character)
+  getMainDataWithoutGrade(scannerData) {
+    if (!scannerData || scannerData === "NG") {
+      return scannerData;
+    }
+
+    const cleaned = this.cleanScannerData(scannerData);
+
+    // If the cleaned data is "NG" or empty, return as is
+    if (!cleaned || cleaned === "NG") {
+      return cleaned;
+    }
+
+    // Remove the last character (grade) and return the main data
+    return cleaned.slice(0, -1);
+  }
+
   // Handle model-specific bit operations
   async handleModelSpecificBits() {
     try {
@@ -1359,6 +1400,14 @@ class ScannerController {
       `🧹 Original scanner data: "${scannerData}" -> Cleaned: "${cleanedData}"`
     );
 
+    // Extract grade and main data
+    const grade = this.extractGradeFromScannerData(scannerData);
+    const mainData = this.getMainDataWithoutGrade(scannerData);
+
+    logger.info(
+      `📊 Data breakdown: Main data: "${mainData}", Grade: "${grade}"`
+    );
+
     // Handle timeout/null/undefined or explicit "NG" response
     if (!cleanedData || cleanedData.trim().toUpperCase() === "NG") {
       logger.warn(
@@ -1373,11 +1422,12 @@ class ScannerController {
     if (cleanedData && cleanedData.trim() !== "") {
       logger.warn("⚠️ Part appears to be already marked");
 
-      // Emit the "part_already_marked" event to the UI
+      // Emit the "part_already_marked" event to the UI with grade information
       if (this.io) {
         this.io.emit("first_scan_ok", {
           timestamp: new Date(),
-          scannerData: cleanedData,
+          scannerData: mainData, // Send main data without grade
+          grade: grade, // Send grade separately
           message:
             "Part detected with existing marking. Please use an unmarked part.",
         });
@@ -1526,8 +1576,16 @@ class ScannerController {
         `🧹 Original verification scanner data: "${scannerData}" -> Cleaned: "${cleanedData}"`
       );
 
+      // Extract grade and main data for verification
+      const grade = this.extractGradeFromScannerData(scannerData);
+      const mainData = this.getMainDataWithoutGrade(scannerData);
+
+      logger.info(
+        `📊 Verification data breakdown: Main data: "${mainData}", Grade: "${grade}"`
+      );
+
       // Handle timeout/null/undefined cases as NG
-      const effectiveScannerData = cleanedData || "NG";
+      const effectiveScannerData = mainData || "NG"; // Use main data without grade for comparison
 
       if (effectiveScannerData !== "NG") {
         logger.success("Verification scan OK");
@@ -1553,8 +1611,8 @@ class ScannerController {
         io: this.io,
         serialNumber: barcodeData.serialNo,
         markingData: barcodeData.text,
-        scannerData: effectiveScannerData,
-        grading: "N/A",
+        scannerData: effectiveScannerData, // Main data without grade
+        grading: grade, // Use extracted grade
         result: isDataMatching,
         isUpdate: true,
       });
