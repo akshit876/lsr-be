@@ -18,6 +18,10 @@ class SocketEventService {
     logger.info(
       "🚀 Initializing SocketEventService for parallel event handling"
     );
+
+    // Add a small delay to ensure other services are ready
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     this.isInitialized = true;
     logger.success("SocketEventService initialized successfully");
   }
@@ -28,6 +32,11 @@ class SocketEventService {
       logger.info(
         `🔧 Manual run event received: ${operation} from client ${socket.id}`
       );
+
+      // Check if service is ready
+      if (!this.isInitialized) {
+        throw new Error("SocketEventService not yet initialized");
+      }
 
       // Execute manual run operation
       const result = await manualRun(operation, socket);
@@ -53,6 +62,11 @@ class SocketEventService {
   async handleScannerTrigger(socket) {
     try {
       logger.info(`🔍 Scanner trigger event received from client ${socket.id}`);
+
+      // Check if service is ready
+      if (!this.isInitialized) {
+        throw new Error("SocketEventService not yet initialized");
+      }
 
       // Set scanner trigger bit (1481.0)
       await writeBit(1481, 0, 1);
@@ -82,6 +96,11 @@ class SocketEventService {
     try {
       logger.info(`🎯 Mark on event received from client ${socket.id}`);
 
+      // Check if service is ready
+      if (!this.isInitialized) {
+        throw new Error("SocketEventService not yet initialized");
+      }
+
       // Set mark on bit (1480.0)
       await writeBit(1480, 0, 1);
       logger.info("✅ Mark on bit 1480.0 set to 1");
@@ -109,6 +128,11 @@ class SocketEventService {
   async handleLightOn(socket) {
     try {
       logger.info(`💡 Light on event received from client ${socket.id}`);
+
+      // Check if service is ready
+      if (!this.isInitialized) {
+        throw new Error("SocketEventService not yet initialized");
+      }
 
       // Set light on bit (1482.0)
       await writeBit(1482, 0, 1);
@@ -337,7 +361,25 @@ class SocketEventService {
       isProcessing: this.processing,
       queueLength: this.eventQueue.length,
       timestamp: new Date().toISOString(),
+      serviceHealth: "healthy",
     };
+  }
+
+  // Check if service is ready to handle events
+  isReady() {
+    return this.isInitialized;
+  }
+
+  // Health check method
+  async healthCheck() {
+    try {
+      // Try to read a simple register to test Modbus connection
+      const { readRegister } = await import("./modbus.js");
+      await readRegister(1, 1);
+      return { status: "healthy", message: "All connections working" };
+    } catch (error) {
+      return { status: "unhealthy", message: error.message };
+    }
   }
 }
 

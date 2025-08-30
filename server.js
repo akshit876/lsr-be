@@ -297,6 +297,20 @@ io.on("connection", (socket) => {
       });
     }
   });
+
+  // Health check for SocketEventService
+  socket.on("health-check", async () => {
+    try {
+      const health = await socketEventService.healthCheck();
+      socket.emit("health-check-response", health);
+    } catch (error) {
+      logger.error(`Error during health check:`, error);
+      socket.emit("error", {
+        message: "Failed to perform health check",
+        details: error.message,
+      });
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3002;
@@ -310,45 +324,55 @@ server.listen(PORT, async (err) => {
 
   let comService = null;
   try {
+    // Step 1: Initialize Modbus connection first
+    logger.info("🔌 Initializing Modbus connection...");
     await connect();
-    logger.info("Modbus connection initialized");
+    logger.info("✅ Modbus connection initialized successfully");
 
-    // Initialize SocketEventService for parallel event handling
+    // Step 2: Initialize SocketEventService for parallel event handling
+    logger.info("🚀 Initializing SocketEventService...");
     await socketEventService.initialize();
-    logger.info("SocketEventService initialized for parallel event handling");
+    logger.info(
+      "✅ SocketEventService initialized for parallel event handling"
+    );
 
+    // Step 3: Start cron jobs
+    logger.info("⏰ Starting cron jobs...");
     cronService.scheduleJob(
       "monthlyExport",
       "1 0 1 * *",
       cronService.generateMonthlyCsv.bind(cronService)
     );
-
     cronService.startAllJobs();
+    logger.info("✅ Cron jobs started successfully");
 
-    // const shiftUtility = new ShiftUtility();
-    // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
-    // barcodeGenerator.initialize('main-data', 'records');
-    // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-    // comService = new BufferedComPortService({
-    //   path: 'COM3',
-    //   baudRate: 9600,
-    //   logDir: 'com_port_logs',
-    // });
-    // await comService.initSerialPort();
-    await connect();
-    // Fetch part number and pass it to runContinuousScan
+    // Step 4: Fetch configuration data
+    logger.info("📋 Fetching configuration data...");
     const { partNumber, mainDataRecords } = await fetchPartNumberAndData();
+    logger.info("✅ Configuration data fetched successfully");
 
-    // runContinuousScan(io, null, { partNumber }).catch((error) => {
-    //   logger.error('Failed to start continuous scan:', error);
-    //   process.exit(1);
-    // });
+    // Step 5: Start the main scanning cycle
+    logger.info("🔄 Starting main scanning cycle...");
     await scannerController.runContinuousScan(io, null, { partNumber });
+    logger.info("✅ Main scanning cycle started successfully");
+
+    logger.info("🎉 All services initialized successfully!");
   } catch (error) {
     console.log({ error });
-    emitErrorEvent(io, "modbus-connection-error", JSON.stringify(error));
-    logger.error("Failed to initialize Modbus connection:", error);
-    // await comService.closePort();
+    emitErrorEvent(io, "server-initialization-error", JSON.stringify(error));
+    logger.error("❌ Failed to initialize server services:", error);
+
+    // Graceful shutdown on initialization failure
+    logger.info("🔄 Attempting graceful shutdown...");
+    try {
+      await mongoDbService.disconnect();
+      logger.info("✅ MongoDB disconnected");
+    } catch (disconnectError) {
+      logger.error("❌ Error during disconnect:", disconnectError);
+    }
+
+    // Don't exit immediately, let the server continue running for socket connections
+    // but log the error for debugging
   }
 });
 

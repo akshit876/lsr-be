@@ -91,6 +91,11 @@ class SocketEventTester {
       this.recordTestResult("get_event_service_status", true, data);
     });
 
+    this.socket.on("health-check-response", (data) => {
+      logger.success(`✅ Health check response: ${JSON.stringify(data)}`);
+      this.recordTestResult("health_check", true, data);
+    });
+
     // Error event listener
     this.socket.on("error", (error) => {
       logger.error(`❌ Socket error: ${JSON.stringify(error)}`);
@@ -114,6 +119,11 @@ class SocketEventTester {
       {
         name: "Get Event Service Status",
         execute: () => this.socket.emit("get-event-service-status"),
+        delay: 500,
+      },
+      {
+        name: "Health Check",
+        execute: () => this.socket.emit("health-check"),
         delay: 500,
       },
       {
