@@ -297,6 +297,7 @@ class ScannerController {
           continue; // Skip to next iteration
         }
 
+        // Only proceed with PLC operations when not paused
         const result = await this.singleCheckAttempt(
           register,
           bit,
@@ -328,6 +329,9 @@ class ScannerController {
   async singleCheckAttempt(register, bit, value, timeout) {
     return new Promise((resolve) => {
       let timeoutId = null;
+      let resetCheckInterval = null;
+      let bitCheckInterval = null;
+      let safetyCheckInterval = null;
 
       // Only set timeout if a timeout value is provided
       if (timeout !== null && timeout > 0) {
@@ -356,9 +360,25 @@ class ScannerController {
         }
       };
 
+      // Check if cycle is paused before proceeding
+      if (this.shouldPauseCycle()) {
+        logger.info(
+          "⏸️ Cycle paused in singleCheckAttempt - returning timeout to allow pause handling"
+        );
+        cleanup();
+        resolve("timeout");
+        return;
+      }
+
       // Safety check interval - runs in parallel every 500ms
-      const safetyCheckInterval = setInterval(async () => {
+      safetyCheckInterval = setInterval(async () => {
         try {
+          // Check if cycle is paused - if so, stop this interval completely
+          if (this.shouldPauseCycle()) {
+            clearInterval(safetyCheckInterval);
+            return; // Stop this interval when paused
+          }
+
           // Read safety bits from register 1490
           const [partPresent, emergencyStop, safetySensor] = await Promise.all([
             readBit(1490, 0), // Part not present. 1490.0
@@ -427,8 +447,14 @@ class ScannerController {
       }, 500);
 
       // Reset check interval
-      const resetCheckInterval = setInterval(async () => {
+      resetCheckInterval = setInterval(async () => {
         try {
+          // Check if cycle is paused - if so, stop this interval completely
+          if (this.shouldPauseCycle()) {
+            clearInterval(resetCheckInterval);
+            return; // Stop this interval when paused
+          }
+
           const resetSignal = await readBit(1600, 0);
           if (resetSignal) {
             cleanup();
@@ -448,8 +474,14 @@ class ScannerController {
       }, CHECK_INTERVAL);
 
       // Bit check interval
-      const bitCheckInterval = setInterval(async () => {
+      bitCheckInterval = setInterval(async () => {
         try {
+          // Check if cycle is paused - if so, stop this interval completely
+          if (this.shouldPauseCycle()) {
+            clearInterval(bitCheckInterval);
+            return; // Stop this interval when paused
+          }
+
           checkCount++;
           const bitValue = await readBit(register, bit);
           const currentValue = Number(bitValue);
@@ -482,6 +514,16 @@ class ScannerController {
       // Initial checks
       const performInitialCheck = async () => {
         try {
+          // Check if cycle is paused before performing initial checks
+          if (this.shouldPauseCycle()) {
+            logger.info(
+              "⏸️ Cycle paused during initial check - returning timeout to allow pause handling"
+            );
+            cleanup();
+            resolve("timeout");
+            return;
+          }
+
           const [resetSignal, bitValue] = await Promise.all([
             readBit(1600, 0),
             readBit(register, bit),
