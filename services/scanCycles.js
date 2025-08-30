@@ -57,6 +57,11 @@ class ScannerController {
     this.currentDayId = 1;
     this.lastResetDate = this.getLastResetTime();
 
+    // New properties for smart pause/resume without disturbing existing flows
+    this.isCyclePaused = false;
+    this.pauseReason = null;
+    this.lastPauseTime = null;
+
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
   }
@@ -279,10 +284,19 @@ class ScannerController {
 
     // For PLC bit monitoring, wait indefinitely until proper signals arrive
     // No timeout or retry limits - let PLC workflow control the timing
+    // Smart pause/resume mechanism - don't disturb existing flows
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        // Check if cycle should be paused (allows Socket.IO events to be processed)
+        if (this.shouldPauseCycle()) {
+          logger.info("⏸️ Cycle paused - waiting for resume signal...");
+          // Wait longer when paused to reduce PLC load and allow event processing
+          await sleep(1000);
+          continue; // Skip to next iteration
+        }
+
         const result = await this.singleCheckAttempt(
           register,
           bit,
@@ -1801,8 +1815,75 @@ class ScannerController {
       hasIo: this.io !== null,
       activeJogEvents: this.getActiveJogEvents(),
       cycleCount: this.cycleCount,
+      isCyclePaused: this.isCyclePaused,
+      pauseReason: this.pauseReason,
+      lastPauseTime: this.lastPauseTime,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  // Smart pause/resume methods - don't disturb existing flows
+  pauseCycle(reason = "Manual mode activated") {
+    if (!this.isCyclePaused) {
+      this.isCyclePaused = true;
+      this.pauseReason = reason;
+      this.lastPauseTime = new Date();
+      logger.info(`⏸️ Cycle paused: ${reason}`);
+
+      // Emit pause event to UI
+      if (this.io) {
+        this.io.emit("cycle_paused", {
+          timestamp: new Date().toISOString(),
+          reason: reason,
+          cycleCount: this.cycleCount,
+        });
+      }
+    }
+  }
+
+  resumeCycle() {
+    if (this.isCyclePaused) {
+      const pauseDuration = Date.now() - this.lastPauseTime;
+      logger.info(
+        `▶️ Cycle resumed after ${Math.round(pauseDuration / 1000)}s pause`
+      );
+
+      this.isCyclePaused = false;
+      this.pauseReason = null;
+      this.lastPauseTime = null;
+
+      // Emit resume event to UI
+      if (this.io) {
+        this.io.emit("cycle_resumed", {
+          timestamp: new Date().toISOString(),
+          pauseDuration: pauseDuration,
+          cycleCount: this.cycleCount,
+        });
+      }
+    }
+  }
+
+  // Check if cycle should be paused (called periodically)
+  shouldPauseCycle() {
+    // This can be extended later to check UI route or other conditions
+    // For now, just return the current pause state
+    return this.isCyclePaused;
+  }
+
+  // Method to check if user is on manual mode route (can be extended later)
+  isUserOnManualRoute() {
+    // This is a placeholder - can be extended to check actual UI route
+    // For now, it just returns the pause state
+    // Later, this could check Socket.IO events or other indicators
+    return this.isCyclePaused;
+  }
+
+  // Method to automatically detect manual mode based on UI events
+  autoDetectManualMode() {
+    // This can be extended to automatically detect when user is in manual mode
+    // For example, if no UI events for a while, or specific patterns
+    // For now, it's just a placeholder
+    return false;
   }
 
   // Handle UI events for PLC control
@@ -1940,7 +2021,43 @@ class ScannerController {
             D1810_1: null,
             D1810_2: null,
           },
+          cycleStatus: {
+            isPaused: this.isCyclePaused,
+            pauseReason: this.pauseReason,
+            lastPauseTime: this.lastPauseTime,
+            isRunning: this.isRunning,
+            cycleCount: this.cycleCount,
+          },
         });
+      });
+
+      // Get cycle status specifically
+      socket.on("get_cycle_status", () => {
+        logger.info(`📊 Cycle status request from ${socket.id}`);
+        socket.emit("cycle_status_response", {
+          timestamp: new Date().toISOString(),
+          isPaused: this.isCyclePaused,
+          pauseReason: this.pauseReason,
+          lastPauseTime: this.lastPauseTime,
+          isRunning: this.isRunning,
+          cycleCount: this.cycleCount,
+          canResume: this.isCyclePaused && this.isRunning,
+        });
+      });
+
+      // Manual mode control events - don't disturb existing flows
+      socket.on("manual_mode_enter", (data) => {
+        logger.info(
+          `🎮 Manual mode entered by ${socket.id}: ${JSON.stringify(data)}`
+        );
+        this.pauseCycle(data.reason || "Manual mode activated");
+      });
+
+      socket.on("manual_mode_exit", (data) => {
+        logger.info(
+          `🎮 Manual mode exited by ${socket.id}: ${JSON.stringify(data)}`
+        );
+        this.resumeCycle();
       });
 
       // Handle client disconnect
