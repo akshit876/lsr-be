@@ -316,6 +316,164 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Manual Mode Enter Event
+  socket.on("manual_mode_enter", async (data) => {
+    try {
+      logger.info(`Client ${socket.id} entered manual mode:`, data);
+      socket.emit("manual_mode_enter_success", {
+        timestamp: new Date().toISOString(),
+        message: "Manual mode entered successfully",
+      });
+    } catch (error) {
+      logger.error(
+        `Error entering manual mode for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to enter manual mode",
+        details: error.message,
+      });
+    }
+  });
+
+  // Manual Control Event (for main control buttons)
+  socket.on("manual_control", async (data) => {
+    try {
+      const { type, register, bit, description } = data;
+      logger.info(
+        `Client ${socket.id} manual control: ${type} (${register}.${bit}) - ${description}`
+      );
+
+      // Handle different control types
+      switch (type) {
+        case "HOME":
+          await writeBit(1480, 0, 1); // Example register
+          break;
+        case "LOGO":
+          await writeBit(1481, 0, 1); // Example register
+          break;
+        case "CODE":
+          await writeBit(1482, 0, 1); // Example register
+          break;
+        case "CASTING_TRACEABILITY":
+          await writeBit(1483, 0, 1); // Example register
+          break;
+        case "HUMAN_READABLE":
+          await writeBit(1484, 0, 1); // Example register
+          break;
+        case "SCANNER":
+          await writeBit(1485, 0, 1); // Example register
+          break;
+        case "SCANNER_TRIGGER":
+          await writeBit(1486, 0, 1); // Example register
+          break;
+        case "MARKON":
+          await writeBit(1487, 0, 1); // Example register
+          break;
+        case "LIGHT":
+          await writeBit(1488, 0, 1); // Example register
+          break;
+        default:
+          throw new Error(`Unknown control type: ${type}`);
+      }
+
+      logger.info(`✅ Manual control ${type} executed`);
+      socket.emit("manual_control_success", {
+        timestamp: new Date().toISOString(),
+        type,
+        register,
+        bit,
+        description,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(
+        `Error executing manual control for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to execute manual control",
+        details: error.message,
+      });
+    }
+  });
+
+  // Jog Control Event (for movement controls)
+  socket.on("jog_control", async (data) => {
+    try {
+      const { type, action, register, bit, description } = data;
+      logger.info(
+        `Client ${socket.id} jog control: ${type} (${register}.${bit}) - ${description} - ${action}`
+      );
+
+      // Handle different jog types
+      switch (type) {
+        case "X_JOG_PLUS":
+          await writeBit(1490, 0, action === "start" ? 1 : 0); // Example register
+          break;
+        case "X_JOG_MINUS":
+          await writeBit(1491, 0, action === "start" ? 1 : 0); // Example register
+          break;
+        case "Z_JOG_PLUS":
+          await writeBit(1492, 0, action === "start" ? 1 : 0); // Example register
+          break;
+        case "Z_JOG_MINUS":
+          await writeBit(1493, 0, action === "start" ? 1 : 0); // Example register
+          break;
+        default:
+          throw new Error(`Unknown jog type: ${type}`);
+      }
+
+      logger.info(`✅ Jog control ${type} ${action} executed`);
+      socket.emit("jog_control_success", {
+        timestamp: new Date().toISOString(),
+        type,
+        register,
+        bit,
+        description,
+        action,
+        value: action === "start" ? 1 : 0,
+      });
+    } catch (error) {
+      logger.error(
+        `Error executing jog control for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to execute jog control",
+        details: error.message,
+      });
+    }
+  });
+
+  // Emergency Stop Event
+  socket.on("emergency_stop", async () => {
+    try {
+      logger.info(`Client ${socket.id} triggered emergency stop`);
+
+      // Emergency stop logic - stop all operations
+      await writeBit(1499, 0, 1); // Emergency stop bit
+
+      logger.info("✅ Emergency stop executed");
+      socket.emit("emergency_stop_success", {
+        timestamp: new Date().toISOString(),
+        message: "Emergency stop executed successfully",
+        register: 1499,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(
+        `Error executing emergency stop for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to execute emergency stop",
+        details: error.message,
+      });
+    }
+  });
+
   // UI Mark On Event
   socket.on("mark_on", async () => {
     try {
