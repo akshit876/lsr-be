@@ -23,11 +23,7 @@ export const config = {
     retries: parseInt(process.env.MODBUS_RETRIES || "3", 10),
   },
 
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
+  // CORS configuration removed - this is a pure Socket.IO microservice
 
   logging: {
     level: process.env.LOG_LEVEL || "info",

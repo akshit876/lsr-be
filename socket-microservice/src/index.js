@@ -40,10 +40,7 @@ class SocketMicroservice {
       // Step 4: Setup socket event handlers
       this.setupSocketHandlers();
 
-      // Step 5: Setup HTTP endpoints
-      this.setupHttpEndpoints();
-
-      // Step 6: Start listening
+      // Step 5: Start listening
       await this.startServer();
 
       this.isInitialized = true;
@@ -69,11 +66,6 @@ class SocketMicroservice {
   createServer() {
     this.server = createServer();
     this.io = new Server(this.server, {
-      cors: {
-        origin: config.cors.origin,
-        methods: config.cors.methods,
-        credentials: config.cors.credentials,
-      },
       transports: ["websocket", "polling"],
       allowEIO3: true,
     });
@@ -118,142 +110,8 @@ class SocketMicroservice {
     logger.info("📡 Socket event handlers configured");
   }
 
-  setupHttpEndpoints() {
-    // Health check endpoint
-    this.server.on("request", async (req, res) => {
-      const url = new URL(req.url, `http://${req.headers.host}`);
-
-      // Set CORS headers
-      res.setHeader("Access-Control-Allow-Origin", config.cors.origin);
-      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-      res.setHeader("Content-Type", "application/json");
-
-      // Handle preflight requests
-      if (req.method === "OPTIONS") {
-        res.writeHead(200);
-        res.end();
-        return;
-      }
-
-      try {
-        if (url.pathname === "/health") {
-          if (req.method === "GET") {
-            const health = await this.healthService.healthCheck();
-            res.writeHead(200);
-            res.end(JSON.stringify(health));
-          } else {
-            res.writeHead(405);
-            res.end(JSON.stringify({ error: "Method not allowed" }));
-          }
-        } else if (url.pathname === "/status") {
-          if (req.method === "GET") {
-            const status = {
-              isInitialized: this.isInitialized,
-              uptime: process.uptime(),
-              timestamp: new Date().toISOString(),
-              services: {
-                modbus: this.modbusService?.getStatus(),
-                socketEvent: this.socketEventService?.getStatus(),
-                eventEmitter: {
-                  connectedClients:
-                    this.eventEmitterService?.getConnectedClientsCount() || 0,
-                  groups: this.eventEmitterService?.getGroupMembersCount() || 0,
-                },
-              },
-            };
-            res.writeHead(200);
-            res.end(JSON.stringify(status));
-          } else {
-            res.writeHead(405);
-            res.end(JSON.stringify({ error: "Method not allowed" }));
-          }
-        } else if (url.pathname === "/emit") {
-          if (req.method === "POST") {
-            let body = "";
-            req.on("data", (chunk) => {
-              body += chunk.toString();
-            });
-
-            req.on("end", () => {
-              try {
-                const { event, data, target, targetType } = JSON.parse(body);
-
-                if (!event) {
-                  res.writeHead(400);
-                  res.end(JSON.stringify({ error: "Event name is required" }));
-                  return;
-                }
-
-                let result;
-                switch (targetType) {
-                  case "client":
-                    result = this.eventEmitterService.emitToClient(
-                      target,
-                      event,
-                      data
-                    );
-                    break;
-                  case "group":
-                    result = this.eventEmitterService.emitToGroup(
-                      target,
-                      event,
-                      data
-                    );
-                    break;
-                  case "all":
-                  default:
-                    result = this.eventEmitterService.emitToAll(event, data);
-                    break;
-                }
-
-                res.writeHead(200);
-                res.end(
-                  JSON.stringify({
-                    success: true,
-                    event,
-                    targetType: targetType || "all",
-                    target: target || "all",
-                    clientsReached: result,
-                  })
-                );
-              } catch (error) {
-                res.writeHead(400);
-                res.end(JSON.stringify({ error: "Invalid JSON payload" }));
-              }
-            });
-          } else {
-            res.writeHead(405);
-            res.end(JSON.stringify({ error: "Method not allowed" }));
-          }
-        } else if (url.pathname === "/") {
-          res.writeHead(200);
-          res.end(
-            JSON.stringify({
-              service: "LSR Socket Microservice",
-              version: "1.0.0",
-              status: "running",
-              timestamp: new Date().toISOString(),
-              endpoints: {
-                health: "/health",
-                status: "/status",
-                emit: "/emit (POST)",
-              },
-            })
-          );
-        } else {
-          res.writeHead(404);
-          res.end(JSON.stringify({ error: "Endpoint not found" }));
-        }
-      } catch (error) {
-        logger.error("HTTP endpoint error:", error);
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: "Internal server error" }));
-      }
-    });
-
-    logger.info("🌐 HTTP endpoints configured");
-  }
+  // HTTP endpoints removed - this is a pure Socket.IO microservice
+  // All communication happens through Socket.IO events
 
   async startServer() {
     return new Promise((resolve, reject) => {
