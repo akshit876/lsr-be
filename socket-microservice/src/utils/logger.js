@@ -63,13 +63,8 @@ logger.success = (message, meta = {}) => {
   logger.info(message, { ...meta, level: "SUCCESS" });
 };
 
-logger.warn = (message, meta = {}) => {
-  logger.warn(message, { ...meta, level: "WARN" });
-};
-
-logger.error = (message, meta = {}) => {
-  logger.error(message, { ...meta, level: "ERROR" });
-};
+// Note: warn and error are already provided by Winston, so we don't override them
+// logger.warn and logger.error are already available from Winston
 
 logger.debug = (message, meta = {}) => {
   logger.debug(message, { ...meta, level: "DEBUG" });
