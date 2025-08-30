@@ -1767,25 +1767,86 @@ class ScannerController {
     return events;
   }
 
+  // Check if scanner controller is ready to receive events
+  isReadyForEvents() {
+    return this.isInitialized && this.io !== null;
+  }
+
+  // Manual test method for PLC events (for debugging)
+  async testPlcEvent(eventType, eventData) {
+    try {
+      logger.info(`🧪 Testing PLC event: ${eventType}`);
+
+      if (!this.isReadyForEvents()) {
+        logger.error("❌ Scanner controller not ready for events");
+        return false;
+      }
+
+      // Process the event
+      this.handleUIEvent(eventType, eventData);
+
+      logger.success(`✅ PLC event test completed: ${eventType}`);
+      return true;
+    } catch (error) {
+      logger.error(`❌ Error testing PLC event: ${error.message}`);
+      return false;
+    }
+  }
+
+  // Get current status for debugging
+  getStatus() {
+    return {
+      isInitialized: this.isInitialized,
+      isRunning: this.isRunning,
+      hasIo: this.io !== null,
+      activeJogEvents: this.getActiveJogEvents(),
+      cycleCount: this.cycleCount,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   // Handle UI events for PLC control
   handleUIEvent(eventType, eventData) {
     try {
+      logger.info(
+        `🎯 Processing UI event: ${eventType} with data: ${JSON.stringify(eventData)}`
+      );
+
       const { eventName, register, bit } = eventData;
+
+      // Validate required data for most events
+      if (
+        eventType !== "emergency_stop" &&
+        (!eventName || register === undefined || bit === undefined)
+      ) {
+        logger.error(
+          `❌ Invalid event data for ${eventType}: eventName=${eventName}, register=${register}, bit=${bit}`
+        );
+        return;
+      }
 
       switch (eventType) {
         case "jog_start":
+          logger.info(
+            `🎮 Starting jog event: ${eventName} on register ${register}.${bit}`
+          );
           this.handleJogEvent(register, bit, eventName);
           break;
 
         case "jog_stop":
+          logger.info(`🛑 Stopping jog event: ${eventName}`);
           this.stopJogEvent(eventName);
           break;
 
         case "manual_action":
+          logger.info(
+            `🔧 Executing manual action: ${eventName} on register ${register}.${bit}`
+          );
           this.handleManualEvent(register, bit, eventName);
           break;
 
         case "emergency_stop":
+          logger.warn("🚨 Emergency stop triggered - stopping all jog events");
           this.stopAllJogEvents();
           break;
 
@@ -1801,62 +1862,90 @@ class ScannerController {
           lastEvent: { type: eventType, data: eventData },
         });
       }
+
+      logger.success(`✅ UI event ${eventType} processed successfully`);
     } catch (error) {
       logger.error(`❌ Error handling UI event ${eventType}:`, error);
+
+      // Emit error to UI
+      if (this.io) {
+        this.io.emit("plc_error", {
+          timestamp: new Date().toISOString(),
+          error: error.message,
+          eventType,
+          eventData,
+        });
+      }
     }
   }
 
   // Setup UI event listeners
   setupUIEventListeners(io) {
     if (!io) {
+      logger.warn(
+        "⚠️ No Socket.IO instance provided - UI events will not work"
+      );
       return;
     }
 
     logger.info("🎧 Setting up UI event listeners for PLC control");
 
-    // Jog start event
-    io.on("jog_start", (eventData) => {
-      logger.info(
-        `🎮 UI jog start event received: ${JSON.stringify(eventData)}`
-      );
-      this.handleUIEvent("jog_start", eventData);
-    });
+    // Store the io instance for later use
+    this.io = io;
 
-    // Jog stop event
-    io.on("jog_stop", (eventData) => {
-      logger.info(
-        `🛑 UI jog stop event received: ${JSON.stringify(eventData)}`
-      );
-      this.handleUIEvent("jog_stop", eventData);
-    });
+    // Listen for client connections and their events
+    io.on("connection", (socket) => {
+      logger.info(`🔌 New client connected: ${socket.id}`);
 
-    // Manual action event
-    io.on("manual_action", (eventData) => {
-      logger.info(
-        `🔧 UI manual action event received: ${JSON.stringify(eventData)}`
-      );
-      this.handleUIEvent("manual_action", eventData);
-    });
+      // Jog start event
+      socket.on("jog_start", (eventData) => {
+        logger.info(
+          `🎮 UI jog start event received from ${socket.id}: ${JSON.stringify(eventData)}`
+        );
+        this.handleUIEvent("jog_start", eventData);
+      });
 
-    // Emergency stop event
-    io.on("emergency_stop", () => {
-      logger.warn(
-        "🚨 UI emergency stop event received - stopping all jog events"
-      );
-      this.handleUIEvent("emergency_stop", {});
-    });
+      // Jog stop event
+      socket.on("jog_stop", (eventData) => {
+        logger.info(
+          `🛑 UI jog stop event received from ${socket.id}: ${JSON.stringify(eventData)}`
+        );
+        this.handleUIEvent("jog_stop", eventData);
+      });
 
-    // Get status request
-    io.on("get_plc_status", () => {
-      logger.info("📊 UI requested PLC status");
-      io.emit("plc_status_response", {
-        timestamp: new Date().toISOString(),
-        activeJogEvents: this.getActiveJogEvents(),
-        modelSpecificBits: {
-          D1810_0: null, // Will be populated when needed
-          D1810_1: null,
-          D1810_2: null,
-        },
+      // Manual action event
+      socket.on("manual_action", (eventData) => {
+        logger.info(
+          `🔧 UI manual action event received from ${socket.id}: ${JSON.stringify(eventData)}`
+        );
+        this.handleUIEvent("manual_action", eventData);
+      });
+
+      // Emergency stop event
+      socket.on("emergency_stop", () => {
+        logger.warn(
+          `🚨 UI emergency stop event received from ${socket.id} - stopping all jog events`
+        );
+        this.handleUIEvent("emergency_stop", {});
+      });
+
+      // Get status request
+      socket.on("get_plc_status", () => {
+        logger.info(`📊 UI status request from ${socket.id}`);
+        socket.emit("plc_status_response", {
+          timestamp: new Date().toISOString(),
+          activeJogEvents: this.getActiveJogEvents(),
+          modelSpecificBits: {
+            D1810_0: null, // Will be populated when needed
+            D1810_1: null,
+            D1810_2: null,
+          },
+        });
+      });
+
+      // Handle client disconnect
+      socket.on("disconnect", () => {
+        logger.info(`🔌 Client disconnected: ${socket.id}`);
       });
     });
 
