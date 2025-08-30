@@ -983,6 +983,17 @@ class ScannerController {
     try {
       const currentModel = await this.getCurrentModelNumber();
 
+      // First, ensure all model-specific bits are OFF for clean state
+      logger.info(
+        "🔧 Resetting all model-specific bits D1810.0, D1810.1, D1810.2 to OFF first"
+      );
+      await Promise.all([
+        writeBit(1810, 0, 0),
+        writeBit(1810, 1, 0),
+        writeBit(1810, 2, 0),
+      ]);
+      logger.success("✅ All model-specific bits reset to OFF");
+
       if (currentModel === "FRONT_LEFT 1025969") {
         logger.info(
           "🔧 Model FRONT_LEFT 1025969 detected - setting additional bit D1810.0"
