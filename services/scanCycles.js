@@ -292,8 +292,13 @@ class ScannerController {
         // Check if cycle should be paused (allows Socket.IO events to be processed)
         if (this.shouldPauseCycle()) {
           logger.info("⏸️ Cycle paused - waiting for resume signal...");
-          // Wait longer when paused to reduce PLC load and allow event processing
-          await sleep(1000);
+          // When paused, enter a dedicated pause loop that yields control frequently
+          // This allows Socket.IO events to be processed without blocking
+          while (this.shouldPauseCycle()) {
+            await sleep(100); // Check every 100ms for resume signal
+            // Yield control to event loop every 100ms
+          }
+          logger.info("▶️ Cycle resumed - continuing PLC operations...");
           continue; // Skip to next iteration
         }
 
@@ -1909,7 +1914,13 @@ class ScannerController {
   shouldPauseCycle() {
     // This can be extended later to check UI route or other conditions
     // For now, just return the current pause state
-    return this.isCyclePaused;
+    const shouldPause = this.isCyclePaused;
+    // Debug log every 10th call to avoid spam
+    if (Math.random() < 0.1) {
+      // 10% chance to log
+      logger.info(`🔍 shouldPauseCycle() called - result: ${shouldPause}`);
+    }
+    return shouldPause;
   }
 
   // Method to check if user is on manual mode route (can be extended later)
@@ -2092,7 +2103,10 @@ class ScannerController {
         logger.info(
           `🎮 Manual mode entered by ${socket.id}: ${JSON.stringify(data)}`
         );
+        logger.info(`🔍 Current pause state before: ${this.isCyclePaused}`);
         this.pauseCycle(data.reason || "Manual mode activated");
+        logger.info(`🔍 Current pause state after: ${this.isCyclePaused}`);
+        logger.info(`✅ Manual mode enter event processed successfully`);
       });
 
       socket.on("manual_mode_exit", (data) => {
