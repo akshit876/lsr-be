@@ -345,39 +345,57 @@ io.on("connection", (socket) => {
       );
 
       // Handle different control types
+      let targetRegister;
       switch (type) {
         case "HOME":
-          await writeBit(1480, 0, 1); // Example register
+          targetRegister = 1480;
           break;
         case "LOGO":
-          await writeBit(1481, 0, 1); // Example register
+          targetRegister = 1481;
           break;
         case "CODE":
-          await writeBit(1482, 0, 1); // Example register
+          targetRegister = 1482;
           break;
         case "CASTING_TRACEABILITY":
-          await writeBit(1483, 0, 1); // Example register
+          targetRegister = 1483;
           break;
         case "HUMAN_READABLE":
-          await writeBit(1484, 0, 1); // Example register
+          targetRegister = 1484;
           break;
         case "SCANNER":
-          await writeBit(1485, 0, 1); // Example register
+          targetRegister = 1485;
           break;
         case "SCANNER_TRIGGER":
-          await writeBit(1486, 0, 1); // Example register
+          targetRegister = 1486;
           break;
         case "MARKON":
-          await writeBit(1487, 0, 1); // Example register
+          targetRegister = 1487;
           break;
         case "LIGHT":
-          await writeBit(1488, 0, 1); // Example register
+          targetRegister = 1488;
           break;
         default:
           throw new Error(`Unknown control type: ${type}`);
       }
 
-      logger.info(`✅ Manual control ${type} executed`);
+      // Turn on the bit
+      await writeBit(targetRegister, 0, 1);
+      logger.info(
+        `✅ Manual control ${type} activated on register ${targetRegister}`
+      );
+
+      // Auto-reset after 1 second
+      setTimeout(async () => {
+        try {
+          await writeBit(targetRegister, 0, 0);
+          logger.info(
+            `🔄 Auto-reset: ${type} bit ${targetRegister}.0 set to 0`
+          );
+        } catch (resetError) {
+          logger.error(`❌ Auto-reset failed for ${type}:`, resetError);
+        }
+      }, 1000);
+
       socket.emit("manual_control_success", {
         timestamp: new Date().toISOString(),
         type,
@@ -385,6 +403,8 @@ io.on("connection", (socket) => {
         bit,
         description,
         value: 1,
+        autoReset: true,
+        resetDelay: 1000,
       });
     } catch (error) {
       logger.error(
