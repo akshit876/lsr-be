@@ -351,6 +351,7 @@ class ScannerController {
           );
 
           // Read safety bits from register 1490
+          console.log("🔍 About to read safety bits...");
           const [
             partPresent,
             emergencyStop,
@@ -369,6 +370,9 @@ class ScannerController {
             readBit(1490, 6), // Servo not home position. 1490.6
           ]);
 
+          console.log(
+            `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
+          );
           logger.debug(
             `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
           );
@@ -517,6 +521,10 @@ class ScannerController {
             return;
           }
         } catch (error) {
+          console.error(
+            `❌ Error checking safety conditions: ${error.message}`
+          );
+          console.error(`❌ Error stack: ${error.stack}`);
           logger.error(`❌ Error checking safety conditions: ${error.message}`);
           logger.error(
             "❌ Safety check failed - this could prevent safety violations from being detected!"
