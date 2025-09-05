@@ -283,7 +283,8 @@ class ScannerController {
           register,
           bit,
           value,
-          timeout
+          timeout,
+          this.io
         );
         if (result === "safety_violation") {
           logger.error(
@@ -307,7 +308,7 @@ class ScannerController {
     }
   }
 
-  async singleCheckAttempt(register, bit, value, timeout) {
+  async singleCheckAttempt(register, bit, value, timeout, io = null) {
     return new Promise((resolve) => {
       let timeoutId = null;
 
@@ -341,6 +342,10 @@ class ScannerController {
       // Safety check interval - runs in parallel every 500ms
       const safetyCheckInterval = setInterval(async () => {
         try {
+          logger.debug(
+            "🔍 Safety check running - reading register 1490 bits..."
+          );
+
           // Read safety bits from register 1490
           const [
             partPresent,
@@ -360,14 +365,19 @@ class ScannerController {
             readBit(1490, 6), // Servo not home position. 1490.6
           ]);
 
+          logger.debug(
+            `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
+          );
+
           // Check safety conditions
           if (!partPresent) {
             cleanup();
             logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
 
             // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Part not present ",
                 cycleNumber: this.cycleCount,
@@ -385,8 +395,9 @@ class ScannerController {
             );
 
             // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Emergency stop activated ",
                 cycleNumber: this.cycleCount,
@@ -404,8 +415,9 @@ class ScannerController {
             );
 
             // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Safety sensor not engaged",
                 cycleNumber: this.cycleCount,
@@ -424,8 +436,9 @@ class ScannerController {
             );
 
             // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Emergency push button pressed",
                 cycleNumber: this.cycleCount,
@@ -444,8 +457,9 @@ class ScannerController {
             );
 
             // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Safety curtain interrupted",
                 cycleNumber: this.cycleCount,
@@ -464,8 +478,9 @@ class ScannerController {
             );
 
             // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation:
                   "Fixture and marking program mismatch - check program and fixture",
@@ -485,8 +500,9 @@ class ScannerController {
             );
 
             // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Servo not home position",
                 cycleNumber: this.cycleCount,
@@ -497,7 +513,10 @@ class ScannerController {
             return;
           }
         } catch (error) {
-          logger.error(`Error checking safety conditions: ${error.message}`);
+          logger.error(`❌ Error checking safety conditions: ${error.message}`);
+          logger.error(
+            "❌ Safety check failed - this could prevent safety violations from being detected!"
+          );
         }
       }, 500);
 
