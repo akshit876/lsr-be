@@ -372,7 +372,7 @@ class ScannerController {
           );
 
           // Check safety conditions
-          if (!partPresent) {
+          if (partPresent) {
             cleanup();
             logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
 
@@ -410,7 +410,7 @@ class ScannerController {
             return;
           }
 
-          if (!safetySensor) {
+          if (safetySensor) {
             cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 0)"
@@ -452,7 +452,7 @@ class ScannerController {
           }
 
           // Check for safety curtain interrupted
-          if (!safetyCurtain) {
+          if (safetyCurtain) {
             cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 0)"
@@ -495,7 +495,7 @@ class ScannerController {
           }
 
           // Check for servo not home position
-          if (!servoNotHome) {
+          if (servoNotHome) {
             cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Servo not home position (1490.6 = 0)"
