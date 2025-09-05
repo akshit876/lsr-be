@@ -353,6 +353,19 @@ class ScannerController {
           // Read safety bits from register 1490
           console.log("🔍 About to read safety bits...");
 
+          // Test if register 1490 is accessible by reading just one bit first
+          try {
+            console.log("🔍 Testing register 1490 accessibility...");
+            const testBit = await readBit(1490, 0);
+            console.log(`🔍 Register 1490.0 test result: ${testBit}`);
+          } catch (testError) {
+            console.error(
+              `❌ Register 1490 not accessible: ${testError.message}`
+            );
+            // Skip safety check if register is not accessible
+            return;
+          }
+
           // Add timeout to prevent hanging
           const safetyBitPromise = Promise.all([
             readBit(1490, 0), // Part not present. 1490.0
