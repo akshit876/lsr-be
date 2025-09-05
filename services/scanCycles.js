@@ -353,43 +353,16 @@ class ScannerController {
           // Read safety bits from register 1490
           console.log("🔍 About to read safety bits...");
 
-          // Test if register 1490 is accessible by reading just one bit first
-          try {
-            console.log("🔍 Testing register 1490 accessibility...");
-            const testBit = await readBit(1490, 0);
-            console.log(`🔍 Register 1490.0 test result: ${testBit}`);
-          } catch (testError) {
-            console.error(
-              `❌ Register 1490 not accessible: ${testError.message}`
-            );
-            // Skip safety check if register is not accessible
-            return;
-          }
+          // Read safety bits one by one to avoid timeout issues
+          console.log("🔍 Reading safety bits individually...");
 
-          // Add timeout to prevent hanging
-          const safetyBitPromise = Promise.all([
-            readBit(1490, 0), // Part not present. 1490.0
-            readBit(1490, 1), // Emergency stop. 1490.1
-            readBit(1490, 2), // Safety sensor. 1490.2
-            readBit(1490, 3), // Emergency push button pressed. 1490.3
-            readBit(1490, 4), // Safety curtain interrupted. 1490.4
-            readBit(1490, 5), // Fixture and marking program mismatch. 1490.5
-            readBit(1490, 6), // Servo not home position. 1490.6
-          ]);
-
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Safety bit read timeout")), 2000)
-          );
-
-          const [
-            partPresent,
-            emergencyStop,
-            safetySensor,
-            emergencyPushButton,
-            safetyCurtain,
-            fixtureProgramMismatch,
-            servoNotHome,
-          ] = await Promise.race([safetyBitPromise, timeoutPromise]);
+          const partPresent = await readBit(1490, 0); // Part not present. 1490.0
+          const emergencyStop = await readBit(1490, 1); // Emergency stop. 1490.1
+          const safetySensor = await readBit(1490, 2); // Safety sensor. 1490.2
+          const emergencyPushButton = await readBit(1490, 3); // Emergency push button pressed. 1490.3
+          const safetyCurtain = await readBit(1490, 4); // Safety curtain interrupted. 1490.4
+          const fixtureProgramMismatch = await readBit(1490, 5); // Fixture and marking program mismatch. 1490.5
+          const servoNotHome = await readBit(1490, 6); // Servo not home position. 1490.6
 
           console.log(
             `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
