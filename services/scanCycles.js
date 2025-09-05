@@ -352,15 +352,9 @@ class ScannerController {
 
           // Read safety bits from register 1490
           console.log("🔍 About to read safety bits...");
-          const [
-            partPresent,
-            emergencyStop,
-            safetySensor,
-            emergencyPushButton,
-            safetyCurtain,
-            fixtureProgramMismatch,
-            servoNotHome,
-          ] = await Promise.all([
+
+          // Add timeout to prevent hanging
+          const safetyBitPromise = Promise.all([
             readBit(1490, 0), // Part not present. 1490.0
             readBit(1490, 1), // Emergency stop. 1490.1
             readBit(1490, 2), // Safety sensor. 1490.2
@@ -369,6 +363,20 @@ class ScannerController {
             readBit(1490, 5), // Fixture and marking program mismatch. 1490.5
             readBit(1490, 6), // Servo not home position. 1490.6
           ]);
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Safety bit read timeout")), 2000)
+          );
+
+          const [
+            partPresent,
+            emergencyStop,
+            safetySensor,
+            emergencyPushButton,
+            safetyCurtain,
+            fixtureProgramMismatch,
+            servoNotHome,
+          ] = await Promise.race([safetyBitPromise, timeoutPromise]);
 
           console.log(
             `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
