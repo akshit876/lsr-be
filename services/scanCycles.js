@@ -340,8 +340,12 @@ class ScannerController {
       };
 
       // Safety check interval - runs in parallel every 500ms
+      console.log("🔧 Creating safety check interval...");
       const safetyCheckInterval = setInterval(async () => {
         try {
+          console.log(
+            "🔍 Safety check running - reading register 1490 bits..."
+          );
           logger.debug(
             "🔍 Safety check running - reading register 1490 bits..."
           );
@@ -519,6 +523,8 @@ class ScannerController {
           );
         }
       }, 500);
+
+      console.log("✅ Safety check interval created successfully");
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
