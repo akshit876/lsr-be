@@ -347,7 +347,7 @@ class ScannerController {
           ]);
 
           // Check safety conditions
-          if (!partPresent) {
+          if (partPresent) {
             cleanup();
             logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
 
@@ -383,7 +383,7 @@ class ScannerController {
             return;
           }
 
-          if (!safetySensor) {
+          if (safetySensor) {
             cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 0)"
@@ -402,7 +402,9 @@ class ScannerController {
             return;
           }
         } catch (error) {
-          logger.error(`Error checking safety conditions: ${error.message}`);
+          logger.error(
+            `Error checking safety conditions and alarms: ${error.message}`
+          );
         }
       }, 500);
 
