@@ -330,6 +330,9 @@ class ScannerController {
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
+        if (safetyCheckInterval) {
+          clearInterval(safetyCheckInterval);
+        }
       };
 
       // Reset check interval
@@ -384,6 +387,188 @@ class ScannerController {
           logger.error(`Error checking bit value: ${error.message}`);
         }
       }, CHECK_INTERVAL);
+
+      // Safety check interval - runs in parallel every 500ms
+      console.log("🔧 Creating safety check interval...");
+      const safetyCheckInterval = setInterval(async () => {
+        try {
+          console.log(
+            "🔍 Safety check running - reading register 1490 bits..."
+          );
+          logger.debug(
+            "🔍 Safety check running - reading register 1490 bits..."
+          );
+
+          // Read safety bits from register 1490
+          console.log("🔍 About to read safety bits...");
+
+          // Read safety bits one by one to avoid timeout issues
+          console.log("🔍 Reading safety bits individually...");
+
+          const partPresent = await readBit(1490, 0); // Part not present. 1490.0
+          const emergencyStop = await readBit(1490, 1); // Emergency stop. 1490.1
+          const safetySensor = await readBit(1490, 2); // Safety sensor. 1490.2
+          const emergencyPushButton = await readBit(1490, 3); // Emergency push button pressed. 1490.3
+          const safetyCurtain = await readBit(1490, 4); // Safety curtain interrupted. 1490.4
+          const fixtureProgramMismatch = await readBit(1490, 5); // Fixture and marking program mismatch. 1490.5
+          const servoNotHome = await readBit(1490, 6); // Servo not home position. 1490.6
+
+          console.log(
+            `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
+          );
+          logger.debug(
+            `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
+          );
+
+          // Check safety conditions
+          if (partPresent) {
+            cleanup();
+            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Part not present ",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          if (emergencyStop) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency stop activated ",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          if (safetySensor) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 0)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety sensor not engaged",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          // Check for emergency push button pressed
+          if (emergencyPushButton) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency push button pressed (1490.3 = 1)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency push button pressed",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          // Check for safety curtain interrupted
+          if (safetyCurtain) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 0)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety curtain interrupted",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          // Check for fixture and marking program mismatch
+          if (fixtureProgramMismatch) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Fixture and marking program mismatch (1490.5 = 1)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation:
+                  "Fixture and marking program mismatch - check program and fixture",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          // Check for servo not home position
+          if (servoNotHome) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Servo not home position (1490.6 = 0)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Servo not home position",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+        } catch (error) {
+          console.error(
+            `❌ Error checking safety conditions: ${error.message}`
+          );
+          console.error(`❌ Error stack: ${error.stack}`);
+          logger.error(`❌ Error checking safety conditions: ${error.message}`);
+          logger.error(
+            "❌ Safety check failed - this could prevent safety violations from being detected!"
+          );
+        }
+      }, 500);
+
+      console.log("✅ Safety check interval created successfully");
 
       // Initial checks
       const performInitialCheck = async () => {
