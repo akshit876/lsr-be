@@ -91,16 +91,8 @@ class BarcodeGenerator {
         Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
       const julianDate = dayOfYear.toString().padStart(3, "0"); // 3-digit format
 
-      // Convert month number to letter (1-12 to A-L)
-      const monthToLetter = (monthNum) => {
-        const monthInt = parseInt(monthNum);
-        if (monthInt < 1 || monthInt > 12) {
-          return "A"; // Default to A if invalid
-        }
-        return String.fromCharCode(64 + monthInt);
-      };
-
-      const monthLetterValue = monthToLetter(month);
+      // Use month directly without conversion (e.g., "09" instead of "I")
+      const monthLetterValue = month;
 
       // Fetch config and part number if not provided
       const { partNumber: fetchedPartNumber, configData } =
@@ -214,7 +206,7 @@ class BarcodeGenerator {
         fields: fields,
       };
     } catch (error) {
-      console.error("Error generating barcode:", error);
+      logger.error("Error generating barcode:", error);
       throw error;
     }
   }
