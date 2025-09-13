@@ -657,6 +657,19 @@ class ScannerController {
     );
     await writeBit(1414, 3, 1);
 
+    // Step 3.5: Save successful marking data to MongoDB
+    logger.info("💾 Saving successful marking data to MongoDB...");
+    await this.saveToMongoDB({
+      io: this.io,
+      serialNumber: barcodeData.serialNo,
+      markingData: barcodeData.text,
+      scannerData: "N/A", // No scanner in printing-only mode
+      result: "OK", // Marking was successful
+      grading: "N/A", // No grading in printing-only mode
+      isUpdate: true, // Update the initial record with final result
+    });
+    logger.info("✅ MongoDB save completed for successful marking");
+
     // Step 4: Final Checks and Cleanup
     logger.info("🔍 Starting final checks and cycle completion...");
     const finalChecksResult = await this.performFinalChecks();
