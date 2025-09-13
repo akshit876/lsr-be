@@ -1,12 +1,7 @@
 import { format, isAfter, isBefore, isSameDay } from "date-fns";
 import logger from "../logger.js";
 import MongoDBService from "./mongoDbService.js";
-import path, { dirname } from "path";
 // import { __dirname } from "./scanCycles.js";
-import fs from "fs";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-export const __dirname = dirname(__filename);
 const INITIAL_SERIAL_NUMBER = 1; // Default value
 
 class SerialNumberGeneratorService {
@@ -148,7 +143,7 @@ class SerialNumberGeneratorService {
 
   getNextSerialNumber() {
     this.checkAndResetSerialNumber();
-    const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
+    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
     this.currentSerialNumber++;
     return serialNumber;
   }
@@ -168,7 +163,7 @@ class SerialNumberGeneratorService {
     if (this.isManualReset || this.hasResetEventOccurred) {
       this.isManualReset = false;
       this.hasResetEventOccurred = false; // Reset the flag after use
-      const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
+      const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
       this.currentSerialNumber++;
       return serialNumber;
     }
@@ -188,21 +183,21 @@ class SerialNumberGeneratorService {
       );
     }
 
-    const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
+    const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");
     this.currentSerialNumber++;
     return serialNumber;
   }
 
   incrementSerialNumber() {
     this.currentSerialNumber++;
-    return this.currentSerialNumber.toString().padStart(3, "0"); // Format the return value with leading zeros
+    return this.currentSerialNumber.toString().padStart(4, "0"); // Format the return value with leading zeros
   }
 
   decSerialNumber() {
     // this.checkAndResetSerialNumber();
     // const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");r
     this.currentSerialNumber--;
-    return this.currentSerialNumber.toString().padStart(3, "0"); // Format the return value with leading zeros
+    return this.currentSerialNumber.toString().padStart(4, "0"); // Format the return value with leading zeros
   }
 
   checkAndResetSerialNumber() {
@@ -234,8 +229,8 @@ class SerialNumberGeneratorService {
       (!isSameDay(now, this.lastResetDate) ||
         isBefore(this.lastResetDate, resetTime));
 
-    // Check if we need to reset based on reaching 999 (wrap-around)
-    const shouldResetByCount = this.currentSerialNumber > 999;
+    // Check if we need to reset based on reaching 9999 (wrap-around)
+    const shouldResetByCount = this.currentSerialNumber > 9999;
 
     if (shouldResetByTime || shouldResetByCount) {
       this.currentSerialNumber = this.initialSerialNumber;
@@ -243,9 +238,9 @@ class SerialNumberGeneratorService {
 
       const resetReason = shouldResetByTime
         ? "daily reset at midnight"
-        : "reaching 999";
+        : "reaching 9999";
       logger.info(
-        `Serial number reset to ${this.initialSerialNumber.toString().padStart(3, "0")} due to ${resetReason} at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
+        `Serial number reset to ${this.initialSerialNumber.toString().padStart(4, "0")} due to ${resetReason} at ${format(now, "yyyy-MM-dd HH:mm:ss")}`
       );
       return true;
     }
