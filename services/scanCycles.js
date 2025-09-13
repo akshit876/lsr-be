@@ -615,6 +615,12 @@ class ScannerController {
     // Step 1: Generate and Write Barcode (printing only mode)
     const barcodeData = await this.generateAndWriteBarcode(partNumber);
     if (!barcodeData) {
+      // Marking failed - send NG signal to PLC
+      logger.warn("❌ Marking failed - sending NG signal to PLC");
+      logger.info(
+        "✍️ Writing bit 1414.4 to signal NG verification (marking failed)"
+      );
+      await writeBit(1414, 4, 1);
       return;
     }
 
@@ -628,6 +634,11 @@ class ScannerController {
         "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
       );
       await sleep(1000);
+      // Send NG signal to PLC for reset during transfer
+      logger.info(
+        "✍️ Writing bit 1414.4 to signal NG verification (reset during transfer)"
+      );
+      await writeBit(1414, 4, 1);
       await this.saveToMongoDB({
         io: this.io,
         serialNumber: barcodeData.serialNo,
@@ -640,7 +651,13 @@ class ScannerController {
       return;
     }
 
-    // Step 3: Final Checks and Cleanup (no verification scan)
+    // Step 3: Send OK result to PLC after marking completes (simulate verification scan)
+    logger.info(
+      "✍️ Writing bit 1414.3 to signal OK verification (marking completed)"
+    );
+    await writeBit(1414, 3, 1);
+
+    // Step 4: Final Checks and Cleanup
     logger.info("🔍 Starting final checks and cycle completion...");
     const finalChecksResult = await this.performFinalChecks();
     logger.info(`📋 Final checks result: ${finalChecksResult}`);
@@ -677,6 +694,12 @@ class ScannerController {
       logger.warn(`❌ Cycle completion failed:`);
       logger.warn(`   - Final checks: ${finalChecksResult}`);
       logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
+
+      // Send NG signal to PLC for failed final checks
+      logger.info(
+        "✍️ Writing bit 1414.4 to signal NG verification (final checks failed)"
+      );
+      await writeBit(1414, 4, 1);
 
       // Trigger UI refresh even for failed cycles
       if (this.io) {
