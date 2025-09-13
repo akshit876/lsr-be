@@ -10,7 +10,7 @@ import fs from "fs";
 import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
-import TcpScannerService from "./TcpScannerService.js";
+// TcpScannerService import removed - printing only mode
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -21,16 +21,7 @@ export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 
-// TCP Scanner configuration
-const TCP_SCANNER_CONFIG = {
-  host: process.env.SCANNER_HOST || "192.168.3.147", // Default TCP scanner IP
-  port: parseInt(process.env.SCANNER_PORT, 10) || 502, // Default TCP scanner port
-  timeout: 5000,
-  reconnectInterval: 3000,
-  keepAlive: true, // Enable keep-alive to prevent idle timeouts
-  keepAliveInitialDelay: 1000,
-  logDir: "scanner_logs",
-};
+// TCP Scanner configuration removed - printing only mode
 
 class ScannerController {
   static instance = null;
@@ -46,7 +37,6 @@ class ScannerController {
     logger.info("🎯 Creating new scanner controller instance");
     this.resetMonitor = null;
     this.resetListeners = new Set();
-    this.tcpScannerService = null;
     this.isInitialized = false;
     this.shiftUtility = new ShiftUtility();
     this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
@@ -77,63 +67,7 @@ class ScannerController {
       await mongoDbService.connect("main-data", "records");
       logger.success("MongoDB connected successfully");
 
-      // Initialize TCP scanner connection with better error handling
-      logger.info("🔌 Setting up TCP scanner connection...");
-      try {
-        logger.info("🔍 Creating TcpScannerService instance...");
-        this.tcpScannerService = new TcpScannerService(TCP_SCANNER_CONFIG);
-        logger.info(
-          `🔍 tcpScannerService created: ${this.tcpScannerService ? "exists" : "null"}`
-        );
-
-        logger.info("🔍 Calling initTcpConnection...");
-        await this.tcpScannerService.initTcpConnection();
-        logger.info(
-          `🔍 After initTcpConnection - tcpScannerService: ${this.tcpScannerService ? "exists" : "null"}`
-        );
-        logger.success(
-          `TCP scanner connected successfully at ${TCP_SCANNER_CONFIG.host}:${TCP_SCANNER_CONFIG.port}`
-        );
-      } catch (tcpError) {
-        logger.error(
-          `🔍 TCP scanner initialization failed: ${tcpError.message}`
-        );
-        // Set tcpScannerService to null on error to make debugging easier
-        this.tcpScannerService = null;
-
-        if (tcpError.message.includes("ECONNREFUSED")) {
-          logger.error(
-            "❌ TCP Scanner Connection Refused - Troubleshooting suggestions:"
-          );
-          logger.error("   1. Check if the TCP scanner is powered on");
-          logger.error(
-            "   2. Verify the scanner's IP address and port settings"
-          );
-          logger.error("   3. Check network connectivity to the scanner");
-          logger.error("   4. Ensure no firewall is blocking the connection");
-          logger.error("   5. Try pinging the scanner IP address");
-          logger.error(
-            `   6. Verify scanner is listening on port ${TCP_SCANNER_CONFIG.port}`
-          );
-        } else if (tcpError.message.includes("EHOSTUNREACH")) {
-          logger.error("❌ TCP Scanner Host Unreachable");
-          logger.error("   1. Check if the scanner IP address is correct");
-          logger.error("   2. Verify network connectivity");
-          logger.error("   3. Check if scanner is on the same network segment");
-        } else if (tcpError.message.includes("ETIMEDOUT")) {
-          logger.error("❌ TCP Scanner Connection Timeout");
-          logger.error("   1. Check if the scanner is responding");
-          logger.error("   2. Verify network latency is acceptable");
-          logger.error("   3. Try increasing the connection timeout");
-        }
-
-        logger.info(`💡 Current TCP Scanner Configuration:`);
-        logger.info(`   - Host: ${TCP_SCANNER_CONFIG.host}`);
-        logger.info(`   - Port: ${TCP_SCANNER_CONFIG.port}`);
-        logger.info(`   - Timeout: ${TCP_SCANNER_CONFIG.timeout}ms`);
-
-        throw new Error(`TCP Scanner Error: ${tcpError.message}`);
-      }
+      // Scanner initialization removed - printing only mode
 
       // Initialize barcode generator
       logger.info("🏷️ Setting up barcode generator...");
@@ -237,10 +171,7 @@ class ScannerController {
         this.resetMonitor.terminate();
       }
 
-      if (this.tcpScannerService) {
-        logger.info("🔌 Closing TCP scanner connection...");
-        await this.tcpScannerService.closeConnection();
-      }
+      // Scanner cleanup removed - printing only mode
 
       logger.info("📦 Disconnecting from MongoDB...");
       await mongoDbService.disconnect();
@@ -513,19 +444,7 @@ class ScannerController {
     }
   }
 
-  async compareScannerDataWithCode(scannerData) {
-    try {
-      const codeData = fs.readFileSync(CODE_FILE_PATH, "utf8").trim();
-      const isMatch = scannerData === codeData;
-      logger.info(`Comparison result: ${isMatch ? "Match" : "No match"}`);
-      return isMatch;
-    } catch (error) {
-      logger.error(
-        `Error comparing scanner data with code file: ${error.message}`
-      );
-      throw error;
-    }
-  }
+  // compareScannerDataWithCode method removed - printing only mode
 
   async saveToMongoDB({
     io,
@@ -611,7 +530,6 @@ class ScannerController {
         });
       }
     } catch (error) {
-      console.error({ error });
       logger.error("Error saving data:", error);
       throw error;
     }
@@ -635,16 +553,16 @@ class ScannerController {
     return false;
   }
 
-  async runContinuousScan(io = null, tcpScannerService, { partNumber }) {
+  async runContinuousScan(io = null, _tcpScannerService, { partNumber }) {
     this.io = io;
     this.currentPartNumber = partNumber;
     this.isRunning = true;
     logger.info(
-      `🔄 Starting continuous scan (current cycle count: ${this.cycleCount})`
+      `🔄 Starting continuous print cycles (current cycle count: ${this.cycleCount})`
     );
 
     try {
-      await this.initializeScannerAndMonitor(io, this.tcpScannerService);
+      await this.initializeScannerAndMonitor();
 
       while (this.isRunning) {
         try {
@@ -652,14 +570,14 @@ class ScannerController {
 
           // Clear separator and print cycle count
           logger.separator.hash();
-          logger.warn(`⚡ Scan Cycle ${this.cycleCount + 1}`);
+          logger.warn(`⚡ Print Cycle ${this.cycleCount + 1}`);
           logger.separator.hash();
 
           // Create new reset monitoring for each cycle
           const resetMonitoring = this.startResetMonitoring();
 
           await Promise.race([
-            this.executeScanCycle(this.tcpScannerService, partNumber),
+            this.executeScanCycle(null, partNumber),
             resetMonitoring,
           ]);
 
@@ -677,15 +595,15 @@ class ScannerController {
         }
       }
     } catch (error) {
-      logger.error("❌ Fatal error in continuous scan:", error);
+      logger.error("❌ Fatal error in continuous print cycles:", error);
       throw error;
     } finally {
       this.cleanupResetListeners();
     }
   }
 
-  // New method to encapsulate the main scan cycle logic
-  async executeScanCycle(tcpScannerService, partNumber) {
+  // New method to encapsulate the main printing cycle logic (no scanners)
+  async executeScanCycle(_tcpScannerService, partNumber) {
     // First check for 1410.0 (start signal)
     logger.info("Waiting for start signal (1410.0)...");
     const resetResult = await this.checkResetOrBit(1410, 0, 1);
@@ -694,20 +612,13 @@ class ScannerController {
       return;
     }
 
-    // Step 1: First Scanner Check
-    const firstScanResult = await this.handleFirstScan(tcpScannerService);
-    if (!firstScanResult.shouldContinue) {
-      logger.info("Cycle stopped after first scan");
-      return;
-    }
-
-    // Step 2: Generate and Write Barcode (simplified, no OCR)
+    // Step 1: Generate and Write Barcode (printing only mode)
     const barcodeData = await this.generateAndWriteBarcode(partNumber);
     if (!barcodeData) {
       return;
     }
 
-    // Step 3: Signal Transfer and Wait
+    // Step 2: Signal Transfer and Wait
     logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
     await writeBit(1414, 15, 1);
 
@@ -729,23 +640,14 @@ class ScannerController {
       return;
     }
 
-    // Step 4: Verification Scanner Check
-    const verificationScanResult = await this.handleVerificationScan(
-      tcpScannerService,
-      barcodeData
-    );
-
-    // Step 5: Final Checks and Cleanup
+    // Step 3: Final Checks and Cleanup (no verification scan)
     logger.info("🔍 Starting final checks and cycle completion...");
     const finalChecksResult = await this.performFinalChecks();
     logger.info(`📋 Final checks result: ${finalChecksResult}`);
-    logger.info(
-      `🔍 Verification scan result: ${verificationScanResult.success}`
-    );
 
     if (finalChecksResult) {
       this.cycleCount++;
-      logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
+      logger.section(`✅ Completed Print Cycle ${this.cycleCount}`);
       logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
 
       // Trigger UI refresh on successful cycle completion
@@ -762,7 +664,7 @@ class ScannerController {
           cycleNumber: this.cycleCount,
           timestamp: new Date().toISOString(),
           success: true,
-          result: verificationScanResult.success ? "OK" : "NG",
+          result: "OK", // Always OK since no verification needed
         });
       }
 
@@ -774,9 +676,6 @@ class ScannerController {
     } else {
       logger.warn(`❌ Cycle completion failed:`);
       logger.warn(`   - Final checks: ${finalChecksResult}`);
-      logger.warn(
-        `   - Verification success: ${verificationScanResult.success}`
-      );
       logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
 
       // Trigger UI refresh even for failed cycles
@@ -836,153 +735,9 @@ class ScannerController {
     });
   }
 
-  async fetchScannerData(tcpScannerService, options = {}) {
-    const {
-      scanType = options.scanType || "first",
-      timeout = 30 * 1000, // Reduced timeout for faster debugging
-      scannerLabel = this.getScanLabel(scanType),
-    } = options;
+  // fetchScannerData method removed - printing only mode
 
-    logger.section(`${scannerLabel} Scanner Data Acquisition`);
-
-    // Prevent multiple triggers
-    if (this.isScanning) {
-      logger.warn("Scanner already in progress, skipping new trigger");
-      return null;
-    }
-    this.isScanning = true;
-
-    try {
-      logger.info(
-        `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
-      );
-
-      const scannerData = await new Promise((resolve, reject) => {
-        const dataHandler = (data) => {
-          logger.success(
-            `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
-          );
-          resolve(data);
-          this.tcpScannerService.off("dataGot", dataHandler);
-        };
-
-        // Set up event listener
-        logger.info("👂 Adding event listener for scanner data");
-        this.tcpScannerService.on("dataGot", dataHandler);
-
-        // Configure timeout with better debugging
-        const timeoutId = setTimeout(() => {
-          logger.error(
-            `⏰ TIMEOUT: No data received from ${scannerLabel.toLowerCase()} scanner after ${timeout / 1000} seconds`
-          );
-          logger.error("🔍 Troubleshooting suggestions:");
-          logger.error(
-            "   1. Check if scanner is physically connected to COM3"
-          );
-          logger.error("   2. Verify scanner is powered on");
-          logger.error("   3. Check if barcode is present for scanner to read");
-          logger.error(
-            "   4. Verify scanner is reachable via network (ping test)"
-          );
-          logger.error("   5. Test scanner with a simple TCP client");
-
-          this.tcpScannerService.off("dataGot", dataHandler);
-
-          // Return "NG" on timeout and ensure proper bit handling
-          logger.warn(
-            "🔧 Scanner timeout - treating as NG to continue workflow"
-          );
-          resolve("NG");
-        }, timeout);
-
-        // Trigger scanner based on scan type
-        const register = this.getScanRegister(scanType);
-        const bit = this.getScanBit(scanType);
-
-        logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
-
-        // Add 200ms delay before triggering scanner ON
-        setTimeout(() => {
-          logger.info(`⏳ 200ms delay completed, now triggering scanner...`);
-
-          writeBit(register, bit, 1)
-            .then(() => {
-              logger.success(`${scannerLabel} scanner triggered successfully`);
-              logger.info(
-                `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
-              );
-            })
-            .catch((err) => {
-              logger.error(
-                `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-                err
-              );
-              clearTimeout(timeoutId);
-              reject(err);
-            });
-        }, 200);
-      });
-
-      logger.success(
-        `📊 ${scannerLabel} scanner data received: ${scannerData}`
-      );
-
-      // Emit scanner read event to UI
-      if (this.io) {
-        this.io.emit("scanner_read", {
-          timestamp: new Date(),
-          scannerType: scannerLabel,
-          data: scannerData,
-        });
-      }
-
-      return scannerData;
-    } catch (error) {
-      logger.separator.hash();
-      logger.error(
-        `❌ Error acquiring ${scannerLabel.toLowerCase()} scanner data:`,
-        error
-      );
-      throw error;
-    } finally {
-      this.isScanning = false;
-    }
-  }
-
-  // Helper methods for scan configuration
-  getScanRegister(scanType) {
-    switch (scanType) {
-      case "first":
-        return 1415;
-      case "verification":
-        return 1416;
-      default:
-        return 1415;
-    }
-  }
-
-  getScanBit(scanType) {
-    switch (scanType) {
-      case "first":
-        return 0;
-      case "verification":
-        return 15;
-      default:
-        return 0;
-    }
-  }
-
-  getScanLabel(scanType) {
-    switch (scanType) {
-      case "first":
-        return "First";
-      case "verification":
-        return "Verification";
-      default:
-        return "Scanner";
-    }
-  }
+  // Helper methods for scan configuration removed - printing only mode
 
   async generateAndWriteBarcode(partNumber) {
     // Check for reset signal before generating barcode
@@ -1169,79 +924,16 @@ class ScannerController {
     return this.currentDayId++;
   }
 
-  async handleFirstScan(tcpScannerService) {
-    logger.info("Starting first scan handler");
+  // handleFirstScan method removed - printing only mode
 
-    const scannerData = await this.fetchScannerData(tcpScannerService, {
-      scanType: "first",
-    });
-
-    // Check for reset signal before proceeding
-    if (await this.checkReset()) {
-      logger.warn("⚠️ Reset detected during first scan, restarting cycle");
-      return { shouldContinue: false };
-    }
-
-    // Handle timeout/null/undefined or explicit "NG" response
-    if (!scannerData || scannerData.trim().toUpperCase() === "NG") {
-      logger.warn(
-        "⚠️ First scan data is NG or timeout, proceeding with workflow"
-      );
-      logger.info("✍️ Writing bit 1414.7 to signal NG scan");
-      await writeBit(1414, 7, 1);
-      return { shouldContinue: true };
-    }
-
-    // If we get here and have valid scanner data, it means the part is already marked
-    if (scannerData && scannerData.trim() !== "") {
-      logger.warn("⚠️ Part appears to be already marked");
-
-      // Emit the "part_already_marked" event to the UI
-      if (this.io) {
-        this.io.emit("first_scan_ok", {
-          timestamp: new Date(),
-          scannerData: scannerData,
-          message:
-            "Part detected with existing marking. Please use an unmarked part.",
-        });
-      }
-
-      logger.info("✍️ Writing bit 1414.6 to signal OK scan");
-      await writeBit(1414, 6, 1);
-    }
-
-    return { shouldContinue: false };
-  }
-
-  async initializeScannerAndMonitor(io, tcpScannerService) {
+  async initializeScannerAndMonitor() {
     if (!this.isInitialized) {
-      logger.info("🔄 Starting scanner initialization...");
+      logger.info("🔄 Starting initialization...");
       await this.initialize();
     }
 
-    // Debug logging
-    logger.info("🔍 Debugging COM service state:");
-    logger.info(
-      `   - Provided comService: ${tcpScannerService ? "exists" : "null"}`
-    );
-    logger.info(
-      `   - Internal comPortService: ${this.tcpScannerService ? "exists" : "null"}`
-    );
-    logger.info(`   - isInitialized: ${this.isInitialized}`);
-
-    // Use the internally created comPortService if no external service provided
-    if (tcpScannerService) {
-      this.tcpScannerService = tcpScannerService;
-      logger.info("🔗 Using provided COM service");
-    } else {
-      // Use the COM port service created during initialization
-      if (!this.tcpScannerService) {
-        throw new Error(
-          "COM port service not initialized. Make sure initialize() completed successfully."
-        );
-      }
-      logger.info("🔗 Using internal COM port service");
-    }
+    // Scanner initialization removed - printing only mode
+    logger.info("🖨️ Running in printing-only mode (no scanners)");
 
     this.setupResetMonitor();
   }
@@ -1297,7 +989,7 @@ class ScannerController {
   }
 
   async handleScanError(error) {
-    logger.error("❌ Unexpected error in scanner workflow:", error);
+    logger.error("❌ Unexpected error in print workflow:", error);
     await this.handleError(error);
     await sleep(5000);
   }
@@ -1332,61 +1024,9 @@ class ScannerController {
     }
   }
 
-  async handleVerificationScan(tcpScannerService, barcodeData) {
-    logger.info("Starting verification scan");
+  // handleVerificationScan method removed - printing only mode
 
-    try {
-      const scannerData = await this.fetchScannerData(tcpScannerService, {
-        scanType: "verification",
-      });
-
-      // Handle timeout/null/undefined cases as NG
-      const effectiveScannerData = scannerData || "NG";
-
-      if (effectiveScannerData !== "NG") {
-        logger.success("Verification scan OK");
-      } else {
-        logger.warn("⚠️ Verification scan NG or timeout");
-      }
-
-      const isDataMatching =
-        await this.compareScannerDataWithCode(effectiveScannerData);
-
-      logger.info(
-        `✍️ Writing bit 1414.${isDataMatching ? 3 : 4} to signal data match result`
-      );
-      await writeBit(1414, isDataMatching ? 3 : 4, 1);
-
-      if (isDataMatching) {
-        logger.success("Data matches ✅");
-      } else {
-        logger.warn("⚠️ Data does not match");
-      }
-
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
-        scannerData: effectiveScannerData,
-        grading: "N/A",
-        result: isDataMatching,
-        isUpdate: true,
-      });
-
-      return { success: isDataMatching };
-    } catch (error) {
-      if (error.message === "RESET_DETECTED") {
-        logger.warn(
-          "Reset detected during verification scan, restarting cycle"
-        );
-        await this.handleReset();
-        throw error;
-      }
-      throw error;
-    }
-  }
-
-  // Remove testComPortCommunication (not needed for TCP scanner)
+  // testComPortCommunication method removed - printing only mode
 
   async getCurrentModelNumber() {
     try {
