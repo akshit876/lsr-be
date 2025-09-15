@@ -356,7 +356,7 @@ server.listen(PORT, async (err) => {
     // barcodeGenerator.initialize('main-data', 'records');
     // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
     // tcpScannerService = new TcpScannerService({
-    //   host: process.env.SCANNER_HOST || '192.168.3.145',
+    //   host: process.env.SCANNER_HOST || '192.168.3.147',
     //   port: parseInt(process.env.SCANNER_PORT, 10) || 502,
     //   logDir: 'scanner_logs',
     // });

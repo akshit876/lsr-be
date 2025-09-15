@@ -13,7 +13,7 @@ class TcpScannerService extends EventEmitter {
     console.log("TcpScannerService constructor called with options:", options);
 
     this.options = {
-      host: options.host || process.env.SCANNER_HOST || "192.168.3.145",
+      host: options.host || process.env.SCANNER_HOST || "192.168.3.147",
       port: parseInt(options.port || process.env.SCANNER_PORT, 10) || 502,
       timeout: options.timeout || 5000,
       reconnectInterval: options.reconnectInterval || 3000,
