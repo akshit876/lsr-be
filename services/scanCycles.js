@@ -446,6 +446,25 @@ class ScannerController {
 
   // compareScannerDataWithCode method removed - printing only mode
 
+  // Helper method to trigger UI refresh
+  triggerUIRefresh(io, eventType = "data_updated", additionalData = {}) {
+    if (io) {
+      const baseEvent = {
+        timestamp: new Date().toISOString(),
+        cycleNumber: this.cycleCount,
+        ...additionalData,
+      };
+
+      // Emit the specific event
+      io.emit(eventType, baseEvent);
+
+      // Always trigger data refresh
+      io.emit("request-data-refresh");
+
+      logger.info(`📡 UI refresh triggered for event: ${eventType}`);
+    }
+  }
+
   async saveToMongoDB({
     io,
     serialNumber,
@@ -522,13 +541,12 @@ class ScannerController {
         );
       }
 
-      if (io) {
-        // Emit UI refresh event
-        io.emit("data_updated", {
-          timestamp: new Date().toISOString(),
-          message: "Data saved to MongoDB",
-        });
-      }
+      // Trigger UI refresh using helper method
+      this.triggerUIRefresh(io, "data_updated", {
+        message: "Data saved to MongoDB",
+        serialNumber,
+        result,
+      });
     } catch (error) {
       logger.error("Error saving data:", error);
       throw error;
@@ -683,19 +701,23 @@ class ScannerController {
       // Trigger UI refresh on successful cycle completion
       if (this.io) {
         logger.info("📡 Broadcasting cycle completion to UI...");
+
+        // Emit cycle completion events
         this.io.emit("cycle_completed", {
           timestamp: new Date().toISOString(),
           cycleNumber: this.cycleCount,
           success: true,
         });
 
-        // Also emit a specific cycle completion event
         this.io.emit("scan-cycle-completed", {
           cycleNumber: this.cycleCount,
           timestamp: new Date().toISOString(),
           success: true,
           result: "OK", // Always OK since no verification needed
         });
+
+        // Trigger data refresh for all connected clients
+        this.io.emit("request-data-refresh");
       }
 
       // Add 2-second delay after cycle completion
@@ -731,6 +753,9 @@ class ScannerController {
           result: "NG",
           error: "Cycle completion failed",
         });
+
+        // Trigger data refresh for all connected clients
+        this.io.emit("request-data-refresh");
       }
 
       // Add 2-second delay even for failed cycles
@@ -831,6 +856,9 @@ class ScannerController {
           timestamp: new Date(),
           data: barcodeText,
         });
+
+        // Also trigger data refresh
+        this.io.emit("request-data-refresh");
       }
 
       logger.info("🔍 Verifying file write...");

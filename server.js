@@ -267,6 +267,16 @@ io.on("connection", (socket) => {
       });
   });
 
+  // Handle data update events for UI refresh
+  socket.on("request-data-refresh", () => {
+    logger.info(`Client ${socket.id} requested data refresh`);
+    mongoDbService
+      .sendMongoDbDataToClient(socket, "main-data", "records")
+      .catch((error) => {
+        console.error("Error in sendMongoDbDataToClient:", error);
+      });
+  });
+
   socket.on(
     "request-modbus-data",
     async ({ register, bits, interval = 1000 }) => {
