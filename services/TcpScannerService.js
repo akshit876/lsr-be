@@ -9,6 +9,9 @@ class TcpScannerService extends EventEmitter {
   constructor(options = {}) {
     super(); // Initialize EventEmitter
 
+    // Set max listeners to prevent memory leak warnings
+    this.setMaxListeners(50); // Allow up to 50 listeners
+
     // --- NEW: Debug logging to identify the issue ---
     console.log("TcpScannerService constructor called with options:", options);
 

@@ -1154,11 +1154,15 @@ class ScannerController {
         logger.info(
           `🔍 Main scanner listeners before clearing: ${this.tcpScannerService.listenerCount("dataGot")}`
         );
+        // Actually remove all dataGot listeners
+        this.tcpScannerService.removeAllListeners("dataGot");
       }
       if (this.middleScannerService) {
         logger.info(
           `🔍 Middle scanner listeners before clearing: ${this.middleScannerService.listenerCount("dataGot")}`
         );
+        // Actually remove all dataGot listeners
+        this.middleScannerService.removeAllListeners("dataGot");
       }
       await sleep(50);
 
