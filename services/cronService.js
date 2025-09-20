@@ -90,19 +90,20 @@ class CronService {
 
       // Format the data
       const formattedData = records.map((row, index) => {
-        let scannerDataWithoutGrade = row.ScannerData || "";
+        let fullScannerData = row.ScannerData || "";
         let grade = "";
 
         if (row.ScannerData !== "NG" && row.ScannerData) {
           grade = row.ScannerData.slice(-1);
-          scannerDataWithoutGrade = row.ScannerData.slice(0, -1);
+          // Keep the full scanner data including grade
+          fullScannerData = row.ScannerData;
         }
 
         return {
           SerialNumber: index + 1,
           Timestamp: format(new Date(row.Timestamp), "dd/MM/yyyy HH:mm:ss"),
           MarkingData: row.MarkingData || "",
-          ScannerData: scannerDataWithoutGrade,
+          ScannerData: fullScannerData,
           Grade: grade,
           Result: row.Result || "",
           User: row.User || "",
