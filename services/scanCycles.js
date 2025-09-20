@@ -915,6 +915,14 @@ class ScannerController {
       { text: markingData, serialNo: serialNumber }
     );
 
+    // Check if verification scan was interrupted by reset
+    if (!verificationScanResult.shouldContinue) {
+      logger.warn(
+        "🔄 Verification scan interrupted by reset, restarting cycle"
+      );
+      return;
+    }
+
     // Step 5: Final Checks and Cleanup
     logger.info("🔍 Starting final checks and cycle completion...");
     const finalChecksResult = await this.performFinalChecks();
@@ -1022,6 +1030,14 @@ class ScannerController {
     // Check for reset signal before proceeding
     if (await this.checkReset()) {
       logger.warn("⚠️ Reset detected during first scan, restarting cycle");
+      return { shouldContinue: false };
+    }
+
+    // Handle reset signal from scanner data acquisition
+    if (scannerData === "RESET") {
+      logger.warn(
+        "🔄 Reset signal received during first scan data acquisition, restarting cycle"
+      );
       return { shouldContinue: false };
     }
 
@@ -1279,6 +1295,31 @@ class ScannerController {
           }
         }, 1000); // Check every second
 
+        // --- NEW: Monitor for reset signal during scanning ---
+        const resetCheckInterval = setInterval(async () => {
+          try {
+            const resetSignal = await readBit(1600, 0);
+            if (resetSignal && !isResolved) {
+              logger.warn(
+                "🔄 Reset signal (1600.0) detected during scanning, aborting scan"
+              );
+              isResolved = true;
+              clearInterval(listenerCheckInterval);
+              clearInterval(resetCheckInterval);
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+              }
+              cleanup();
+              resolve("RESET"); // Return special reset signal
+            }
+          } catch (error) {
+            logger.error(
+              `Error checking reset signal during scan: ${error.message}`
+            );
+          }
+        }, 100); // Check every 100ms for reset signal
+
         // Configure timeout with better debugging
         timeoutId = setTimeout(() => {
           if (isResolved) {
@@ -1289,6 +1330,7 @@ class ScannerController {
           }
           isResolved = true;
           clearInterval(listenerCheckInterval); // Clear the monitoring interval
+          clearInterval(resetCheckInterval); // Clear the reset check interval
           logger.error(
             `⏰ TIMEOUT: No data received from either scanner after ${timeout / 1000} seconds`
           );
@@ -1350,6 +1392,8 @@ class ScannerController {
                 clearTimeout(timeoutId);
                 timeoutId = null;
               }
+              clearInterval(listenerCheckInterval);
+              clearInterval(resetCheckInterval);
               setTimeout(() => {
                 cleanup();
               }, 100);
@@ -1416,6 +1460,14 @@ class ScannerController {
       // Check for reset signal before proceeding
       if (await this.checkReset()) {
         logger.warn("⚠️ Reset detected during middle scan, restarting cycle");
+        return { shouldContinue: false, markingData: null };
+      }
+
+      // Handle reset signal from scanner data acquisition
+      if (scannerData === "RESET") {
+        logger.warn(
+          "🔄 Reset signal received during middle scan data acquisition, restarting cycle"
+        );
         return { shouldContinue: false, markingData: null };
       }
 
@@ -1937,6 +1989,14 @@ class ScannerController {
       const scannerData = await this.fetchScannerData(tcpScannerService, {
         scanType: "verification",
       });
+
+      // Handle reset signal from scanner data acquisition
+      if (scannerData === "RESET") {
+        logger.warn(
+          "🔄 Reset signal received during verification scan data acquisition, restarting cycle"
+        );
+        return { shouldContinue: false };
+      }
 
       // Handle timeout/null/undefined cases as NG
       const effectiveScannerData = scannerData || "NG";
