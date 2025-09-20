@@ -944,6 +944,10 @@ class ScannerController {
       logger.info("Reset detected, restarting cycle");
       return;
     }
+    if (resetResult === "safety_violation") {
+      logger.error("🚨 Safety violation detected, stopping cycle");
+      return;
+    }
 
     // Step 1: First Scanner Check
     const firstScanResult = await this.handleFirstScan(tcpScannerService);
@@ -973,7 +977,8 @@ class ScannerController {
     await writeBit(1414, 15, 1);
 
     logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-    if (await this.checkResetOrBit(1410, 3, 1)) {
+    const resetResult1410_3 = await this.checkResetOrBit(1410, 3, 1);
+    if (resetResult1410_3 === true) {
       logger.warn(
         "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
       );
@@ -987,6 +992,12 @@ class ScannerController {
         grading: "N/A",
         isUpdate: true,
       });
+      return;
+    }
+    if (resetResult1410_3 === "safety_violation") {
+      logger.error(
+        "🚨 Safety violation detected while waiting for 1410.3, stopping cycle"
+      );
       return;
     }
 
@@ -2150,9 +2161,16 @@ class ScannerController {
   async performFinalChecks() {
     try {
       logger.info("🔍 Performing final checks...");
-      if (await this.checkResetOrBit(1415, 7, 1)) {
+      const finalCheckResult = await this.checkResetOrBit(1415, 7, 1);
+      if (finalCheckResult === true) {
         logger.warn("⚠️ Reset detected at final step, restarting cycle");
         await sleep(1000);
+        return false;
+      }
+      if (finalCheckResult === "safety_violation") {
+        logger.error(
+          "🚨 Safety violation detected at final step, stopping cycle"
+        );
         return false;
       }
 
