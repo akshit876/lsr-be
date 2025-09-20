@@ -555,6 +555,9 @@ class ScannerController {
         if (resetCheckInterval) {
           clearInterval(resetCheckInterval);
         }
+        if (safetyCheckInterval) {
+          clearInterval(safetyCheckInterval);
+        }
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
@@ -580,6 +583,84 @@ class ScannerController {
           logger.error(`Error checking reset signal: ${error.message}`);
         }
       }, CHECK_INTERVAL);
+
+      // Safety check interval - runs in parallel every 500ms
+      const safetyCheckInterval = setInterval(async () => {
+        try {
+          // Read safety bits from register 1490
+          const [partPresent, emergencyStop, safetySensor] = await Promise.all([
+            readBit(1490, 0), // Part not present. 1490.0
+            readBit(1490, 1), // Emergency stop. 1490.1
+            readBit(1490, 2), // Safety sensor. 1490.2
+          ]);
+
+          // Check safety conditions
+          if (partPresent) {
+            cleanup();
+            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Part not present",
+                cycleNumber: this.cycleCount,
+                register: "1490.0",
+                value: partPresent,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          if (emergencyStop) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency stop activated",
+                cycleNumber: this.cycleCount,
+                register: "1490.1",
+                value: emergencyStop,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          if (safetySensor) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 1)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety sensor not engaged",
+                cycleNumber: this.cycleCount,
+                register: "1490.2",
+                value: safetySensor,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+        } catch (error) {
+          logger.error(
+            `Error checking safety conditions and alarms: ${error.message}`
+          );
+        }
+      }, 500); // Check every 500ms for safety violations
 
       // Bit check interval
       const bitCheckInterval = setInterval(async () => {
