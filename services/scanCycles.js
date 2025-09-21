@@ -1214,15 +1214,12 @@ class ScannerController {
 
       // Normal case handling (non-NG)
       const grading = thirdScannerData.slice(-1);
-      // Keep the full data including grade for comparison
-      const fullThirdScannerData = thirdScannerData;
+      const trimmedThirdScannerData = thirdScannerData.slice(0, -1);
 
-      const isDataMatching =
-        await this.compareScannerDataWithCode(fullThirdScannerData);
-      logger.info(
-        "🔄 Third scan data matching with full data:",
-        isDataMatching
+      const isDataMatching = await this.compareScannerDataWithCode(
+        trimmedThirdScannerData
       );
+      logger.info("🔄 Third scan data matching without grade:", isDataMatching);
 
       // Temporarily bypassing grade check
       // const checkGrading = await this.checkGrading(thirdScannerData);
@@ -1328,7 +1325,7 @@ class ScannerController {
           scanType === "third" &&
           processedResult.trim().toUpperCase() !== "NG"
         ) {
-          // emitData = processedResult.slice(0, -1);
+          emitData = processedResult.slice(0, -1);
         }
         this.io.emit("scanner_read", {
           timestamp: new Date(),
