@@ -2132,7 +2132,7 @@ class ScannerController {
         "✅ Verification scan results updated in MongoDB successfully"
       );
 
-      return { success: isDataMatching };
+      return { success: isDataMatching, shouldContinue: true };
     } catch (error) {
       if (error.message === "RESET_DETECTED") {
         logger.warn(
