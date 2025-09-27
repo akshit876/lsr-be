@@ -17,7 +17,7 @@ class CronService {
   async generateMonthlyCsv() {
     const date = new Date();
     const year = date.getFullYear();
-    const month = String(date.getMonth()).padStart(2, "0"); // Previous month
+    const month = String(date.getMonth()).padStart(2, "0"); // Previous month (0-11, will be 00-11)
     const fileName = `${year}-${month}-export.csv`;
     const filePath = path.join(__dirname, "..", "exports", fileName);
 

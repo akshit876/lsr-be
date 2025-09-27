@@ -44,9 +44,7 @@ class BarcodeGenerator {
       const fullYear = now.getFullYear().toString();
       // Use the last two digits of the year (e.g., "25" for 2025)
       const year = fullYear.slice(-2);
-      // Convert month from number to alphabet: 1=A, 2=B, 3=C, ..., 12=L
-      const monthNumber = now.getMonth() + 1; // getMonth() returns 0-11, so +1 gives 1-12
-      const month = String.fromCharCode(64 + monthNumber); // ASCII 65=A, 66=B, etc.
+      const month = format(now, "MM"); // Two-digit month (01-12)
       const day = format(now, "dd");
       const shift = this.shiftUtility.getCurrentShift(now);
 
@@ -173,8 +171,19 @@ class BarcodeGenerator {
       logger.info("Generated barcode text:", barcodeText);
       logger.info("Serial number:", serialString);
 
+      // Generate text code according to specification: SUPPLIER_CODE + LINE_NO + DDMMYY + Shift + Serial
+      const textCode = this.generateTextCode(
+        day,
+        month,
+        year,
+        shift,
+        serialString,
+        configData
+      );
+
       return {
         text: barcodeText,
+        textCode: textCode,
         serialNo: serialString,
         fields: fields,
       };
@@ -234,6 +243,35 @@ class BarcodeGenerator {
 
   setResetTime(hour, minute) {
     this.serialNumberService.setResetTime(hour, minute);
+  }
+
+  generateTextCode(day, month, year, shift, serialString, configData) {
+    // Get values from configuration data
+    const supplierCode =
+      this.getFieldValue(configData, "SUPPLIER CODE") || "R082";
+    const lineNo = this.getFieldValue(configData, "FOR STORE") || "01";
+
+    // Format according to specification: SUPPLIER_CODE + LINE_NO + DDMMYY + Shift + Serial
+    const date = `${day}${month}${year}`; // DDMMYY format
+    const shiftCode = shift; // A, B, or C
+    const serialNo = serialString.padStart(4, "0"); // 4-digit serial number
+
+    const textCode = `${supplierCode}${lineNo}${date}${shiftCode}${serialNo}`;
+    logger.info(`Generated text code: ${textCode}`);
+    logger.info(`  - Supplier Code: ${supplierCode}`);
+    logger.info(`  - Line No: ${lineNo}`);
+    logger.info(`  - Date: ${date}`);
+    logger.info(`  - Shift: ${shiftCode}`);
+    logger.info(`  - Serial: ${serialNo}`);
+    return textCode;
+  }
+
+  getFieldValue(configData, fieldName) {
+    if (!configData || !configData.fields) {
+      return null;
+    }
+    const field = configData.fields.find((f) => f.fieldName === fieldName);
+    return field ? field.value : null;
   }
 }
 
