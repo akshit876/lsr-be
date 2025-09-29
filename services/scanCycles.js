@@ -538,16 +538,90 @@ class ScannerController {
     }
   }
 
+  // Simplified timeout function for critical waits
+  async waitForBitWithTimeout(register, bit, value, timeoutMs = 10000) {
+    logger.info(
+      `⏱️ Waiting for bit ${register}.${bit} = ${value} (timeout: ${timeoutMs / 1000}s)`
+    );
+
+    return new Promise((resolve) => {
+      let isResolved = false;
+      let checkInterval = null;
+      let timeoutId = null;
+
+      const cleanup = () => {
+        if (checkInterval) {
+          clearInterval(checkInterval);
+        }
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      };
+
+      // Set timeout
+      timeoutId = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          logger.warn(
+            `⏰ Timeout after ${timeoutMs / 1000}s waiting for ${register}.${bit}`
+          );
+          resolve("timeout");
+        }
+      }, timeoutMs);
+
+      // Check for reset and target bit
+      checkInterval = setInterval(async () => {
+        if (isResolved) {
+          return;
+        }
+
+        try {
+          // Check reset first
+          const resetSignal = await readBit(1600, 0);
+          if (resetSignal) {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.info("Reset signal detected during wait");
+              await this.resetBits();
+              resolve(true);
+            }
+            return;
+          }
+
+          // Check target bit
+          const bitValue = await readBit(register, bit, false);
+          if (Number(bitValue) === Number(value)) {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.info(`✅ Target bit ${register}.${bit} is now ${value}`);
+              resolve(false);
+            }
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error checking bits: ${error.message}`);
+        }
+      }, 100); // Check every 100ms
+    });
+  }
+
   async singleCheckAttempt(register, bit, value, timeout) {
     return new Promise((resolve) => {
       let timeoutId = null;
+      let isResolved = false; // Flag to prevent multiple resolves
 
       // Only set timeout if a timeout value is provided
       if (timeout !== null && timeout > 0) {
         timeoutId = setTimeout(() => {
-          cleanup();
-          logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
-          resolve("timeout");
+          if (!isResolved) {
+            isResolved = true;
+            cleanup();
+            logger.warn(`⏰ Timeout after ${timeout / 1000} seconds`);
+            resolve("timeout");
+          }
         }, timeout);
       }
 
@@ -571,18 +645,24 @@ class ScannerController {
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
+        if (isResolved) {
+          return; // Skip if already resolved
+        }
         try {
           const resetSignal = await readBit(1600, 0);
           if (resetSignal) {
-            cleanup();
-            logger.info("Reset signal (1600.0) detected");
-            try {
-              await this.resetBits();
-              logger.info("Reset bits completed, restarting cycle");
-              resolve(true);
-            } catch (error) {
-              logger.error("Error during reset bits:", error);
-              resolve("timeout");
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.info("Reset signal (1600.0) detected");
+              try {
+                await this.resetBits();
+                logger.info("Reset bits completed, restarting cycle");
+                resolve(true);
+              } catch (error) {
+                logger.error("Error during reset bits:", error);
+                resolve("timeout");
+              }
             }
           }
         } catch (error) {
@@ -592,6 +672,9 @@ class ScannerController {
 
       // Safety check interval - runs in parallel every 500ms
       const safetyCheckInterval = setInterval(async () => {
+        if (isResolved) {
+          return; // Skip if already resolved
+        }
         try {
           // Read safety bits from register 1490
           const [partPresent, emergencyStop, safetySensor] = await Promise.all([
@@ -602,63 +685,74 @@ class ScannerController {
 
           // Check safety conditions
           if (partPresent) {
-            cleanup();
-            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.error(
+                "🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)"
+              );
 
-            // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Part not present",
-                cycleNumber: this.cycleCount,
-                register: "1490.0",
-                value: partPresent,
-              });
+              // Emit safety violation event to UI immediately
+              if (this.io) {
+                this.io.emit("safety_violation", {
+                  timestamp: new Date().toISOString(),
+                  violation: "Part not present",
+                  cycleNumber: this.cycleCount,
+                  register: "1490.0",
+                  value: partPresent,
+                });
+              }
+
+              resolve("safety_violation");
             }
-
-            resolve("safety_violation");
             return;
           }
 
           if (emergencyStop) {
-            cleanup();
-            logger.error(
-              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
-            );
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.error(
+                "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+              );
 
-            // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Emergency stop activated",
-                cycleNumber: this.cycleCount,
-                register: "1490.1",
-                value: emergencyStop,
-              });
+              // Emit safety violation event to UI immediately
+              if (this.io) {
+                this.io.emit("safety_violation", {
+                  timestamp: new Date().toISOString(),
+                  violation: "Emergency stop activated",
+                  cycleNumber: this.cycleCount,
+                  register: "1490.1",
+                  value: emergencyStop,
+                });
+              }
+
+              resolve("safety_violation");
             }
-
-            resolve("safety_violation");
             return;
           }
 
           if (safetySensor) {
-            cleanup();
-            logger.error(
-              "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 1)"
-            );
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.error(
+                "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 1)"
+              );
 
-            // Emit safety violation event to UI immediately
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Safety sensor not engaged",
-                cycleNumber: this.cycleCount,
-                register: "1490.2",
-                value: safetySensor,
-              });
+              // Emit safety violation event to UI immediately
+              if (this.io) {
+                this.io.emit("safety_violation", {
+                  timestamp: new Date().toISOString(),
+                  violation: "Safety sensor not engaged",
+                  cycleNumber: this.cycleCount,
+                  register: "1490.2",
+                  value: safetySensor,
+                });
+              }
+
+              resolve("safety_violation");
             }
-
-            resolve("safety_violation");
             return;
           }
         } catch (error) {
@@ -670,6 +764,9 @@ class ScannerController {
 
       // Bit check interval
       const bitCheckInterval = setInterval(async () => {
+        if (isResolved) {
+          return; // Skip if already resolved
+        }
         try {
           checkCount++;
           const bitValue = await readBit(register, bit);
@@ -677,11 +774,14 @@ class ScannerController {
           const expectedValue = Number(value);
 
           if (currentValue === expectedValue) {
-            cleanup();
-            logger.info(
-              `✅ Target bit ${register}.${bit} is now ${value}, proceeding`
-            );
-            resolve(false);
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.info(
+                `✅ Target bit ${register}.${bit} is now ${value}, proceeding`
+              );
+              resolve(false);
+            }
             return;
           }
 
@@ -702,6 +802,9 @@ class ScannerController {
 
       // Initial checks
       const performInitialCheck = async () => {
+        if (isResolved) {
+          return; // Skip if already resolved
+        }
         try {
           const [resetSignal, bitValue] = await Promise.all([
             readBit(1600, 0),
@@ -709,17 +812,23 @@ class ScannerController {
           ]);
 
           if (resetSignal) {
-            cleanup();
-            logger.info("Reset signal detected on initial check");
-            await this.resetBits();
-            resolve(true);
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.info("Reset signal detected on initial check");
+              await this.resetBits();
+              resolve(true);
+            }
             return;
           }
 
           if (Number(bitValue) === Number(value)) {
-            cleanup();
-            logger.info(`Target bit matched on initial check`);
-            resolve(false);
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              logger.info(`Target bit matched on initial check`);
+              resolve(false);
+            }
             return;
           }
         } catch (error) {
@@ -982,7 +1091,7 @@ class ScannerController {
     await writeBit(1414, 15, 1);
 
     logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-    const resetResult1410_3 = await this.checkResetOrBit(1410, 3, 1, 30000); // 30 second timeout
+    const resetResult1410_3 = await this.checkResetOrBit(1410, 3, 1); // Wait indefinitely
     if (resetResult1410_3 === true) {
       logger.warn(
         "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
@@ -1004,12 +1113,6 @@ class ScannerController {
         "🚨 Safety violation detected while waiting for 1410.3, stopping cycle"
       );
       return;
-    }
-    if (resetResult1410_3 === "timeout") {
-      logger.warn(
-        "⏰ Timeout waiting for 1410.3, treating as NG and continuing workflow"
-      );
-      // Continue with the workflow even if 1410.3 times out
     }
 
     // Step 4: Verification Scanner Check
