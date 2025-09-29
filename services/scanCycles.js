@@ -519,8 +519,14 @@ class ScannerController {
         if (result !== "timeout") {
           return result;
         }
-        // If we get a timeout from singleCheckAttempt, just continue the loop
-        // This ensures we keep waiting for PLC signals indefinitely
+        // If we get a timeout from singleCheckAttempt and a timeout was specified, return timeout
+        if (timeout !== null && timeout > 0) {
+          logger.warn(
+            `⏰ Timeout waiting for PLC bit ${register}.${bit} = ${value} after ${timeout / 1000} seconds`
+          );
+          return "timeout";
+        }
+        // If no timeout specified, continue waiting indefinitely
         logger.info(
           `🔄 Continuing to wait for PLC bit ${register}.${bit} = ${value}...`
         );
@@ -571,7 +577,7 @@ class ScannerController {
             cleanup();
             logger.info("Reset signal (1600.0) detected");
             try {
-              await writeBit(1500, 3, 1);
+              await this.resetBits();
               logger.info("Reset bits completed, restarting cycle");
               resolve(true);
             } catch (error) {
@@ -841,7 +847,6 @@ class ScannerController {
         mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
       }
     } catch (error) {
-      console.error({ error });
       logger.error("Error saving data:", error);
       logger.error("📋 Failed data:", {
         serialNumber,
@@ -977,7 +982,7 @@ class ScannerController {
     await writeBit(1414, 15, 1);
 
     logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-    const resetResult1410_3 = await this.checkResetOrBit(1410, 3, 1);
+    const resetResult1410_3 = await this.checkResetOrBit(1410, 3, 1, 30000); // 30 second timeout
     if (resetResult1410_3 === true) {
       logger.warn(
         "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
@@ -999,6 +1004,12 @@ class ScannerController {
         "🚨 Safety violation detected while waiting for 1410.3, stopping cycle"
       );
       return;
+    }
+    if (resetResult1410_3 === "timeout") {
+      logger.warn(
+        "⏰ Timeout waiting for 1410.3, treating as NG and continuing workflow"
+      );
+      // Continue with the workflow even if 1410.3 times out
     }
 
     // Step 4: Verification Scanner Check
