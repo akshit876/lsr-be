@@ -796,6 +796,13 @@ class ScannerController {
           const currentValue = Number(bitValue);
           const expectedValue = Number(value);
 
+          // Add debugging for bit 1410.0 specifically
+          if (register === 1410 && bit === 0) {
+            logger.debug(
+              `🔍 [DEBUG] Bit 1410.0 check: bitValue=${bitValue}, currentValue=${currentValue}, expectedValue=${expectedValue}`
+            );
+          }
+
           if (currentValue === expectedValue) {
             if (!isResolved) {
               isResolved = true;
@@ -833,6 +840,13 @@ class ScannerController {
             readBit(1600, 0),
             readBit(register, bit),
           ]);
+
+          // Add debugging for bit 1410.0 specifically
+          if (register === 1410 && bit === 0) {
+            logger.debug(
+              `🔍 [DEBUG] Initial check - Reset(1600.0): ${resetSignal}, Bit 1410.0: ${bitValue}, Expected: ${value}`
+            );
+          }
 
           if (resetSignal) {
             if (!isResolved) {
