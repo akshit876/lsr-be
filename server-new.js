@@ -51,13 +51,13 @@ class LaserMarkingServer {
   }
 
   setupRoutes() {
-    this.server.on('request', (req, res) => {
+    this.server.on("request", (req, res) => {
       // Enable CORS
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-      if (req.method === 'OPTIONS') {
+      if (req.method === "OPTIONS") {
         res.writeHead(200);
         res.end();
         return;
@@ -68,75 +68,85 @@ class LaserMarkingServer {
       const method = req.method;
 
       // Health check endpoint
-      if (method === 'GET' && pathname === '/health') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          status: "healthy",
-          timestamp: new Date().toISOString(),
-          scanCycleManager: this.scanCycleManager?.getStatus() || null,
-        }));
+      if (method === "GET" && pathname === "/health") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            status: "healthy",
+            timestamp: new Date().toISOString(),
+            scanCycleManager: this.scanCycleManager?.getStatus() || null,
+          })
+        );
         return;
       }
 
       // Status endpoint
-      if (method === 'GET' && pathname === '/status') {
+      if (method === "GET" && pathname === "/status") {
         const status = this.scanCycleManager?.getStatus() || null;
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          server: {
-            isRunning: this.isRunning,
-            uptime: process.uptime(),
-          },
-          scanCycleManager: status,
-        }));
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            server: {
+              isRunning: this.isRunning,
+              uptime: process.uptime(),
+            },
+            scanCycleManager: status,
+          })
+        );
         return;
       }
 
       // Start scan cycle endpoint
-      if (method === 'POST' && pathname === '/start') {
+      if (method === "POST" && pathname === "/start") {
         this.handleStartRequest(req, res);
         return;
       }
 
       // Stop scan cycle endpoint
-      if (method === 'POST' && pathname === '/stop') {
+      if (method === "POST" && pathname === "/stop") {
         this.handleStopRequest(req, res);
         return;
       }
 
       // Default route
-      if (method === 'GET' && pathname === '/') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          message: "Laser Marking System API",
-          version: "2.0.0",
-          endpoints: {
-            health: "/health",
-            status: "/status",
-            start: "POST /start",
-            stop: "POST /stop",
-          },
-        }));
+      if (method === "GET" && pathname === "/") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            message: "Laser Marking System API",
+            version: "2.0.0",
+            endpoints: {
+              health: "/health",
+              status: "/status",
+              start: "POST /start",
+              stop: "POST /stop",
+            },
+          })
+        );
         return;
       }
 
       // 404 Not Found
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Not Found' }));
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Not Found" }));
     });
   }
 
   async handleStartRequest(req, res) {
     try {
       if (!this.scanCycleManager) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: "Scan cycle manager not initialized" }));
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({ error: "Scan cycle manager not initialized" })
+        );
         return;
       }
 
       if (this.scanCycleManager.isRunning) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: "Scan cycle manager is already running" }));
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({ error: "Scan cycle manager is already running" })
+        );
         return;
       }
 
@@ -145,11 +155,13 @@ class LaserMarkingServer {
         logger.error("❌ Error in scan cycle manager:", error.message);
       });
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ message: "Scan cycle manager started successfully" }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({ message: "Scan cycle manager started successfully" })
+      );
     } catch (error) {
       logger.error("❌ Error starting scan cycle manager:", error.message);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: error.message }));
     }
   }
@@ -157,17 +169,21 @@ class LaserMarkingServer {
   async handleStopRequest(req, res) {
     try {
       if (!this.scanCycleManager) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: "Scan cycle manager not initialized" }));
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({ error: "Scan cycle manager not initialized" })
+        );
         return;
       }
 
       await this.scanCycleManager.stop();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ message: "Scan cycle manager stopped successfully" }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({ message: "Scan cycle manager stopped successfully" })
+      );
     } catch (error) {
       logger.error("❌ Error stopping scan cycle manager:", error.message);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: error.message }));
     }
   }
