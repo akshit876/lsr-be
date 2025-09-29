@@ -444,6 +444,7 @@ export const readDataAndConfirm = (
   );
 export const writeRegisterFull = (add, val) =>
   modbusConnection.writeRegistersFull(add, val);
+export const disconnect = () => modbusConnection.client.close();
 // writeBitsWithRest(1415, 9, 1, 2000);
 
 async function trackBits2() {

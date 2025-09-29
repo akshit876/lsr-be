@@ -9,3 +9,7 @@ export function emitErrorEvent(socket, errorType, errorMessage) {
   }
   logger.error(`${errorType}: ${errorMessage}`);
 }
+
+export function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}

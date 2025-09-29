@@ -415,8 +415,13 @@ class ScannerController {
     logger.info("🔄 Resetting bits...");
     await this.resetSpecificBits(1414, [3, 4, 6, 7]);
     await this.resetSpecificBits(1415, [4]);
-    await this.resetSpecificBits(1410, [3]); // Clear bit 1410.3 after cycle completion
-    logger.success("Bits reset successfully");
+    await this.resetSpecificBits(1410, [0, 3]); // Clear bit 1410.0 (start signal) and 1410.3 after cycle completion
+    logger.success("✓ Bits reset successfully");
+
+    // Add delay after bit reset to give PLC time to respond and set start signal
+    logger.info("⏱️ Waiting 1 second after bit reset for PLC response...");
+    await sleep(1000);
+    logger.info("✅ PLC response delay completed");
   }
 
   async resetSpecificBits(register, bitsToReset) {
@@ -522,6 +527,50 @@ class ScannerController {
       logger.info(
         `🧹 Waiting for bit ${register}.${bit} to become ${value} (timeout: ${timeout / 1000}s)`
       );
+    }
+
+    // ENHANCED IMMEDIATE CHECK: Read the bit status with retry logic
+    try {
+      logger.info(`🔍 ENHANCED IMMEDIATE CHECK: Reading current status of bit ${register}.${bit}...`);
+
+      let currentBitValue = null;
+      let immediateAttempts = 0;
+      const maxImmediateAttempts = 3;
+
+      while (immediateAttempts < maxImmediateAttempts && currentBitValue === null) {
+        try {
+          currentBitValue = await Promise.race([
+            readBit(register, bit),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Immediate check timeout')), 2000)
+            )
+          ]);
+          break; // Success
+        } catch (readError) {
+          immediateAttempts++;
+          logger.warn(`⚠️ Immediate check attempt ${immediateAttempts}/${maxImmediateAttempts} failed for ${register}.${bit}: ${readError.message}`);
+          if (immediateAttempts < maxImmediateAttempts) {
+            await sleep(100); // Small delay before retry
+          } else {
+            throw readError;
+          }
+        }
+      }
+
+      const currentValue = Number(currentBitValue);
+      const expectedValue = Number(value);
+
+      logger.info(`🔍 ENHANCED IMMEDIATE CHECK RESULT: Bit ${register}.${bit} = ${currentBitValue} (${currentValue}), Expected: ${expectedValue}, attempts: ${immediateAttempts}`);
+
+      if (currentValue === expectedValue) {
+        logger.info(`✅ ENHANCED IMMEDIATE CHECK: Bit ${register}.${bit} is already ${value}! Proceeding immediately (detected after ${immediateAttempts} attempts).`);
+        return false; // Bit is already in expected state
+      }
+
+      logger.info(`⏳ ENHANCED IMMEDIATE CHECK: Bit ${register}.${bit} is ${currentValue}, need to wait for ${expectedValue}`);
+    } catch (immediateCheckError) {
+      logger.error(`❌ ENHANCED IMMEDIATE CHECK ERROR: Failed to read bit ${register}.${bit} after multiple attempts: ${immediateCheckError.message}`);
+      logger.info(`⏳ Proceeding with normal wait loop despite immediate check error...`);
     }
 
     logger.info(
@@ -650,7 +699,7 @@ class ScannerController {
       }
 
       let checkCount = 0;
-      const CHECK_INTERVAL = 100;
+      const CHECK_INTERVAL = 50; // Reduced from 100ms to 50ms for faster detection
 
       const cleanup = () => {
         if (timeoutId) {
@@ -793,14 +842,40 @@ class ScannerController {
         }
         try {
           checkCount++;
-          const bitValue = await readBit(register, bit);
+
+          // ENHANCED: Add retry logic for bit reading with timeout
+          let bitValue = null;
+          let readAttempts = 0;
+          const maxReadAttempts = 3;
+
+          while (readAttempts < maxReadAttempts && bitValue === null) {
+            try {
+              // Add timeout to prevent hanging reads
+              bitValue = await Promise.race([
+                readBit(register, bit),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Read timeout')), 2000)
+                )
+              ]);
+              break; // Success, exit retry loop
+            } catch (readError) {
+              readAttempts++;
+              logger.warn(`⚠️ Bit read attempt ${readAttempts}/${maxReadAttempts} failed for ${register}.${bit}: ${readError.message}`);
+              if (readAttempts < maxReadAttempts) {
+                await sleep(50); // Small delay before retry
+              } else {
+                throw readError; // All attempts failed
+              }
+            }
+          }
+
           const currentValue = Number(bitValue);
           const expectedValue = Number(value);
 
-          // Add debugging for bit 1410.0 specifically
-          if (register === 1410 && bit === 0) {
-            logger.debug(
-              `🔍 [DEBUG] Bit 1410.0 check: bitValue=${bitValue}, currentValue=${currentValue}, expectedValue=${expectedValue}`
+          // Enhanced debugging for critical bits
+          if ((register === 1410 && bit === 0) || (register === 1410 && bit === 3) || (register === 1415 && bit === 7)) {
+            logger.info(
+              `🔍 [ENHANCED DEBUG] Bit ${register}.${bit} check: bitValue=${bitValue}, currentValue=${currentValue}, expectedValue=${expectedValue}, attempts=${readAttempts}`
             );
           }
 
@@ -809,15 +884,15 @@ class ScannerController {
               isResolved = true;
               cleanup();
               logger.info(
-                `✅ Target bit ${register}.${bit} is now ${value}, proceeding`
+                `✅ Target bit ${register}.${bit} is now ${value}, proceeding (detected after ${readAttempts} attempts)`
               );
               resolve(false);
             }
             return;
           }
 
-          // Log status every 5 seconds
-          if (checkCount % 10 === 0) {
+          // Log status every 2 seconds (was 5 seconds)
+          if (checkCount % 40 === 0) { // 40 * 50ms = 2000ms = 2 seconds
             logger.info(
               `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
             );
@@ -831,21 +906,47 @@ class ScannerController {
         }
       }, CHECK_INTERVAL);
 
-      // Initial checks
+      // Enhanced initial checks with retry logic
       const performInitialCheck = async () => {
         if (isResolved) {
           return; // Skip if already resolved
         }
         try {
-          const [resetSignal, bitValue] = await Promise.all([
-            readBit(1600, 0),
-            readBit(register, bit),
-          ]);
+          // ENHANCED: Add retry logic for initial checks as well
+          let resetSignal = null;
+          let bitValue = null;
+          let initialAttempts = 0;
+          const maxInitialAttempts = 3;
 
-          // Add debugging for bit 1410.0 specifically
-          if (register === 1410 && bit === 0) {
-            logger.debug(
-              `🔍 [DEBUG] Initial check - Reset(1600.0): ${resetSignal}, Bit 1410.0: ${bitValue}, Expected: ${value}`
+          while (initialAttempts < maxInitialAttempts && (resetSignal === null || bitValue === null)) {
+            try {
+              const results = await Promise.race([
+                Promise.all([
+                  readBit(1600, 0),
+                  readBit(register, bit),
+                ]),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Initial check timeout')), 3000)
+                )
+              ]);
+              resetSignal = results[0];
+              bitValue = results[1];
+              break; // Success
+            } catch (initialError) {
+              initialAttempts++;
+              logger.warn(`⚠️ Initial check attempt ${initialAttempts}/${maxInitialAttempts} failed: ${initialError.message}`);
+              if (initialAttempts < maxInitialAttempts) {
+                await sleep(100); // Delay before retry
+              } else {
+                throw initialError;
+              }
+            }
+          }
+
+          // Enhanced debugging for critical bits
+          if ((register === 1410 && bit === 0) || (register === 1410 && bit === 3) || (register === 1415 && bit === 7)) {
+            logger.info(
+              `🔍 [ENHANCED DEBUG] Initial check - Reset(1600.0): ${resetSignal}, Bit ${register}.${bit}: ${bitValue}, Expected: ${value}, attempts: ${initialAttempts}`
             );
           }
 

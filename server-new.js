@@ -43,6 +43,12 @@ class LaserMarkingServer {
       this.scanCycleManager = new ScanCycleManager(this.io);
       await this.scanCycleManager.initialize();
 
+      // Auto-start the scan cycle manager
+      logger.info("🎬 Auto-starting scan cycle manager...");
+      this.scanCycleManager.start().catch((error) => {
+        logger.error("❌ Error in scan cycle manager:", error.message);
+      });
+
       logger.success("✅ Server initialized successfully");
     } catch (error) {
       logger.error("❌ Failed to initialize server:", error.message);
