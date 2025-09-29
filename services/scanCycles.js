@@ -415,6 +415,7 @@ class ScannerController {
     logger.info("🔄 Resetting bits...");
     await this.resetSpecificBits(1414, [3, 4, 6, 7]);
     await this.resetSpecificBits(1415, [4]);
+    await this.resetSpecificBits(1410, [3]); // Clear bit 1410.3 after cycle completion
     logger.success("Bits reset successfully");
   }
 
@@ -1197,6 +1198,10 @@ class ScannerController {
         });
       }
 
+      // Clear bits after cycle completion
+      logger.info("🧹 Clearing bits after cycle completion...");
+      await this.resetBits();
+
       // Add 2-second delay after cycle completion
       logger.info(
         "⏸️ Cycle completed - waiting 2 seconds before next cycle..."
@@ -1228,6 +1233,10 @@ class ScannerController {
           error: "Cycle completion failed",
         });
       }
+
+      // Clear bits even for failed cycles
+      logger.info("🧹 Clearing bits after failed cycle...");
+      await this.resetBits();
 
       // Add 2-second delay even for failed cycles
       logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
