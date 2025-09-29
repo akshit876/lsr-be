@@ -7,25 +7,16 @@
  * It uses proper design patterns and state management.
  */
 
-import express from "express";
+/* eslint-env node */
 import { createServer } from "http";
 import { Server } from "socket.io";
-import cors from "cors";
-import path from "path";
-import { fileURLToPath } from "url";
 
 import logger from "./logger.js";
-import ScanCycleManager, {
-  ScanCycleState,
-} from "./services/ScanCycleManager.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import ScanCycleManager from "./services/ScanCycleManager.js";
 
 class LaserMarkingServer {
   constructor() {
-    this.app = express();
-    this.server = createServer(this.app);
+    this.server = createServer();
     this.io = new Server(this.server, {
       cors: {
         origin: "*",
@@ -42,10 +33,7 @@ class LaserMarkingServer {
     try {
       logger.info("🚀 Initializing Laser Marking Server...");
 
-      // Setup middleware
-      this.setupMiddleware();
-
-      // Setup routes
+      // Setup HTTP routes
       this.setupRoutes();
 
       // Setup Socket.IO
@@ -62,91 +50,126 @@ class LaserMarkingServer {
     }
   }
 
-  setupMiddleware() {
-    this.app.use(cors());
-    this.app.use(express.json());
-    this.app.use(express.static(path.join(__dirname, "public")));
+  setupRoutes() {
+    this.server.on('request', (req, res) => {
+      // Enable CORS
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+      }
+
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const pathname = url.pathname;
+      const method = req.method;
+
+      // Health check endpoint
+      if (method === 'GET' && pathname === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: "healthy",
+          timestamp: new Date().toISOString(),
+          scanCycleManager: this.scanCycleManager?.getStatus() || null,
+        }));
+        return;
+      }
+
+      // Status endpoint
+      if (method === 'GET' && pathname === '/status') {
+        const status = this.scanCycleManager?.getStatus() || null;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          server: {
+            isRunning: this.isRunning,
+            uptime: process.uptime(),
+          },
+          scanCycleManager: status,
+        }));
+        return;
+      }
+
+      // Start scan cycle endpoint
+      if (method === 'POST' && pathname === '/start') {
+        this.handleStartRequest(req, res);
+        return;
+      }
+
+      // Stop scan cycle endpoint
+      if (method === 'POST' && pathname === '/stop') {
+        this.handleStopRequest(req, res);
+        return;
+      }
+
+      // Default route
+      if (method === 'GET' && pathname === '/') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          message: "Laser Marking System API",
+          version: "2.0.0",
+          endpoints: {
+            health: "/health",
+            status: "/status",
+            start: "POST /start",
+            stop: "POST /stop",
+          },
+        }));
+        return;
+      }
+
+      // 404 Not Found
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not Found' }));
+    });
   }
 
-  setupRoutes() {
-    // Health check endpoint
-    this.app.get("/health", (req, res) => {
-      res.json({
-        status: "healthy",
-        timestamp: new Date().toISOString(),
-        scanCycleManager: this.scanCycleManager?.getStatus() || null,
-      });
-    });
-
-    // Status endpoint
-    this.app.get("/status", (req, res) => {
-      const status = this.scanCycleManager?.getStatus() || null;
-      res.json({
-        server: {
-          isRunning: this.isRunning,
-          uptime: process.uptime(),
-        },
-        scanCycleManager: status,
-      });
-    });
-
-    // Start scan cycle endpoint
-    this.app.post("/start", async (req, res) => {
-      try {
-        if (!this.scanCycleManager) {
-          return res
-            .status(500)
-            .json({ error: "Scan cycle manager not initialized" });
-        }
-
-        if (this.scanCycleManager.isRunning) {
-          return res
-            .status(400)
-            .json({ error: "Scan cycle manager is already running" });
-        }
-
-        // Start scan cycle manager in background
-        this.scanCycleManager.start().catch((error) => {
-          logger.error("❌ Error in scan cycle manager:", error.message);
-        });
-
-        res.json({ message: "Scan cycle manager started successfully" });
-      } catch (error) {
-        logger.error("❌ Error starting scan cycle manager:", error.message);
-        res.status(500).json({ error: error.message });
+  async handleStartRequest(req, res) {
+    try {
+      if (!this.scanCycleManager) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: "Scan cycle manager not initialized" }));
+        return;
       }
-    });
 
-    // Stop scan cycle endpoint
-    this.app.post("/stop", async (req, res) => {
-      try {
-        if (!this.scanCycleManager) {
-          return res
-            .status(500)
-            .json({ error: "Scan cycle manager not initialized" });
-        }
-
-        await this.scanCycleManager.stop();
-        res.json({ message: "Scan cycle manager stopped successfully" });
-      } catch (error) {
-        logger.error("❌ Error stopping scan cycle manager:", error.message);
-        res.status(500).json({ error: error.message });
+      if (this.scanCycleManager.isRunning) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: "Scan cycle manager is already running" }));
+        return;
       }
-    });
 
-    // Default route
-    this.app.get("/", (req, res) => {
-      res.json({
-        message: "Laser Marking System API",
-        version: "2.0.0",
-        endpoints: {
-          health: "/health",
-          status: "/status",
-          start: "POST /start",
-          stop: "POST /stop",
-        },
+      // Start scan cycle manager in background
+      this.scanCycleManager.start().catch((error) => {
+        logger.error("❌ Error in scan cycle manager:", error.message);
       });
-    });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ message: "Scan cycle manager started successfully" }));
+    } catch (error) {
+      logger.error("❌ Error starting scan cycle manager:", error.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  }
+
+  async handleStopRequest(req, res) {
+    try {
+      if (!this.scanCycleManager) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: "Scan cycle manager not initialized" }));
+        return;
+      }
+
+      await this.scanCycleManager.stop();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ message: "Scan cycle manager stopped successfully" }));
+    } catch (error) {
+      logger.error("❌ Error stopping scan cycle manager:", error.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
   }
 
   setupSocketIO() {
