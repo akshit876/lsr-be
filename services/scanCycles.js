@@ -116,7 +116,19 @@ class ScannerController {
         // Write the scanner data (override the file each time)
         // Use "NG" if scannerData is null/undefined, or the actual data
         const dataToWrite = scannerData || "NG";
-        await fs.writeFileSync(filePath, dataToWrite, "utf8");
+        logger.info(`📁 Attempting to write scanner data to file: ${filePath}`);
+
+        // Add timeout to prevent hanging on file write
+        await Promise.race([
+          new Promise((resolve) => {
+            fs.writeFileSync(filePath, dataToWrite, "utf8");
+            resolve();
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("File write timeout")), 5000)
+          ),
+        ]);
+
         logger.success(
           `✅ Scanner data "${dataToWrite}" written to ${filePath}`
         );
@@ -138,7 +150,18 @@ class ScannerController {
         const altPath = `./${fileName}`;
         try {
           const dataToWrite = scannerData || "NG";
-          await fs.writeFileSync(altPath, dataToWrite, "utf8");
+
+          // Add timeout to prevent hanging on file write
+          await Promise.race([
+            new Promise((resolve) => {
+              fs.writeFileSync(altPath, dataToWrite, "utf8");
+              resolve();
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("File write timeout")), 5000)
+            ),
+          ]);
+
           logger.success(
             `✅ Scanner data "${dataToWrite}" written to alternative path: ${altPath}`
           );
