@@ -1543,9 +1543,27 @@ class ScannerController {
 
       // Handle timeout/null/undefined or explicit "NG" response
       if (!scannerData || scannerData.trim().toUpperCase() === "NG") {
-        logger.warn(
-          "⚠️ Middle scan data is NG or timeout, proceeding with workflow"
-        );
+        logger.warn("⚠️ Middle scan data is NG or timeout - no code found");
+
+        // Emit no code found event to UI
+        if (this.io) {
+          logger.info("📡 Emitting no code found event to UI...");
+          this.io.emit("no_code_found", {
+            timestamp: new Date(),
+            scanType: "middle",
+            message: "No code found during middle scan",
+            cycleNumber: this.cycleCount,
+            severity: "error",
+            action: "restart_cycle",
+            details: {
+              scanPosition: "middle_scan",
+              workflowStatus: "stopped",
+              reason: "no_marking_code_detected",
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
+
         // Always save NG to MongoDB
         await this.saveToMongoDB({
           io: this.io,
@@ -1556,15 +1574,10 @@ class ScannerController {
           grading: "N/A",
           isUpdate: false,
         });
-        // Emit marking data to UI (even for NG)
-        if (this.io) {
-          logger.info("📡 Emitting NG marking data to UI...");
-          this.io.emit("marking_data", {
-            timestamp: new Date(),
-            data: "NG",
-          });
-        }
-        return { shouldContinue: true, markingData: "NG" };
+
+        // Stop cycle and restart when no code found
+        logger.warn("🔄 Stopping current cycle - no code found, will restart");
+        return { shouldContinue: false, markingData: "NG" };
       }
 
       // Process the middle scan data - remove @ symbol if present
