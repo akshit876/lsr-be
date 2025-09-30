@@ -18,9 +18,6 @@ function createAlarmClient() {
   // Connection events
   socket.on("connect", () => {
     logger.success("✅ Connected to Alarm Service");
-
-    // Request current alarm status
-    socket.emit("request_alarm_status");
   });
 
   socket.on("disconnect", () => {
@@ -41,37 +38,8 @@ function createAlarmClient() {
     handleSafetyViolation(data);
   });
 
-  socket.on("alarm_triggered", (data) => {
-    logger.warn(`⚠️ ALARM TRIGGERED: ${data.alarmType}`);
-    logger.warn(`   Severity: ${data.severity}`);
-
-    // Handle the alarm trigger in your UI
-    handleAlarmTriggered(data);
-  });
-
-  socket.on("alarm_cleared", (data) => {
-    logger.success(`✅ ALARM CLEARED: ${data.message}`);
-
-    // Handle alarm clear in your UI
-    handleAlarmCleared(data);
-  });
-
-  socket.on("alarm_status", (data) => {
-    logger.info(`📊 Alarm Status: ${data.status}`);
-    logger.info(`   Active Alarms: ${data.activeAlarms?.join(", ") || "None"}`);
-    logger.info(`   Alarms: ${JSON.stringify(data.alarms)}`);
-
-    // Update UI with current status
-    updateAlarmStatus(data);
-  });
-
-  socket.on("alarm_error", (data) => {
-    logger.error(`❌ ALARM ERROR: ${data.error}`);
-    logger.error(`   Message: ${data.message}`);
-
-    // Handle alarm service errors
-    handleAlarmError(data);
-  });
+  // Only listen for safety_violation events
+  // Other events removed as requested
 
   return socket;
 }
@@ -88,37 +56,7 @@ function handleSafetyViolation(data) {
   console.log("🔊 Play alarm sound");
 }
 
-function handleAlarmTriggered(data) {
-  // Example: Show notification
-  console.log("⚠️ Show alarm notification:", data);
-
-  // Example: Update alarm panel
-  console.log("📋 Update alarm panel in UI");
-}
-
-function handleAlarmCleared(data) {
-  // Example: Clear alarm indicators
-  console.log("✅ Clear alarm indicators in UI");
-
-  // Example: Show success message
-  console.log("🎉 Show alarm cleared message");
-}
-
-function updateAlarmStatus(data) {
-  // Example: Update status dashboard
-  console.log("📊 Update status dashboard:", data);
-
-  // Example: Update alarm indicators
-  console.log("💡 Update alarm indicator lights");
-}
-
-function handleAlarmError(data) {
-  // Example: Show connection error
-  console.log("❌ Show connection error in UI:", data);
-
-  // Example: Attempt reconnection
-  console.log("🔄 Attempt to reconnect to alarm service");
-}
+// Only safety_violation handler needed
 
 // Start the client
 const socket = createAlarmClient();

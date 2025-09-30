@@ -10,6 +10,7 @@
     "alarm": "node alarm-service.js",
     "alarm-independent": "node independent-alarm-service.js",
     "alarm-client": "node alarm-client-example.js",
+    "test-alarm": "node test-simple-alarm.js",
     "start-all": "node process-manager.js",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop ecosystem.config.js",

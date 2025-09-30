@@ -30,9 +30,22 @@ class IndependentAlarmService {
       // Create Socket.IO server with fixed CORS configuration
       this.io = new Server(this.port, {
         cors: {
-          origin: ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
+          origin: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+          ],
           methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-          allowedHeaders: ["Content-Type", "Authorization", "my-custom-header", "x-custom-header", "Accept", "Origin", "X-Requested-With"],
+          allowedHeaders: [
+            "Content-Type",
+            "Authorization",
+            "my-custom-header",
+            "x-custom-header",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
+          ],
           credentials: true,
         },
         allowEIO3: true,
@@ -84,8 +97,8 @@ class IndependentAlarmService {
             timeout: this.plcConfig.timeout,
           }),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Connection timeout')), 5000)
-          )
+            setTimeout(() => reject(new Error("Connection timeout")), 5000)
+          ),
         ]);
 
         this.modbusClient.setTimeout(this.plcConfig.timeout);
@@ -94,7 +107,6 @@ class IndependentAlarmService {
           `✅ Independent Modbus connection established: ${this.plcConfig.host}:${this.plcConfig.port} (attempt ${attempt})`
         );
         return; // Success
-
       } catch (error) {
         lastError = error;
         const isLastAttempt = attempt === maxAttempts;
@@ -106,12 +118,15 @@ class IndependentAlarmService {
         if (!isLastAttempt) {
           const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff
           logger.info(`⏳ Retrying independent connection in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
     }
 
-    logger.error(`❌ Failed to establish independent Modbus connection after ${maxAttempts} attempts:`, lastError);
+    logger.error(
+      `❌ Failed to establish independent Modbus connection after ${maxAttempts} attempts:`,
+      lastError
+    );
     throw lastError;
   }
 
@@ -123,7 +138,9 @@ class IndependentAlarmService {
       try {
         // Check connection health
         if (!this.modbusClient || !this.modbusClient.isOpen) {
-          logger.warn(`🔄 Independent service reconnecting (attempt ${attempt}/${maxAttempts})...`);
+          logger.warn(
+            `🔄 Independent service reconnecting (attempt ${attempt}/${maxAttempts})...`
+          );
           await this.initializeModbusConnection();
         }
 
@@ -131,28 +148,34 @@ class IndependentAlarmService {
         const result = await Promise.race([
           this.modbusClient.readHoldingRegisters(register, 1),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Read timeout')), 2000)
-          )
+            setTimeout(() => reject(new Error("Read timeout")), 2000)
+          ),
         ]);
 
         const value = result.data[0];
         const bitValue = (value >> bit) & 1;
 
         if (attempt > 1) {
-          logger.info(`✅ Independent service bit read recovered on attempt ${attempt}`);
+          logger.info(
+            `✅ Independent service bit read recovered on attempt ${attempt}`
+          );
         }
 
         return bitValue === 1;
-
       } catch (error) {
         lastError = error;
         const isLastAttempt = attempt === maxAttempts;
 
-        if (error.message.includes('timeout') || error.message.includes('Port Not Open')) {
-          logger.warn(`⚠️ Independent service bit read attempt ${attempt}/${maxAttempts} failed for ${register}.${bit}: ${error.message}`);
+        if (
+          error.message.includes("timeout") ||
+          error.message.includes("Port Not Open")
+        ) {
+          logger.warn(
+            `⚠️ Independent service bit read attempt ${attempt}/${maxAttempts} failed for ${register}.${bit}: ${error.message}`
+          );
 
           // Force reconnection on connection errors
-          if (error.message.includes('Port Not Open')) {
+          if (error.message.includes("Port Not Open")) {
             try {
               if (this.modbusClient) {
                 this.modbusClient.close();
@@ -165,13 +188,15 @@ class IndependentAlarmService {
 
           if (!isLastAttempt) {
             const delay = Math.min(1000 * Math.pow(2, attempt - 1), 3000); // Exponential backoff
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
             continue;
           }
         }
 
         if (isLastAttempt) {
-          logger.error(`❌ Independent service failed to read bit ${register}.${bit} after ${maxAttempts} attempts: ${error.message}`);
+          logger.error(
+            `❌ Independent service failed to read bit ${register}.${bit} after ${maxAttempts} attempts: ${error.message}`
+          );
         }
       }
     }
@@ -268,33 +293,35 @@ class IndependentAlarmService {
         safetySensor,
       };
 
-      // Log current state
-      logger.info(
-        `🔍 Independent Alarm Check: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}`
-      );
-
       // Check for active alarms
       const activeAlarms = [];
-      if (!partPresent) {  // Fixed: Part NOT present triggers alarm
+      if (partPresent) {
+        // 1490.0 = 1 means "Part not present" - ALARM!
         activeAlarms.push("part_not_present");
       }
       if (emergencyStop) {
+        // 1490.1 = 1 means "Emergency stop" - ALARM!
         activeAlarms.push("emergency_stop");
       }
       if (safetySensor) {
+        // 1490.2 = 1 means "Safety sensor not engaged" - ALARM!
         activeAlarms.push("safety_sensor");
       }
 
-      // Emit alarm events if there are active alarms
+      // Log current state only if there are alarms or state changed
+      if (activeAlarms.length > 0 || stateChanged) {
+        logger.info(
+          `🔍 Independent Alarm Check: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}`
+        );
+      }
+
+      // Only emit events if there are active alarms
       if (activeAlarms.length > 0) {
         this.emitAlarmEvents(activeAlarms, {
           partPresent,
           emergencyStop,
           safetySensor,
         });
-      } else if (stateChanged) {
-        // Emit clear event if alarms were cleared
-        this.emitAlarmCleared();
       }
     } catch (error) {
       logger.error(`Error checking alarms: ${error.message}`);
@@ -316,51 +343,14 @@ class IndependentAlarmService {
       return;
     }
 
-    // Emit individual alarm events
+    // Emit individual safety violation events
     activeAlarms.forEach((alarmType) => {
       const alarmData = this.getAlarmData(alarmType, alarmStates);
 
       logger.error(`🚨 INDEPENDENT ALARM: ${alarmData.violation}`);
 
+      // Only emit safety_violation event - no other events
       this.io.emit("safety_violation", alarmData);
-      this.io.emit("alarm_triggered", {
-        timestamp: new Date().toISOString(),
-        alarmType: alarmType,
-        severity: "critical",
-        data: alarmData,
-        service: "independent",
-      });
-    });
-
-    // Emit combined alarm status
-    this.io.emit("alarm_status", {
-      timestamp: new Date().toISOString(),
-      status: "alarm_active",
-      activeAlarms: activeAlarms,
-      alarms: alarmStates,
-      service: "independent",
-    });
-  }
-
-  emitAlarmCleared() {
-    if (!this.io) {
-      return;
-    }
-
-    logger.info("✅ All independent alarms cleared");
-
-    this.io.emit("alarm_cleared", {
-      timestamp: new Date().toISOString(),
-      message: "All safety alarms cleared",
-      service: "independent",
-    });
-
-    this.io.emit("alarm_status", {
-      timestamp: new Date().toISOString(),
-      status: "normal",
-      activeAlarms: [],
-      alarms: this.lastAlarmStates,
-      service: "independent",
     });
   }
 
