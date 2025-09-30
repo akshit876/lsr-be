@@ -10,7 +10,16 @@ class IndependentAlarmService {
     this.isRunning = false;
     this.alarmInterval = null;
     this.modbusClient = null;
-    // No state tracking needed - bit-dependent only
+    
+    // State tracking for alarm events
+    this.previousAlarmStates = {
+      partPresent: false,
+      emergencyStop: false,
+      safetySensor: false
+    };
+    this.activeAlarms = new Set(); // Track currently active alarms
+    this.lastEmitTime = {}; // Track last emit time for each alarm type
+    this.emitDebounceMs = 1000; // Minimum time between same alarm events
 
     // PLC Configuration - completely independent
     this.plcConfig = {
@@ -128,7 +137,6 @@ class IndependentAlarmService {
 
   async readBit(register, bit) {
     const maxAttempts = 3;
-    let lastError = null;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -160,7 +168,6 @@ class IndependentAlarmService {
 
         return bitValue === 1;
       } catch (error) {
-        lastError = error;
         const isLastAttempt = attempt === maxAttempts;
 
         if (
@@ -203,7 +210,6 @@ class IndependentAlarmService {
 
   async readSafetyBits() {
     const maxAttempts = 3;
-    let lastError;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -238,7 +244,6 @@ class IndependentAlarmService {
 
         return [partPresent === 1, emergencyStop === 1, safetySensor === 1];
       } catch (error) {
-        lastError = error;
         const isLastAttempt = attempt === maxAttempts;
 
         if (
@@ -353,36 +358,19 @@ class IndependentAlarmService {
       const emergencyStop = safetyBits[1]; // 1490.1
       const safetySensor = safetyBits[2]; // 1490.2
 
-      // Simple bit-dependent logic - emit alarm if ANY bit is ON
-      const activeAlarms = [];
-      if (partPresent) {
-        // 1490.0 = 1 means "Part not present" - ALARM!
-        activeAlarms.push("part_not_present");
-      }
-      if (emergencyStop) {
-        // 1490.1 = 1 means "Emergency stop" - ALARM!
-        activeAlarms.push("emergency_stop");
-      }
-      if (safetySensor) {
-        // 1490.2 = 1 means "Safety sensor not engaged" - ALARM!
-        activeAlarms.push("safety_sensor");
-      }
+      // Current alarm states
+      const currentAlarmStates = {
+        partPresent,
+        emergencyStop,
+        safetySensor
+      };
 
-      // Log current state
-      logger.info(
-        `🔍 Independent Alarm Check: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}`
-      );
-      logger.info(`   Active Alarms: [${activeAlarms.join(", ")}]`);
+      // Check for state changes and emit appropriate events
+      this.processAlarmStateChanges(currentAlarmStates);
 
-      // Emit alarm if ANY bit is ON (bit-dependent only)
-      if (activeAlarms.length > 0) {
-        logger.error(`🚨 ALARMS ACTIVE: [${activeAlarms.join(", ")}]`);
-        this.emitAlarmEvents(activeAlarms, {
-          partPresent,
-          emergencyStop,
-          safetySensor,
-        });
-      }
+      // Update previous states
+      this.previousAlarmStates = { ...currentAlarmStates };
+
     } catch (error) {
       logger.error(`Error checking alarms: ${error.message}`);
 
@@ -398,7 +386,78 @@ class IndependentAlarmService {
     }
   }
 
+  processAlarmStateChanges(currentStates) {
+    const alarmTypes = [
+      { key: 'partPresent', type: 'part_not_present', name: 'Part not present' },
+      { key: 'emergencyStop', type: 'emergency_stop', name: 'Emergency stop activated' },
+      { key: 'safetySensor', type: 'safety_sensor', name: 'Safety sensor not engaged' }
+    ];
+
+    alarmTypes.forEach(({ key, type, name }) => {
+      const wasActive = this.previousAlarmStates[key];
+      const isActive = currentStates[key];
+      const wasInActiveSet = this.activeAlarms.has(type);
+
+      // Alarm just started (transition from false to true)
+      if (!wasActive && isActive && !wasInActiveSet) {
+        this.emitAlarmEvent(type, true, currentStates);
+        this.activeAlarms.add(type);
+        logger.error(`🚨 ALARM STARTED: ${name}`);
+      }
+      // Alarm just ended (transition from true to false)
+      else if (wasActive && !isActive && wasInActiveSet) {
+        this.emitAlarmEvent(type, false, currentStates);
+        this.activeAlarms.delete(type);
+        logger.info(`✅ ALARM CLEARED: ${name}`);
+      }
+      // Alarm is still active - only emit periodic status updates (every 5 seconds)
+      else if (isActive && wasInActiveSet) {
+        const now = Date.now();
+        const lastEmit = this.lastEmitTime[type] || 0;
+        const timeSinceLastEmit = now - lastEmit;
+        
+        if (timeSinceLastEmit >= 5000) { // 5 seconds
+          this.emitAlarmEvent(type, true, currentStates, true); // true = status update
+          this.lastEmitTime[type] = now;
+          logger.info(`📊 ALARM STATUS UPDATE: ${name}`);
+        }
+      }
+    });
+
+    // Log current state (only when there are changes)
+    const hasChanges = alarmTypes.some(({ key }) => 
+      this.previousAlarmStates[key] !== currentStates[key]
+    );
+    
+    if (hasChanges) {
+      logger.info(
+        `🔍 Alarm State: partPresent=${currentStates.partPresent}, emergencyStop=${currentStates.emergencyStop}, safetySensor=${currentStates.safetySensor}`
+      );
+      logger.info(`   Active Alarms: [${Array.from(this.activeAlarms).join(", ")}]`);
+    }
+  }
+
+  emitAlarmEvent(alarmType, isActive, alarmStates, isStatusUpdate = false) {
+    if (!this.io) {
+      return;
+    }
+
+    const alarmData = this.getAlarmData(alarmType, alarmStates, isActive, isStatusUpdate);
+
+    if (isActive) {
+      logger.error(`🚨 INDEPENDENT ALARM: ${alarmData.violation}`);
+      // Emit safety_violation event
+      this.io.emit("safety_violation", alarmData);
+    } else {
+      logger.info(`✅ INDEPENDENT ALARM CLEARED: ${alarmData.violation}`);
+      // Emit safety_violation_cleared event
+      this.io.emit("safety_violation_cleared", alarmData);
+    }
+  }
+
   emitAlarmEvents(activeAlarms, alarmStates) {
+    // This method is kept for backward compatibility but should not be used
+    // in the new implementation. The new emitAlarmEvent method should be used instead.
     if (!this.io) {
       return;
     }
@@ -414,42 +473,43 @@ class IndependentAlarmService {
     });
   }
 
-  getAlarmData(alarmType, alarmStates) {
+  getAlarmData(alarmType, alarmStates, isActive = true, isStatusUpdate = false) {
     const alarmConfigs = {
       part_not_present: {
         violation: "Part not present",
         register: "1490.0",
-        value: alarmStates.partPresent,
         severity: "critical",
         action: "stop_cycle",
       },
       emergency_stop: {
         violation: "Emergency stop activated",
         register: "1490.1",
-        value: alarmStates.emergencyStop,
         severity: "critical",
         action: "immediate_stop",
       },
       safety_sensor: {
         violation: "Safety sensor not engaged",
         register: "1490.2",
-        value: alarmStates.safetySensor,
         severity: "critical",
         action: "stop_cycle",
       },
     };
 
     const config = alarmConfigs[alarmType];
+    const severity = isActive ? config.severity : "cleared";
+    const action = isActive ? config.action : "resume";
+    
     return {
       timestamp: new Date().toISOString(),
       violation: config.violation,
       cycleNumber: 0, // Not applicable for independent service
       register: config.register,
-      value: config.value,
-      severity: config.severity,
-      action: config.action,
+      value: isActive,
+      severity: severity,
+      action: action,
       alarmType: alarmType,
       service: "independent",
+      isStatusUpdate: isStatusUpdate
     };
   }
 
