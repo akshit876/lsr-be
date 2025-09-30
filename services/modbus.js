@@ -1,14 +1,10 @@
 import ModbusRTU from "modbus-serial";
 import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
+import { PLC_CONFIG } from "../config/network.js";
 
-// Default values
-const DEFAULT_MODBUS_IP = "192.168.3.146";
-const DEFAULT_MODBUS_PORT = 502;
-
-const MODBUS_IP = process.env.NEXT_PUBLIC_MODBUS_IP || DEFAULT_MODBUS_IP;
-const MODBUS_PORT =
-  parseInt(process.env.NEXT_PUBLIC_MODBUS_PORT, 10) || DEFAULT_MODBUS_PORT;
+const MODBUS_IP = PLC_CONFIG.host;
+const MODBUS_PORT = PLC_CONFIG.port;
 
 class ModbusConnection {
   constructor() {
@@ -19,7 +15,9 @@ class ModbusConnection {
   }
 
   async connect() {
-    if (this.isConnected) return;
+    if (this.isConnected) {
+      return;
+    }
 
     try {
       await this.client.connectTCP(MODBUS_IP, { port: MODBUS_PORT });
@@ -57,16 +55,17 @@ class ModbusConnection {
     await this.ensureConnection();
     try {
       const { data } = await this.client.readHoldingRegisters(address, len);
-      if (isPrint)
-        if (!conti && !bit)
+      if (isPrint) {
+        if (!conti && !bit) {
           logger.info(
             `Read registers starting at address ${address} (length: ${len}): ${data}`
           );
-        else {
+        } else {
           logger.info(
             `Read registers starting at address ${address} (length: ${len}) (bit : ${bit}): ${data}`
           );
         }
+      }
       return data;
     } catch (error) {
       emitErrorEvent(
@@ -169,7 +168,7 @@ class ModbusConnection {
       let asciiString = this.convertToASCII(data);
       // Remove trailing null characters (\x00) from the ASCII string
       // asciiString = asciiString.replace(/\x00+$/, "");
-      asciiString = asciiString.replace(/\x00/g, " ").trim();
+      asciiString = asciiString.replace(/\u0000/g, " ").trim();
       console.log({ asciiString });
       console.log(
         `Read registers starting at address ${address} (length: ${len}): ${data} (ASCII: ${asciiString})`
@@ -223,10 +222,11 @@ class ModbusConnection {
       //   `16-bit register value for register ${address}: ${binaryString}`
       // );
       // console.log(`Bit array for register ${address}:`, bitArray);
-      if (conti)
+      if (conti) {
         logger.info(
           `Read bit ${bitPosition} from register ${address}: ${bitValue}`
         );
+      }
       return bitValue;
     } catch (error) {
       console.log({ error });

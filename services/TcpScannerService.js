@@ -4,6 +4,7 @@ import "winston-daily-rotate-file";
 import path from "path";
 import EventEmitter from "events";
 import process from "process";
+import { MAIN_SCANNER_CONFIG } from "../config/network.js";
 
 class TcpScannerService extends EventEmitter {
   constructor(options = {}) {
@@ -13,13 +14,19 @@ class TcpScannerService extends EventEmitter {
     console.log("TcpScannerService constructor called with options:", options);
 
     this.options = {
-      host: options.host || process.env.SCANNER_HOST || "192.168.3.145",
-      port: parseInt(options.port || process.env.SCANNER_PORT, 10) || 502,
-      timeout: options.timeout || 5000,
-      reconnectInterval: options.reconnectInterval || 3000,
+      host:
+        options.host || process.env.SCANNER_HOST || MAIN_SCANNER_CONFIG.host,
+      port:
+        parseInt(options.port || process.env.SCANNER_PORT, 10) ||
+        MAIN_SCANNER_CONFIG.port,
+      timeout: options.timeout || MAIN_SCANNER_CONFIG.timeout,
+      reconnectInterval:
+        options.reconnectInterval || MAIN_SCANNER_CONFIG.reconnectInterval,
       keepAlive: options.keepAlive !== false, // Enable keep-alive by default
-      keepAliveInitialDelay: options.keepAliveInitialDelay || 1000,
-      logDir: options.logDir || "scanner_logs",
+      keepAliveInitialDelay:
+        options.keepAliveInitialDelay ||
+        MAIN_SCANNER_CONFIG.keepAliveInitialDelay,
+      logDir: options.logDir || MAIN_SCANNER_CONFIG.logDir,
     };
 
     // --- NEW: Debug logging for options ---

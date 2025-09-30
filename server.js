@@ -355,11 +355,7 @@ server.listen(PORT, async (err) => {
     // const barcodeGenerator = new BarcodeGenerator(shiftUtility);
     // barcodeGenerator.initialize('main-data', 'records');
     // barcodeGenerator.setResetTime(BARCODE_RESET_HOUR, BARCODE_RESET_MINUTE);
-    // tcpScannerService = new TcpScannerService({
-    //   host: process.env.SCANNER_HOST || '192.168.3.145',
-    //   port: parseInt(process.env.SCANNER_PORT, 10) || 502,
-    //   logDir: 'scanner_logs',
-    // });
+    // tcpScannerService = new TcpScannerService(MAIN_SCANNER_CONFIG);
     // await tcpScannerService.initTcpConnection();
     await connect();
     // Fetch part number and pass it to runContinuousScan
