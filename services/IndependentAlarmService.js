@@ -147,8 +147,9 @@ class IndependentAlarmService {
         // Add timeout protection for the read operation
         const result = await Promise.race([
           this.modbusClient.readHoldingRegisters(register, 1),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Read timeout")), 2000)
+          new Promise(
+            (_, reject) =>
+              setTimeout(() => reject(new Error("Read timeout")), 500) // Reduced to 500ms
           ),
         ]);
 
@@ -202,6 +203,85 @@ class IndependentAlarmService {
     }
 
     return false; // Default to false on complete failure
+  }
+
+  async readSafetyBits() {
+    const maxAttempts = 3;
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Check connection health
+        if (!this.modbusClient || !this.modbusClient.isOpen) {
+          logger.warn(
+            `🔄 Independent service reconnecting for safety bits (attempt ${attempt}/${maxAttempts})...`
+          );
+          await this.initializeModbusConnection();
+        }
+
+        // Read all 3 bits from register 1490 in a single call
+        const result = await Promise.race([
+          this.modbusClient.readHoldingRegisters(1490, 1),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Safety bits read timeout")), 500)
+          ),
+        ]);
+
+        const value = result.data[0];
+
+        // Extract all 3 bits from the single register
+        const partPresent = (value >> 0) & 1; // Bit 0
+        const emergencyStop = (value >> 1) & 1; // Bit 1
+        const safetySensor = (value >> 2) & 1; // Bit 2
+
+        if (attempt > 1) {
+          logger.info(
+            `✅ Independent service safety bits read recovered on attempt ${attempt}`
+          );
+        }
+
+        return [partPresent === 1, emergencyStop === 1, safetySensor === 1];
+      } catch (error) {
+        lastError = error;
+        const isLastAttempt = attempt === maxAttempts;
+
+        if (
+          error.message.includes("timeout") ||
+          error.message.includes("Port Not Open")
+        ) {
+          logger.warn(
+            `⚠️ Independent service safety bits read attempt ${attempt}/${maxAttempts} failed: ${error.message}`
+          );
+
+          // Force reconnection on connection errors
+          if (error.message.includes("Port Not Open")) {
+            try {
+              if (this.modbusClient) {
+                this.modbusClient.close();
+              }
+            } catch (closeError) {
+              // Ignore close errors
+            }
+            this.modbusClient = null;
+          }
+
+          if (!isLastAttempt) {
+            const delay = Math.min(100 * Math.pow(2, attempt - 1), 1000); // Faster retry
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+        }
+
+        if (isLastAttempt) {
+          logger.error(
+            `❌ Independent service failed to read safety bits after ${maxAttempts} attempts: ${error.message}`
+          );
+        }
+      }
+    }
+
+    // Return default values on complete failure
+    return [false, false, false];
   }
 
   setupSocketHandlers() {
@@ -268,17 +348,16 @@ class IndependentAlarmService {
       } catch (error) {
         logger.error("❌ Error in alarm monitoring:", error);
       }
-    }, 500); // Check every 500ms
+    }, 100); // Check every 100ms for faster response
   }
 
   async checkAlarms() {
     try {
-      // Read safety bits from register 1490 using independent connection
-      const [partPresent, emergencyStop, safetySensor] = await Promise.all([
-        this.readBit(1490, 0), // Part not present. 1490.0
-        this.readBit(1490, 1), // Emergency stop. 1490.1
-        this.readBit(1490, 2), // Safety sensor. 1490.2
-      ]);
+      // Read all safety bits from register 1490 in a single call for faster response
+      const safetyBits = await this.readSafetyBits();
+      const partPresent = safetyBits[0]; // 1490.0
+      const emergencyStop = safetyBits[1]; // 1490.1
+      const safetySensor = safetyBits[2]; // 1490.2
 
       // Check for state changes
       const stateChanged =
