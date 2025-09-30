@@ -1208,7 +1208,9 @@ class ScannerController {
   async fetchScannerData(tcpScannerService, options = {}) {
     const {
       scanType = options.scanType || "first",
-      timeout = SCANNER_TIMEOUT, // Set timeout to 30 seconds
+      timeout = scanType === "first" || scanType === "middle"
+        ? 2000
+        : SCANNER_TIMEOUT, // 2 seconds for first/middle scans, 30 seconds for others
       scannerLabel = this.getScanLabel(scanType),
     } = options;
 
