@@ -1,10 +1,10 @@
 import { Server } from "socket.io";
-import { ModbusRTU } from "modbus-serial";
+import ModbusRTU from "modbus-serial";
 import logger from "../logger.js";
 import process from "process";
 
 class IndependentAlarmService {
-  constructor(port = 3001, plcConfig = {}) {
+  constructor(port = 3005, plcConfig = {}) {
     this.port = port;
     this.io = null;
     this.isRunning = false;
@@ -27,15 +27,20 @@ class IndependentAlarmService {
 
   async start() {
     try {
-      // Create Socket.IO server
+      // Create Socket.IO server with fixed CORS configuration
       this.io = new Server(this.port, {
         cors: {
-          origin: "*",
-          methods: ["GET", "POST"],
+          origin: ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
+          methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+          allowedHeaders: ["Content-Type", "Authorization", "my-custom-header", "x-custom-header", "Accept", "Origin", "X-Requested-With"],
+          credentials: true,
         },
+        allowEIO3: true,
+        transports: ["websocket", "polling"],
       });
 
-      // Setup Socket.IO event handlers
+      // Setup Socket.IO event service port
+
       this.setupSocketHandlers();
 
       // Initialize independent Modbus connection
@@ -56,41 +61,122 @@ class IndependentAlarmService {
   }
 
   async initializeModbusConnection() {
-    try {
-      this.modbusClient = new ModbusRTU();
+    const maxAttempts = 3;
+    let lastError = null;
 
-      // Connect to PLC with independent connection
-      await this.modbusClient.connectTCP(this.plcConfig.host, {
-        port: this.plcConfig.port,
-        timeout: this.plcConfig.timeout,
-      });
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Close existing connection if any
+        if (this.modbusClient) {
+          try {
+            this.modbusClient.close();
+          } catch (closeError) {
+            // Ignore close errors
+          }
+        }
 
-      this.modbusClient.setTimeout(this.plcConfig.timeout);
+        this.modbusClient = new ModbusRTU();
 
-      logger.success(
-        `✅ Independent Modbus connection established: ${this.plcConfig.host}:${this.plcConfig.port}`
-      );
-    } catch (error) {
-      logger.error("❌ Failed to connect to PLC:", error);
-      throw error;
+        // Connect to PLC with timeout protection
+        await Promise.race([
+          this.modbusClient.connectTCP(this.plcConfig.host, {
+            port: this.plcConfig.port,
+            timeout: this.plcConfig.timeout,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Connection timeout')), 5000)
+          )
+        ]);
+
+        this.modbusClient.setTimeout(this.plcConfig.timeout);
+
+        logger.success(
+          `✅ Independent Modbus connection established: ${this.plcConfig.host}:${this.plcConfig.port} (attempt ${attempt})`
+        );
+        return; // Success
+
+      } catch (error) {
+        lastError = error;
+        const isLastAttempt = attempt === maxAttempts;
+
+        logger.warn(
+          `⚠️ Independent connection attempt ${attempt}/${maxAttempts} failed: ${error.message}`
+        );
+
+        if (!isLastAttempt) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff
+          logger.info(`⏳ Retrying independent connection in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
+
+    logger.error(`❌ Failed to establish independent Modbus connection after ${maxAttempts} attempts:`, lastError);
+    throw lastError;
   }
 
   async readBit(register, bit) {
-    try {
-      if (!this.modbusClient || !this.modbusClient.isOpen) {
-        await this.initializeModbusConnection();
+    const maxAttempts = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Check connection health
+        if (!this.modbusClient || !this.modbusClient.isOpen) {
+          logger.warn(`🔄 Independent service reconnecting (attempt ${attempt}/${maxAttempts})...`);
+          await this.initializeModbusConnection();
+        }
+
+        // Add timeout protection for the read operation
+        const result = await Promise.race([
+          this.modbusClient.readHoldingRegisters(register, 1),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Read timeout')), 2000)
+          )
+        ]);
+
+        const value = result.data[0];
+        const bitValue = (value >> bit) & 1;
+
+        if (attempt > 1) {
+          logger.info(`✅ Independent service bit read recovered on attempt ${attempt}`);
+        }
+
+        return bitValue === 1;
+
+      } catch (error) {
+        lastError = error;
+        const isLastAttempt = attempt === maxAttempts;
+
+        if (error.message.includes('timeout') || error.message.includes('Port Not Open')) {
+          logger.warn(`⚠️ Independent service bit read attempt ${attempt}/${maxAttempts} failed for ${register}.${bit}: ${error.message}`);
+
+          // Force reconnection on connection errors
+          if (error.message.includes('Port Not Open')) {
+            try {
+              if (this.modbusClient) {
+                this.modbusClient.close();
+              }
+            } catch (closeError) {
+              // Ignore close errors
+            }
+            this.modbusClient = null;
+          }
+
+          if (!isLastAttempt) {
+            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 3000); // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+        }
+
+        if (isLastAttempt) {
+          logger.error(`❌ Independent service failed to read bit ${register}.${bit} after ${maxAttempts} attempts: ${error.message}`);
+        }
       }
-
-      const result = await this.modbusClient.readHoldingRegisters(register, 1);
-      const value = result.data[0];
-      const bitValue = (value >> bit) & 1;
-
-      return bitValue === 1;
-    } catch (error) {
-      logger.error(`Error reading bit ${register}.${bit}:`, error.message);
-      return false; // Default to false on error
     }
+
+    return false; // Default to false on complete failure
   }
 
   setupSocketHandlers() {
@@ -189,7 +275,7 @@ class IndependentAlarmService {
 
       // Check for active alarms
       const activeAlarms = [];
-      if (partPresent) {
+      if (!partPresent) {  // Fixed: Part NOT present triggers alarm
         activeAlarms.push("part_not_present");
       }
       if (emergencyStop) {

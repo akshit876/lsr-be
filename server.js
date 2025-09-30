@@ -28,7 +28,7 @@ import TcpScannerService from "./services/TcpScannerService.js";
 import BarcodeGenerator from "./services/barcodeGenrator.js";
 import { MongoClient } from "mongodb";
 import { scannerController } from "./services/scanCycles.js";
-import AlarmService from "./services/AlarmService.js";
+// import AlarmService from "./services/AlarmService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -340,18 +340,18 @@ server.listen(PORT, async (err) => {
   logger.info(`> Server ready on http://localhost:${PORT}`);
 
   // Initialize Alarm Service
-  let alarmService = null;
-  try {
-    alarmService = new AlarmService(3001);
-    const alarmStarted = await alarmService.start();
-    if (alarmStarted) {
-      logger.success("🚨 Alarm Service started on port 3001");
-    } else {
-      logger.warn("⚠️ Failed to start Alarm Service");
-    }
-  } catch (error) {
-    logger.error("❌ Error starting Alarm Service:", error);
-  }
+  // let alarmService = null;
+  // try {
+  //   alarmService = new AlarmService(3001);
+  //   const alarmStarted = await alarmService.start();
+  //   if (alarmStarted) {
+  //     logger.success("🚨 Alarm Service started on port 3001");
+  //   } else {
+  //     logger.warn("⚠️ Failed to start Alarm Service");
+  //   }
+  // } catch (error) {
+  //   logger.error("❌ Error starting Alarm Service:", error);
+  // }
 
   let tcpScannerService = null;
   try {
