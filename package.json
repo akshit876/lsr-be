@@ -6,7 +6,22 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "alarm": "node alarm-service.js",
+    "alarm-independent": "node independent-alarm-service.js",
+    "alarm-client": "node alarm-client-example.js",
+    "start-all": "node process-manager.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "pm2:restart": "pm2 restart ecosystem.config.js",
+    "pm2:delete": "pm2 delete ecosystem.config.js",
+    "pm2:status": "pm2 status",
+    "pm2:logs": "pm2 logs",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "windows:install": "node install-windows-service.js install",
+    "windows:uninstall": "node install-windows-service.js uninstall"
   },
   "keywords": [],
   "author": "",

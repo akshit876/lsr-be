@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  main-server:
+    build: .
+    container_name: laser-main-server
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - MODBUS_IP=192.168.3.146
+      - MODBUS_PORT=502
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - alarm-service
+    networks:
+      - laser-network
+
+  alarm-service:
+    build: .
+    container_name: laser-alarm-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - ALARM_PORT=3001
+      - MODBUS_IP=192.168.3.146
+      - MODBUS_PORT=502
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - laser-network
+
+networks:
+  laser-network:
+    driver: bridge

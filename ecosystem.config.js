@@ -1,0 +1,52 @@
+module.exports = {
+  apps: [
+    {
+      name: "laser-main-server",
+      script: "server.js",
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        NODE_ENV: "production",
+        PORT: 3002,
+      },
+      env_development: {
+        NODE_ENV: "development",
+        PORT: 3002,
+      },
+      restart_delay: 2000,
+      max_restarts: 10,
+      min_uptime: "10s",
+      watch: false,
+      log_file: "./logs/combined.log",
+      out_file: "./logs/out.log",
+      error_file: "./logs/error.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+    },
+    {
+      name: "laser-alarm-service",
+      script: "independent-alarm-service.js",
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        NODE_ENV: "production",
+        ALARM_PORT: 3001,
+        MODBUS_IP: "192.168.3.146",
+        MODBUS_PORT: 502,
+      },
+      env_development: {
+        NODE_ENV: "development",
+        ALARM_PORT: 3001,
+        MODBUS_IP: "192.168.3.146",
+        MODBUS_PORT: 502,
+      },
+      restart_delay: 2000,
+      max_restarts: 10,
+      min_uptime: "10s",
+      watch: false,
+      log_file: "./logs/alarm-combined.log",
+      out_file: "./logs/alarm-out.log",
+      error_file: "./logs/alarm-error.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+    },
+  ],
+};
