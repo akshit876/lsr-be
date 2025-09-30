@@ -598,6 +598,11 @@ class ScannerController {
             readBit(1490, 2), // Safety sensor. 1490.2
           ]);
 
+          // Debug logging for safety check
+          logger.info(
+            `🔍 Safety check: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}`
+          );
+
           // Check safety conditions
           if (partPresent) {
             cleanup();
@@ -605,6 +610,9 @@ class ScannerController {
 
             // Emit safety violation event to UI immediately
             if (this.io) {
+              logger.info(
+                "📡 Emitting safety_violation event to UI: Part not present"
+              );
               this.io.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Part not present",
@@ -612,6 +620,10 @@ class ScannerController {
                 register: "1490.0",
                 value: partPresent,
               });
+            } else {
+              logger.warn(
+                "⚠️ this.io is not available, cannot emit safety_violation event"
+              );
             }
 
             resolve("safety_violation");
@@ -626,6 +638,9 @@ class ScannerController {
 
             // Emit safety violation event to UI immediately
             if (this.io) {
+              logger.info(
+                "📡 Emitting safety_violation event to UI: Emergency stop activated"
+              );
               this.io.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Emergency stop activated",
@@ -633,6 +648,10 @@ class ScannerController {
                 register: "1490.1",
                 value: emergencyStop,
               });
+            } else {
+              logger.warn(
+                "⚠️ this.io is not available, cannot emit safety_violation event"
+              );
             }
 
             resolve("safety_violation");
@@ -647,6 +666,9 @@ class ScannerController {
 
             // Emit safety violation event to UI immediately
             if (this.io) {
+              logger.info(
+                "📡 Emitting safety_violation event to UI: Safety sensor not engaged"
+              );
               this.io.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
                 violation: "Safety sensor not engaged",
@@ -654,6 +676,10 @@ class ScannerController {
                 register: "1490.2",
                 value: safetySensor,
               });
+            } else {
+              logger.warn(
+                "⚠️ this.io is not available, cannot emit safety_violation event"
+              );
             }
 
             resolve("safety_violation");
@@ -939,8 +965,176 @@ class ScannerController {
     }
   }
 
+  // Simple safety check function
+  async checkSafetyViolations() {
+    try {
+      const [partPresent, emergencyStop, safetySensor] = await Promise.all([
+        readBit(1490, 0), // Part not present. 1490.0
+        readBit(1490, 1), // Emergency stop. 1490.1
+        readBit(1490, 2), // Safety sensor. 1490.2
+      ]);
+
+      if (partPresent) {
+        logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
+        if (this.io) {
+          this.io.emit("safety_violation", {
+            timestamp: new Date().toISOString(),
+            violation: "Part not present",
+            cycleNumber: this.cycleCount,
+            register: "1490.0",
+            value: partPresent,
+          });
+        }
+        return "safety_violation";
+      }
+
+      if (emergencyStop) {
+        logger.error(
+          "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+        );
+        if (this.io) {
+          this.io.emit("safety_violation", {
+            timestamp: new Date().toISOString(),
+            violation: "Emergency stop activated",
+            cycleNumber: this.cycleCount,
+            register: "1490.1",
+            value: emergencyStop,
+          });
+        }
+        return "safety_violation";
+      }
+
+      if (safetySensor) {
+        logger.error(
+          "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 1)"
+        );
+        if (this.io) {
+          this.io.emit("safety_violation", {
+            timestamp: new Date().toISOString(),
+            violation: "Safety sensor not engaged",
+            cycleNumber: this.cycleCount,
+            register: "1490.2",
+            value: safetySensor,
+          });
+        }
+        return "safety_violation";
+      }
+
+      return null; // No safety violations
+    } catch (error) {
+      logger.error(`Error checking safety conditions: ${error.message}`);
+      return null;
+    }
+  }
+
   // New method to encapsulate the main scan cycle logic
   async executeScanCycle(tcpScannerService) {
+    // Start continuous safety check interval
+    logger.info("🔍 Starting continuous safety monitoring...");
+    const safetyCheckInterval = setInterval(async () => {
+      try {
+        // Read safety bits from register 1490
+        const [partPresent, emergencyStop, safetySensor] = await Promise.all([
+          readBit(1490, 0), // Part not present. 1490.0
+          readBit(1490, 1), // Emergency stop. 1490.1
+          readBit(1490, 2), // Safety sensor. 1490.2
+        ]);
+
+        // Debug logging for safety check
+        logger.info(
+          `🔍 Safety check: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}`
+        );
+
+        // Check safety conditions
+        if (partPresent) {
+          clearInterval(safetyCheckInterval);
+          logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
+
+          // Emit safety violation event to UI immediately
+          if (this.io) {
+            logger.info(
+              "📡 Emitting safety_violation event to UI: Part not present"
+            );
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Part not present",
+              cycleNumber: this.cycleCount,
+              register: "1490.0",
+              value: partPresent,
+            });
+          } else {
+            logger.warn(
+              "⚠️ this.io is not available, cannot emit safety_violation event"
+            );
+          }
+
+          // Stop the entire scan cycle
+          this.isRunning = false;
+          return;
+        }
+
+        if (emergencyStop) {
+          clearInterval(safetyCheckInterval);
+          logger.error(
+            "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+          );
+
+          // Emit safety violation event to UI immediately
+          if (this.io) {
+            logger.info(
+              "📡 Emitting safety_violation event to UI: Emergency stop activated"
+            );
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Emergency stop activated",
+              cycleNumber: this.cycleCount,
+              register: "1490.1",
+              value: emergencyStop,
+            });
+          } else {
+            logger.warn(
+              "⚠️ this.io is not available, cannot emit safety_violation event"
+            );
+          }
+
+          // Stop the entire scan cycle
+          this.isRunning = false;
+          return;
+        }
+
+        if (safetySensor) {
+          clearInterval(safetyCheckInterval);
+          logger.error(
+            "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 1)"
+          );
+
+          // Emit safety violation event to UI immediately
+          if (this.io) {
+            logger.info(
+              "📡 Emitting safety_violation event to UI: Safety sensor not engaged"
+            );
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Safety sensor not engaged",
+              cycleNumber: this.cycleCount,
+              register: "1490.2",
+              value: safetySensor,
+            });
+          } else {
+            logger.warn(
+              "⚠️ this.io is not available, cannot emit safety_violation event"
+            );
+          }
+
+          // Stop the entire scan cycle
+          this.isRunning = false;
+          return;
+        }
+      } catch (error) {
+        logger.error(`Error checking safety conditions: ${error.message}`);
+      }
+    }, 500); // Check every 500ms for safety violations
+
     // First check for 1410.0 (start signal)
     logger.info("Waiting for start signal (1410.0)...");
     const resetResult = await this.checkResetOrBit(1410, 0, 1);
@@ -960,6 +1154,15 @@ class ScannerController {
       return;
     }
 
+    // Check for safety violations after first scan
+    const safetyCheck1 = await this.checkSafetyViolations();
+    if (safetyCheck1 === "safety_violation") {
+      logger.error(
+        "🚨 Safety violation detected after first scan, stopping cycle"
+      );
+      return;
+    }
+
     // Step 2: Middle Scanner Check (New workflow)
     logger.info("🔄 Starting middle scan workflow...");
     const middleScanResult = await this.handleMiddleScan();
@@ -969,6 +1172,15 @@ class ScannerController {
       } else {
         logger.info("Cycle stopped after middle scan");
       }
+      return;
+    }
+
+    // Check for safety violations after middle scan
+    const safetyCheck2 = await this.checkSafetyViolations();
+    if (safetyCheck2 === "safety_violation") {
+      logger.error(
+        "🚨 Safety violation detected after middle scan, stopping cycle"
+      );
       return;
     }
 
@@ -1078,6 +1290,9 @@ class ScannerController {
       logger.info("⏸️ Cycle failed - waiting 2 seconds before retry...");
       await sleep(2000);
     }
+
+    // Safety checks completed
+    logger.info("🔍 Safety checks completed");
   }
 
   async handleError(error) {
