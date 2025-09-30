@@ -10,12 +10,12 @@ class IndependentAlarmService {
     this.isRunning = false;
     this.alarmInterval = null;
     this.modbusClient = null;
-    
+
     // State tracking for alarm events
     this.previousAlarmStates = {
       partPresent: false,
       emergencyStop: false,
-      safetySensor: false
+      safetySensor: false,
     };
     this.activeAlarms = new Set(); // Track currently active alarms
     this.lastEmitTime = {}; // Track last emit time for each alarm type
@@ -362,7 +362,7 @@ class IndependentAlarmService {
       const currentAlarmStates = {
         partPresent,
         emergencyStop,
-        safetySensor
+        safetySensor,
       };
 
       // Check for state changes and emit appropriate events
@@ -370,7 +370,6 @@ class IndependentAlarmService {
 
       // Update previous states
       this.previousAlarmStates = { ...currentAlarmStates };
-
     } catch (error) {
       logger.error(`Error checking alarms: ${error.message}`);
 
@@ -388,9 +387,21 @@ class IndependentAlarmService {
 
   processAlarmStateChanges(currentStates) {
     const alarmTypes = [
-      { key: 'partPresent', type: 'part_not_present', name: 'Part not present' },
-      { key: 'emergencyStop', type: 'emergency_stop', name: 'Emergency stop activated' },
-      { key: 'safetySensor', type: 'safety_sensor', name: 'Safety sensor not engaged' }
+      {
+        key: "partPresent",
+        type: "part_not_present",
+        name: "Part not present",
+      },
+      {
+        key: "emergencyStop",
+        type: "emergency_stop",
+        name: "Emergency stop activated",
+      },
+      {
+        key: "safetySensor",
+        type: "safety_sensor",
+        name: "Safety sensor not engaged",
+      },
     ];
 
     alarmTypes.forEach(({ key, type, name }) => {
@@ -415,8 +426,9 @@ class IndependentAlarmService {
         const now = Date.now();
         const lastEmit = this.lastEmitTime[type] || 0;
         const timeSinceLastEmit = now - lastEmit;
-        
-        if (timeSinceLastEmit >= 5000) { // 5 seconds
+
+        if (timeSinceLastEmit >= 5000) {
+          // 5 seconds
           this.emitAlarmEvent(type, true, currentStates, true); // true = status update
           this.lastEmitTime[type] = now;
           logger.info(`📊 ALARM STATUS UPDATE: ${name}`);
@@ -425,15 +437,17 @@ class IndependentAlarmService {
     });
 
     // Log current state (only when there are changes)
-    const hasChanges = alarmTypes.some(({ key }) => 
-      this.previousAlarmStates[key] !== currentStates[key]
+    const hasChanges = alarmTypes.some(
+      ({ key }) => this.previousAlarmStates[key] !== currentStates[key]
     );
-    
+
     if (hasChanges) {
       logger.info(
         `🔍 Alarm State: partPresent=${currentStates.partPresent}, emergencyStop=${currentStates.emergencyStop}, safetySensor=${currentStates.safetySensor}`
       );
-      logger.info(`   Active Alarms: [${Array.from(this.activeAlarms).join(", ")}]`);
+      logger.info(
+        `   Active Alarms: [${Array.from(this.activeAlarms).join(", ")}]`
+      );
     }
   }
 
@@ -442,7 +456,12 @@ class IndependentAlarmService {
       return;
     }
 
-    const alarmData = this.getAlarmData(alarmType, alarmStates, isActive, isStatusUpdate);
+    const alarmData = this.getAlarmData(
+      alarmType,
+      alarmStates,
+      isActive,
+      isStatusUpdate
+    );
 
     if (isActive) {
       logger.error(`🚨 INDEPENDENT ALARM: ${alarmData.violation}`);
@@ -473,7 +492,12 @@ class IndependentAlarmService {
     });
   }
 
-  getAlarmData(alarmType, alarmStates, isActive = true, isStatusUpdate = false) {
+  getAlarmData(
+    alarmType,
+    alarmStates,
+    isActive = true,
+    isStatusUpdate = false
+  ) {
     const alarmConfigs = {
       part_not_present: {
         violation: "Part not present",
@@ -498,7 +522,7 @@ class IndependentAlarmService {
     const config = alarmConfigs[alarmType];
     const severity = isActive ? config.severity : "cleared";
     const action = isActive ? config.action : "resume";
-    
+
     return {
       timestamp: new Date().toISOString(),
       violation: config.violation,
@@ -509,7 +533,7 @@ class IndependentAlarmService {
       action: action,
       alarmType: alarmType,
       service: "independent",
-      isStatusUpdate: isStatusUpdate
+      isStatusUpdate: isStatusUpdate,
     };
   }
 
