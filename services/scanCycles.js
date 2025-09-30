@@ -517,6 +517,10 @@ class ScannerController {
           timeout
         );
         if (result !== "timeout") {
+          if (result === "safety_violation") {
+            logger.error("🚨 Safety violation detected, stopping cycle");
+            return "safety_violation";
+          }
           return result;
         }
         // If we get a timeout from singleCheckAttempt, just continue the loop
@@ -555,6 +559,9 @@ class ScannerController {
         if (resetCheckInterval) {
           clearInterval(resetCheckInterval);
         }
+        if (safetyCheckInterval) {
+          clearInterval(safetyCheckInterval);
+        }
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
@@ -580,6 +587,84 @@ class ScannerController {
           logger.error(`Error checking reset signal: ${error.message}`);
         }
       }, CHECK_INTERVAL);
+
+      // Safety check interval - runs in parallel every 500ms
+      const safetyCheckInterval = setInterval(async () => {
+        try {
+          // Read safety bits from register 1490
+          const [partPresent, emergencyStop, safetySensor] = await Promise.all([
+            readBit(1490, 0), // Part not present. 1490.0
+            readBit(1490, 1), // Emergency stop. 1490.1
+            readBit(1490, 2), // Safety sensor. 1490.2
+          ]);
+
+          // Check safety conditions
+          if (partPresent) {
+            cleanup();
+            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Part not present",
+                cycleNumber: this.cycleCount,
+                register: "1490.0",
+                value: partPresent,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          if (emergencyStop) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency stop activated",
+                cycleNumber: this.cycleCount,
+                register: "1490.1",
+                value: emergencyStop,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+
+          if (safetySensor) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 1)"
+            );
+
+            // Emit safety violation event to UI immediately
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety sensor not engaged",
+                cycleNumber: this.cycleCount,
+                register: "1490.2",
+                value: safetySensor,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
+        } catch (error) {
+          logger.error(
+            `Error checking safety conditions and alarms: ${error.message}`
+          );
+        }
+      }, 500); // Check every 500ms for safety violations
 
       // Bit check interval
       const bitCheckInterval = setInterval(async () => {
@@ -760,7 +845,7 @@ class ScannerController {
         mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
       }
     } catch (error) {
-      console.error({ error });
+      // console.error({ error });
       logger.error("Error saving data:", error);
       logger.error("📋 Failed data:", {
         serialNumber,
@@ -863,6 +948,10 @@ class ScannerController {
       logger.info("Reset detected, restarting cycle");
       return;
     }
+    if (resetResult === "safety_violation") {
+      logger.error("🚨 Safety violation detected, stopping cycle");
+      return;
+    }
 
     // Step 1: First Scanner Check
     const firstScanResult = await this.handleFirstScan(tcpScannerService);
@@ -892,7 +981,8 @@ class ScannerController {
     await writeBit(1414, 15, 1);
 
     logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-    if (await this.checkResetOrBit(1410, 3, 1)) {
+    const resetResult1410_3 = await this.checkResetOrBit(1410, 3, 1);
+    if (resetResult1410_3 === true) {
       logger.warn(
         "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
       );
@@ -906,6 +996,12 @@ class ScannerController {
         grading: "N/A",
         isUpdate: true,
       });
+      return;
+    }
+    if (resetResult1410_3 === "safety_violation") {
+      logger.error(
+        "🚨 Safety violation detected while waiting for 1410.3, stopping cycle"
+      );
       return;
     }
 
@@ -2005,9 +2101,16 @@ class ScannerController {
   async performFinalChecks() {
     try {
       logger.info("🔍 Performing final checks...");
-      if (await this.checkResetOrBit(1415, 7, 1)) {
+      const finalCheckResult = await this.checkResetOrBit(1415, 7, 1);
+      if (finalCheckResult === true) {
         logger.warn("⚠️ Reset detected at final step, restarting cycle");
         await sleep(1000);
+        return false;
+      }
+      if (finalCheckResult === "safety_violation") {
+        logger.error(
+          "🚨 Safety violation detected at final step, stopping cycle"
+        );
         return false;
       }
 
