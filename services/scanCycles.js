@@ -531,24 +531,34 @@ class ScannerController {
 
     // ENHANCED IMMEDIATE CHECK: Read the bit status with retry logic
     try {
-      logger.info(`🔍 ENHANCED IMMEDIATE CHECK: Reading current status of bit ${register}.${bit}...`);
+      logger.info(
+        `🔍 ENHANCED IMMEDIATE CHECK: Reading current status of bit ${register}.${bit}...`
+      );
 
       let currentBitValue = null;
       let immediateAttempts = 0;
       const maxImmediateAttempts = 3;
 
-      while (immediateAttempts < maxImmediateAttempts && currentBitValue === null) {
+      while (
+        immediateAttempts < maxImmediateAttempts &&
+        currentBitValue === null
+      ) {
         try {
           currentBitValue = await Promise.race([
             readBit(register, bit),
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Immediate check timeout')), 2000)
-            )
+              setTimeout(
+                () => reject(new Error("Immediate check timeout")),
+                2000
+              )
+            ),
           ]);
           break; // Success
         } catch (readError) {
           immediateAttempts++;
-          logger.warn(`⚠️ Immediate check attempt ${immediateAttempts}/${maxImmediateAttempts} failed for ${register}.${bit}: ${readError.message}`);
+          logger.warn(
+            `⚠️ Immediate check attempt ${immediateAttempts}/${maxImmediateAttempts} failed for ${register}.${bit}: ${readError.message}`
+          );
           if (immediateAttempts < maxImmediateAttempts) {
             await sleep(100); // Small delay before retry
           } else {
@@ -560,17 +570,27 @@ class ScannerController {
       const currentValue = Number(currentBitValue);
       const expectedValue = Number(value);
 
-      logger.info(`🔍 ENHANCED IMMEDIATE CHECK RESULT: Bit ${register}.${bit} = ${currentBitValue} (${currentValue}), Expected: ${expectedValue}, attempts: ${immediateAttempts}`);
+      logger.info(
+        `🔍 ENHANCED IMMEDIATE CHECK RESULT: Bit ${register}.${bit} = ${currentBitValue} (${currentValue}), Expected: ${expectedValue}, attempts: ${immediateAttempts}`
+      );
 
       if (currentValue === expectedValue) {
-        logger.info(`✅ ENHANCED IMMEDIATE CHECK: Bit ${register}.${bit} is already ${value}! Proceeding immediately (detected after ${immediateAttempts} attempts).`);
+        logger.info(
+          `✅ ENHANCED IMMEDIATE CHECK: Bit ${register}.${bit} is already ${value}! Proceeding immediately (detected after ${immediateAttempts} attempts).`
+        );
         return false; // Bit is already in expected state
       }
 
-      logger.info(`⏳ ENHANCED IMMEDIATE CHECK: Bit ${register}.${bit} is ${currentValue}, need to wait for ${expectedValue}`);
+      logger.info(
+        `⏳ ENHANCED IMMEDIATE CHECK: Bit ${register}.${bit} is ${currentValue}, need to wait for ${expectedValue}`
+      );
     } catch (immediateCheckError) {
-      logger.error(`❌ ENHANCED IMMEDIATE CHECK ERROR: Failed to read bit ${register}.${bit} after multiple attempts: ${immediateCheckError.message}`);
-      logger.info(`⏳ Proceeding with normal wait loop despite immediate check error...`);
+      logger.error(
+        `❌ ENHANCED IMMEDIATE CHECK ERROR: Failed to read bit ${register}.${bit} after multiple attempts: ${immediateCheckError.message}`
+      );
+      logger.info(
+        `⏳ Proceeding with normal wait loop despite immediate check error...`
+      );
     }
 
     logger.info(
@@ -854,17 +874,29 @@ class ScannerController {
               bitValue = await Promise.race([
                 readBit(register, bit),
                 new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error('Read timeout')), 2000)
-                )
+                  setTimeout(() => reject(new Error("Read timeout")), 3000)
+                ),
               ]);
               break; // Success, exit retry loop
             } catch (readError) {
               readAttempts++;
-              logger.warn(`⚠️ Bit read attempt ${readAttempts}/${maxReadAttempts} failed for ${register}.${bit}: ${readError.message}`);
+              logger.warn(
+                `⚠️ Bit read attempt ${readAttempts}/${maxReadAttempts} failed for ${register}.${bit}: ${readError.message}`
+              );
               if (readAttempts < maxReadAttempts) {
-                await sleep(50); // Small delay before retry
+                // Exponential backoff for retries
+                const delay = Math.min(
+                  100 * Math.pow(2, readAttempts - 1),
+                  1000
+                );
+                await sleep(delay);
               } else {
-                throw readError; // All attempts failed
+                // Log the final failure but don't throw - continue with next check
+                logger.error(
+                  `❌ All ${maxReadAttempts} read attempts failed for ${register}.${bit}, continuing...`
+                );
+                bitValue = false; // Default to false if all reads fail
+                break;
               }
             }
           }
@@ -873,7 +905,11 @@ class ScannerController {
           const expectedValue = Number(value);
 
           // Enhanced debugging for critical bits
-          if ((register === 1410 && bit === 0) || (register === 1410 && bit === 3) || (register === 1415 && bit === 7)) {
+          if (
+            (register === 1410 && bit === 0) ||
+            (register === 1410 && bit === 3) ||
+            (register === 1415 && bit === 7)
+          ) {
             logger.info(
               `🔍 [ENHANCED DEBUG] Bit ${register}.${bit} check: bitValue=${bitValue}, currentValue=${currentValue}, expectedValue=${expectedValue}, attempts=${readAttempts}`
             );
@@ -892,7 +928,8 @@ class ScannerController {
           }
 
           // Log status every 2 seconds (was 5 seconds)
-          if (checkCount % 40 === 0) { // 40 * 50ms = 2000ms = 2 seconds
+          if (checkCount % 40 === 0) {
+            // 40 * 50ms = 2000ms = 2 seconds
             logger.info(
               `Waiting... (${(checkCount * CHECK_INTERVAL) / 1000}s elapsed)`
             );
@@ -918,23 +955,28 @@ class ScannerController {
           let initialAttempts = 0;
           const maxInitialAttempts = 3;
 
-          while (initialAttempts < maxInitialAttempts && (resetSignal === null || bitValue === null)) {
+          while (
+            initialAttempts < maxInitialAttempts &&
+            (resetSignal === null || bitValue === null)
+          ) {
             try {
               const results = await Promise.race([
-                Promise.all([
-                  readBit(1600, 0),
-                  readBit(register, bit),
-                ]),
+                Promise.all([readBit(1600, 0), readBit(register, bit)]),
                 new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error('Initial check timeout')), 3000)
-                )
+                  setTimeout(
+                    () => reject(new Error("Initial check timeout")),
+                    3000
+                  )
+                ),
               ]);
               resetSignal = results[0];
               bitValue = results[1];
               break; // Success
             } catch (initialError) {
               initialAttempts++;
-              logger.warn(`⚠️ Initial check attempt ${initialAttempts}/${maxInitialAttempts} failed: ${initialError.message}`);
+              logger.warn(
+                `⚠️ Initial check attempt ${initialAttempts}/${maxInitialAttempts} failed: ${initialError.message}`
+              );
               if (initialAttempts < maxInitialAttempts) {
                 await sleep(100); // Delay before retry
               } else {
@@ -944,7 +986,11 @@ class ScannerController {
           }
 
           // Enhanced debugging for critical bits
-          if ((register === 1410 && bit === 0) || (register === 1410 && bit === 3) || (register === 1415 && bit === 7)) {
+          if (
+            (register === 1410 && bit === 0) ||
+            (register === 1410 && bit === 3) ||
+            (register === 1415 && bit === 7)
+          ) {
             logger.info(
               `🔍 [ENHANCED DEBUG] Initial check - Reset(1600.0): ${resetSignal}, Bit ${register}.${bit}: ${bitValue}, Expected: ${value}, attempts: ${initialAttempts}`
             );
@@ -1581,23 +1627,27 @@ class ScannerController {
             );
             return;
           }
-          isResolved = true;
-          const dataReceiveTime = Date.now();
-          logger.success(
-            `📥 Data received from ${scannerType} scanner: ${data}`
-          );
-          logger.info(
-            `🔍 Event listener called with data: "${data}" (type: ${typeof data})`
-          );
-          logger.info(
-            `⏰ Data received at: ${new Date(dataReceiveTime).toISOString()}`
-          );
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-            timeoutId = null;
+
+          // Use atomic operation to prevent race conditions
+          if (!isResolved) {
+            isResolved = true;
+            const dataReceiveTime = Date.now();
+            logger.success(
+              `📥 Data received from ${scannerType} scanner: ${data}`
+            );
+            logger.info(
+              `🔍 Event listener called with data: "${data}" (type: ${typeof data})`
+            );
+            logger.info(
+              `⏰ Data received at: ${new Date(dataReceiveTime).toISOString()}`
+            );
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+            cleanup();
+            resolve(data);
           }
-          cleanup();
-          resolve(data);
         };
 
         // Set up event listeners for BOTH scanners

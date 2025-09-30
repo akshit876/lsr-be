@@ -246,23 +246,40 @@ class TcpScannerService extends EventEmitter {
           this.emitDataGot(finalMessage);
           this.dataBuffer = ""; // Clear buffer
         } else {
+          // Check if data looks incomplete and might need more time
+          const looksIncomplete =
+            this.dataBuffer.length > 0 &&
+            !this.dataBuffer.includes("@") &&
+            !this.dataBuffer.includes("NG") &&
+            !this.dataBuffer.includes("OK");
+
+          if (looksIncomplete) {
+            this.log(
+              `TCP data appears incomplete (waiting for @ or proper format): "${this.dataBuffer}"`,
+              "debug"
+            );
+          }
+
           // Set timeout to wait for more data
-          this.bufferTimeout = setTimeout(() => {
-            if (this.dataBuffer) {
-              this.log(
-                `Buffered TCP scanner data timeout reached: "${this.dataBuffer}"`
-              );
-              this.log(
-                `Emitting dataGot event with buffered data: "${this.dataBuffer}"`
-              );
-              this.log(
-                `Number of dataGot listeners: ${this.listenerCount("dataGot")}`
-              );
-              // --- Use queue-aware emit ---
-              this.emitDataGot(this.dataBuffer);
-              this.dataBuffer = ""; // Clear buffer
-            }
-          }, 500); // 500ms timeout for better buffering
+          this.bufferTimeout = setTimeout(
+            () => {
+              if (this.dataBuffer) {
+                this.log(
+                  `Buffered TCP scanner data timeout reached: "${this.dataBuffer}"`
+                );
+                this.log(
+                  `Emitting dataGot event with buffered data: "${this.dataBuffer}"`
+                );
+                this.log(
+                  `Number of dataGot listeners: ${this.listenerCount("dataGot")}`
+                );
+                // --- Use queue-aware emit ---
+                this.emitDataGot(this.dataBuffer);
+                this.dataBuffer = ""; // Clear buffer
+              }
+            },
+            looksIncomplete ? 1000 : 500
+          ); // Longer timeout for incomplete data
         }
       }
     });

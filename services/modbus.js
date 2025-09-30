@@ -1,6 +1,7 @@
 import ModbusRTU from "modbus-serial";
 import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
+import process from "process";
 
 // Default values
 const DEFAULT_MODBUS_IP = "192.168.3.146";
@@ -22,7 +23,12 @@ class ModbusConnection {
     if (this.isConnected) return;
 
     try {
-      await this.client.connectTCP(MODBUS_IP, { port: MODBUS_PORT });
+      // Set timeout and connection options
+      this.client.setTimeout(5000); // 5 second timeout
+      await this.client.connectTCP(MODBUS_IP, {
+        port: MODBUS_PORT,
+        timeout: 5000, // 5 second connection timeout
+      });
       this.client.setID(1); // Set the Modbus slave ID (adjust as needed)
       this.isConnected = true;
       logger.info(`Connected to Modbus device at ${MODBUS_IP}:${MODBUS_PORT}`);
@@ -50,6 +56,23 @@ class ModbusConnection {
   async ensureConnection() {
     if (!this.isConnected) {
       await this.connect();
+    } else {
+      // Check if connection is still alive by doing a quick read
+      try {
+        await Promise.race([
+          this.client.readHoldingRegisters(1, 1),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Connection check timeout")),
+              1000
+            )
+          ),
+        ]);
+      } catch (error) {
+        logger.warn(`Connection check failed, reconnecting: ${error.message}`);
+        this.isConnected = false;
+        await this.connect();
+      }
     }
   }
 
@@ -57,16 +80,17 @@ class ModbusConnection {
     await this.ensureConnection();
     try {
       const { data } = await this.client.readHoldingRegisters(address, len);
-      if (isPrint)
-        if (!conti && !bit)
+      if (isPrint) {
+        if (!conti && !bit) {
           logger.info(
             `Read registers starting at address ${address} (length: ${len}): ${data}`
           );
-        else {
+        } else {
           logger.info(
             `Read registers starting at address ${address} (length: ${len}) (bit : ${bit}): ${data}`
           );
         }
+      }
       return data;
     } catch (error) {
       emitErrorEvent(
@@ -169,7 +193,7 @@ class ModbusConnection {
       let asciiString = this.convertToASCII(data);
       // Remove trailing null characters (\x00) from the ASCII string
       // asciiString = asciiString.replace(/\x00+$/, "");
-      asciiString = asciiString.replace(/\x00/g, " ").trim();
+      asciiString = asciiString.replace(/\u0000/g, " ").trim();
       console.log({ asciiString });
       console.log(
         `Read registers starting at address ${address} (length: ${len}): ${data} (ASCII: ${asciiString})`
@@ -206,27 +230,27 @@ class ModbusConnection {
   async readBit(address, bitPosition, conti = true) {
     await this.ensureConnection();
     try {
-      // console.log({ address, bitPosition });
-      const result = await this.client.readHoldingRegisters(address, 1);
+      // Add timeout wrapper for read operations
+      const result = await Promise.race([
+        this.client.readHoldingRegisters(address, 1),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Read timeout")), 3000)
+        ),
+      ]);
+
       const registerValue = result.data[0];
-      // console.log({ result: [...result] });
-      // console.log({ registerValue });
       const bitValue = (registerValue & (1 << bitPosition)) !== 0;
-      // console.log({ registerValue, bitValue, conti });
 
       const binaryString = registerValue.toString(2).padStart(16, "0");
 
       // Convert binary string to an array of bits for better readability
       const bitArray = binaryString.split("").map((bit) => parseInt(bit, 10));
 
-      // console.log(
-      //   `16-bit register value for register ${address}: ${binaryString}`
-      // );
-      // console.log(`Bit array for register ${address}:`, bitArray);
-      if (conti)
+      if (conti) {
         logger.info(
           `Read bit ${bitPosition} from register ${address}: ${bitValue}`
         );
+      }
       return bitValue;
     } catch (error) {
       console.log({ error });
