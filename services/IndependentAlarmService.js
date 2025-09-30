@@ -10,11 +10,7 @@ class IndependentAlarmService {
     this.isRunning = false;
     this.alarmInterval = null;
     this.modbusClient = null;
-    this.lastAlarmStates = {
-      partPresent: false,
-      emergencyStop: false,
-      safetySensor: false,
-    };
+    // No state tracking needed - bit-dependent only
 
     // PLC Configuration - completely independent
     this.plcConfig = {
@@ -290,11 +286,10 @@ class IndependentAlarmService {
         `📡 Client connected to Independent Alarm Service: ${socket.id}`
       );
 
-      // Send current alarm status to new client
+      // Send connection confirmation
       socket.emit("alarm_status", {
         timestamp: new Date().toISOString(),
         status: "connected",
-        alarms: this.lastAlarmStates,
         service: "independent",
       });
 
@@ -308,7 +303,6 @@ class IndependentAlarmService {
         socket.emit("alarm_status", {
           timestamp: new Date().toISOString(),
           status: "current",
-          alarms: this.lastAlarmStates,
           service: "independent",
         });
       });
@@ -359,20 +353,7 @@ class IndependentAlarmService {
       const emergencyStop = safetyBits[1]; // 1490.1
       const safetySensor = safetyBits[2]; // 1490.2
 
-      // Check for state changes
-      const stateChanged =
-        partPresent !== this.lastAlarmStates.partPresent ||
-        emergencyStop !== this.lastAlarmStates.emergencyStop ||
-        safetySensor !== this.lastAlarmStates.safetySensor;
-
-      // Update last known states
-      this.lastAlarmStates = {
-        partPresent,
-        emergencyStop,
-        safetySensor,
-      };
-
-      // Check for active alarms
+      // Simple bit-dependent logic - emit alarm if ANY bit is ON
       const activeAlarms = [];
       if (partPresent) {
         // 1490.0 = 1 means "Part not present" - ALARM!
@@ -387,15 +368,15 @@ class IndependentAlarmService {
         activeAlarms.push("safety_sensor");
       }
 
-      // Log current state only if there are alarms or state changed
-      if (activeAlarms.length > 0 || stateChanged) {
-        logger.info(
-          `🔍 Independent Alarm Check: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}`
-        );
-      }
+      // Log current state
+      logger.info(
+        `🔍 Independent Alarm Check: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}`
+      );
+      logger.info(`   Active Alarms: [${activeAlarms.join(", ")}]`);
 
-      // Only emit events if there are active alarms
+      // Emit alarm if ANY bit is ON (bit-dependent only)
       if (activeAlarms.length > 0) {
+        logger.error(`🚨 ALARMS ACTIVE: [${activeAlarms.join(", ")}]`);
         this.emitAlarmEvents(activeAlarms, {
           partPresent,
           emergencyStop,
@@ -498,7 +479,6 @@ class IndependentAlarmService {
       isRunning: this.isRunning,
       port: this.port,
       connectedClients: this.io ? this.io.engine.clientsCount : 0,
-      lastAlarmStates: this.lastAlarmStates,
       plcConnected: this.modbusClient ? this.modbusClient.isOpen : false,
       plcConfig: this.plcConfig,
       service: "independent",
