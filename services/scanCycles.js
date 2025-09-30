@@ -1131,27 +1131,57 @@ class ScannerController {
       return { shouldContinue: true };
     }
 
-    // DEBUG MODE: Always continue regardless of scan result
+    // Handle case where first scan receives data (part already marked)
     if (scannerData && scannerData.trim() !== "") {
+      // Use dedicated method to handle part already marked scenario
+      await this.handlePartAlreadyMarked(scannerData, "first");
+
       logger.info(
-        "🔧 DEBUG MODE: First scan received data, but continuing workflow anyway"
+        "✍️ Writing bit 1414.7 to signal NG scan (part already marked)"
       );
-      logger.info(`📋 Received data: "${scannerData}"`);
-
-      // Emit the data to the UI for debugging
-      if (this.io) {
-        this.io.emit("first_scan_debug", {
-          timestamp: new Date(),
-          scannerData: scannerData,
-          message: "DEBUG: First scan received data, continuing workflow",
-        });
-      }
-
-      logger.info("✍️ Writing bit 1414.7 to signal NG scan (debug mode)");
       await writeBit(1414, 7, 1);
+
+      // Stop cycle and restart when part is already marked
+      logger.warn(
+        "🔄 Stopping current cycle - part already marked, will restart"
+      );
+      return { shouldContinue: false };
     }
 
     return { shouldContinue: true };
+  }
+
+  async handlePartAlreadyMarked(scannerData, scanType = "first") {
+    logger.warn(`🏷️ PART ALREADY MARKED: Data detected on ${scanType} scan`);
+    logger.info(`📋 Marking data found: "${scannerData}"`);
+
+    // Emit first_scan_ok event for existing frontend handling
+    if (this.io) {
+      this.io.emit("first_scan_ok", {
+        timestamp: new Date(),
+        data: scannerData,
+        message: `Part already marked - data detected on ${scanType} scan`,
+        cycleNumber: this.cycleCount,
+        scanType: scanType,
+        isAlreadyMarked: true,
+        warning: true,
+        details: {
+          detectedData: scannerData,
+          scanPosition: scanType,
+          workflowStatus: "continuing",
+          reason: "part_may_need_re_marking",
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // Log detailed information
+    logger.info(
+      `🔄 Stopping cycle - part already marked, will restart for re-marking`
+    );
+    logger.info(
+      `📊 Cycle: ${this.cycleCount}, Scan: ${scanType}, Data: "${scannerData}"`
+    );
   }
 
   async checkReset() {
