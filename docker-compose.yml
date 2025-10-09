@@ -9,7 +9,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3002
-      - MODBUS_IP=192.168.3.146
+      - MODBUS_IP=192.168.72.143
       - MODBUS_PORT=502
     volumes:
       - ./logs:/app/logs
@@ -28,7 +28,7 @@ services:
     environment:
       - NODE_ENV=production
       - ALARM_PORT=3001
-      - MODBUS_IP=192.168.3.146
+      - MODBUS_IP=192.168.72.143
       - MODBUS_PORT=502
     volumes:
       - ./logs:/app/logs

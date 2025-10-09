@@ -23,7 +23,7 @@ class IndependentAlarmService {
 
     // PLC Configuration - completely independent
     this.plcConfig = {
-      host: plcConfig.host || process.env.MODBUS_IP || "192.168.3.146",
+      host: plcConfig.host || process.env.MODBUS_IP || "192.168.72.143",
       port: plcConfig.port || parseInt(process.env.MODBUS_PORT) || 502,
       timeout: 5000,
       ...plcConfig,

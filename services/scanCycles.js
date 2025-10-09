@@ -30,7 +30,7 @@ const SCANNER_TIMEOUT = 30 * 1000; // 30 seconds scanner timeout
 
 // TCP Scanner configuration
 const TCP_SCANNER_CONFIG = {
-  host: process.env.SCANNER_HOST || "192.168.3.147", // Default TCP scanner IP
+  host: process.env.SCANNER_HOST || "192.168.72.146", // Default TCP scanner IP
   port: parseInt(process.env.SCANNER_PORT, 10) || 502, // Default TCP scanner port
   timeout: 5000,
   reconnectInterval: 3000,
@@ -41,7 +41,7 @@ const TCP_SCANNER_CONFIG = {
 
 // Middle Scanner configuration
 const MIDDLE_SCANNER_CONFIG = {
-  host: process.env.MIDDLE_SCANNER_HOST || "192.168.3.148", // Middle scanner IP
+  host: process.env.MIDDLE_SCANNER_HOST || "192.168.72.145", // Middle scanner IP
   port: parseInt(process.env.MIDDLE_SCANNER_PORT, 10) || 502, // Middle scanner port
   timeout: 5000,
   reconnectInterval: 3000,

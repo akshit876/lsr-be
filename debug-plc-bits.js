@@ -16,7 +16,7 @@ async function debugPLCBits() {
 
   try {
     // Connect to PLC
-    await client.connectTCP("192.168.3.146", { port: 502 });
+    await client.connectTCP("192.168.72.143", { port: 502 });
     client.setTimeout(5000);
 
     logger.success("✅ Connected to PLC");

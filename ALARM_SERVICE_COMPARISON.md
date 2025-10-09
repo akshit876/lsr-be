@@ -67,7 +67,7 @@ const MODBUS_PORT = process.env.MODBUS_PORT;
 // Own configuration with fallbacks
 const config = {
   port: parseInt(process.env.ALARM_PORT) || 3001,
-  plcHost: process.env.MODBUS_IP || "192.168.3.146",
+  plcHost: process.env.MODBUS_IP || "192.168.72.143",
   plcPort: parseInt(process.env.MODBUS_PORT) || 502,
 };
 ```

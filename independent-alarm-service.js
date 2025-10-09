@@ -16,7 +16,7 @@ async function startIndependentAlarmService() {
   // Configuration - can be set via environment variables
   const config = {
     port: parseInt(process.env.ALARM_PORT) || 3005,
-    plcHost: process.env.MODBUS_IP || "192.168.3.146",
+    plcHost: process.env.MODBUS_IP || "192.168.72.143",
     plcPort: parseInt(process.env.MODBUS_PORT) || 502,
   };
 

@@ -30,13 +30,13 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         ALARM_PORT: 3001,
-        MODBUS_IP: "192.168.3.146",
+        MODBUS_IP: "192.168.72.143",
         MODBUS_PORT: 502,
       },
       env_development: {
         NODE_ENV: "development",
         ALARM_PORT: 3001,
-        MODBUS_IP: "192.168.3.146",
+        MODBUS_IP: "192.168.72.143",
         MODBUS_PORT: 502,
       },
       restart_delay: 2000,
