@@ -1073,14 +1073,14 @@ class ScannerController {
     }
   }
 
-  // Helper method to clean scanner data - preserve leading zeros for valid data
+  // Helper method to clean scanner data - only strip CR/LF, preserve spaces/zeros
   cleanScannerData(scannerData) {
     if (!scannerData) {
       return scannerData;
     }
 
-    // Remove newlines and trim whitespace first
-    const cleaned = scannerData.toString().trim();
+    // Remove only CR/LF to normalize, keep spaces and content intact
+    const cleaned = scannerData.toString().replace(/[\r\n]+/g, "");
 
     // If data contains "NG" (case insensitive), return "NG"
     if (cleaned.toUpperCase().includes("NG")) {
@@ -1092,45 +1092,27 @@ class ScannerController {
     return cleaned;
   }
 
-  // Helper method to extract grade from scanner data (last character)
-  extractGradeFromScannerData(scannerData) {
-    if (!scannerData || scannerData === "NG") {
-      return "N/A";
-    }
-
+  // Parse scanner payload of the form "<data>: <grade>" preserving data exactly
+  parseScannerPayload(scannerData) {
     const cleaned = this.cleanScannerData(scannerData);
-
-    // If the cleaned data is "NG" or empty, return "N/A"
     if (!cleaned || cleaned === "NG") {
-      return "N/A";
+      return { mainData: cleaned, grade: "N/A" };
     }
 
-    // Extract the last character as grade
-    const grade = cleaned.charAt(cleaned.length - 1);
-
-    // Validate that grade is a single character
-    if (grade && grade.length === 1) {
-      return grade.toUpperCase();
+    const lastColonIdx = cleaned.lastIndexOf(":");
+    if (lastColonIdx === -1) {
+      return { mainData: cleaned, grade: "N/A" };
     }
 
-    return "N/A";
-  }
+    const left = cleaned.slice(0, lastColonIdx); // preserve exactly
+    const right = cleaned.slice(lastColonIdx + 1); // may contain space + grade
 
-  // Helper method to get main data without grade (remove last character)
-  getMainDataWithoutGrade(scannerData) {
-    if (!scannerData || scannerData === "NG") {
-      return scannerData;
-    }
+    // Extract last non-space character as grade
+    const rightTrimEnd = right.replace(/[\r\n]+/g, "");
+    const match = rightTrimEnd.match(/\s*([A-Za-z])\s*$/);
+    const grade = match ? match[1].toUpperCase() : "N/A";
 
-    const cleaned = this.cleanScannerData(scannerData);
-
-    // If the cleaned data is "NG" or empty, return as is
-    if (!cleaned || cleaned === "NG") {
-      return cleaned;
-    }
-
-    // Remove the last character (grade) and return the main data
-    return cleaned.slice(0, -1);
+    return { mainData: left, grade };
   }
 
   // Handle model-specific bit operations
@@ -1514,16 +1496,21 @@ class ScannerController {
       `🧹 Original scanner data: "${scannerData}" -> Cleaned: "${cleanedData}"`
     );
 
-    // Extract grade and main data
-    const grade = this.extractGradeFromScannerData(scannerData);
-    const mainData = this.getMainDataWithoutGrade(scannerData);
+    // Extract grade and main data using ": <grade>" format
+    const { mainData, grade } = this.parseScannerPayload(scannerData);
 
     logger.info(
       `📊 Data breakdown: Main data: "${mainData}", Grade: "${grade}"`
     );
 
     // Handle timeout/null/undefined or explicit "NG" response
-    if (!cleanedData || cleanedData.trim().toUpperCase() === "NG") {
+    if (
+      !cleanedData ||
+      cleanedData
+        .replace(/[\r\n]+/g, "")
+        .toUpperCase()
+        .includes("NG")
+    ) {
       logger.warn(
         "⚠️ First scan data is NG or timeout, proceeding with workflow"
       );
@@ -1691,15 +1678,20 @@ class ScannerController {
       );
 
       // Extract grade and main data for verification
-      const grade = this.extractGradeFromScannerData(scannerData);
-      const mainData = this.getMainDataWithoutGrade(scannerData);
+      const { mainData, grade } = this.parseScannerPayload(scannerData);
+
+      // Validate grade: only allow A, B, or C
+      const allowedGrades = ["A", "B", "C"];
+      const isGradeAllowed = allowedGrades.includes(
+        (grade || "").toUpperCase()
+      );
 
       logger.info(
         `📊 Verification data breakdown: Main data: "${mainData}", Grade: "${grade}"`
       );
 
       // Handle timeout/null/undefined cases as NG
-      const effectiveScannerData = mainData || "NG"; // Use main data without grade for comparison
+      const effectiveScannerData = mainData || "NG"; // Use main data for comparison
 
       if (effectiveScannerData !== "NG") {
         logger.success("Verification scan OK");
@@ -1707,18 +1699,33 @@ class ScannerController {
         logger.warn("⚠️ Verification scan NG or timeout");
       }
 
+      // If grade is not allowed, we will still compute match for logging but force NG later
       const isDataMatching =
         await this.compareScannerDataWithCode(effectiveScannerData);
 
-      logger.info(
-        `✍️ Writing bit 1414.${isDataMatching ? 3 : 4} to signal data match result`
-      );
-      await writeBit(1414, isDataMatching ? 3 : 4, 1);
+      // Signal grade status to PLC (1414.8 for OK grade, 1414.9 for NG grade)
+      try {
+        await writeBit(1414, isGradeAllowed ? 8 : 9, 1);
+      } catch (e) {
+        logger.warn(`Unable to write grade status bit: ${e.message}`);
+      }
 
-      if (isDataMatching) {
-        logger.success("Data matches ✅");
+      // Final result: must match AND have allowed grade
+      const isFinalOk = isDataMatching && isGradeAllowed;
+
+      logger.info(
+        `✍️ Writing bit 1414.${isFinalOk ? 3 : 4} to signal data match result (grade ${
+          isGradeAllowed ? "OK" : "NG"
+        })`
+      );
+      await writeBit(1414, isFinalOk ? 3 : 4, 1);
+
+      if (isFinalOk) {
+        logger.success("Verification OK: data matches and grade accepted ✅");
+      } else if (!isGradeAllowed) {
+        logger.warn(`⚠️ Verification NG: disallowed grade '${grade}'`);
       } else {
-        logger.warn("⚠️ Data does not match");
+        logger.warn("⚠️ Verification NG: data does not match");
       }
 
       await this.saveToMongoDB({
@@ -1727,11 +1734,11 @@ class ScannerController {
         markingData: barcodeData.text,
         scannerData: effectiveScannerData, // Main data without grade
         grading: grade, // Use extracted grade
-        result: isDataMatching,
+        result: isFinalOk,
         isUpdate: true,
       });
 
-      return { success: isDataMatching };
+      return { success: isFinalOk };
     } catch (error) {
       if (error.message === "RESET_DETECTED") {
         logger.warn(

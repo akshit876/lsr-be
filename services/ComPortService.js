@@ -92,9 +92,9 @@ class BufferedComPortService extends EventEmitter {
   setupListeners() {
     this.log("Setting up improved data listeners with smart buffering");
 
-    // Buffer scanner data since it comes character by character
+    // Buffer scanner data since it can come in chunks without delimiters
     this.port.on("data", (buffer) => {
-      const newData = buffer.toString().trim();
+      const newData = buffer.toString(); // preserve spaces and content as-is
 
       if (newData) {
         this.log(`Raw data chunk received: "${newData}"`, "debug");
@@ -107,27 +107,16 @@ class BufferedComPortService extends EventEmitter {
           clearTimeout(this.bufferTimeout);
         }
 
-        // Check if we have what looks like a complete scanner message
-        const isCompleteMessage = this.isCompleteMessage(this.dataBuffer);
-
-        if (isCompleteMessage) {
-          // Process concatenated responses and extract the final valid message
-          const finalMessage = this.extractFinalMessage(this.dataBuffer);
-          this.log(`Complete scanner message detected: "${finalMessage}"`);
-          this.emit("dataGot", finalMessage);
-          this.dataBuffer = ""; // Clear buffer
-        } else {
-          // Set longer timeout to wait for more data (500ms instead of 100ms)
-          this.bufferTimeout = setTimeout(() => {
-            if (this.dataBuffer) {
-              this.log(
-                `Buffered scanner data timeout reached: "${this.dataBuffer}"`
-              );
-              this.emit("dataGot", this.dataBuffer);
-              this.dataBuffer = ""; // Clear buffer
-            }
-          }, 500); // Increased to 500ms for better buffering
-        }
+        // No explicit delimiter now; emit after short idle period
+        this.bufferTimeout = setTimeout(() => {
+          if (this.dataBuffer) {
+            this.log(
+              `Buffered scanner data timeout reached: "${this.dataBuffer}"`
+            );
+            this.emit("dataGot", this.dataBuffer);
+            this.dataBuffer = ""; // Clear buffer
+          }
+        }, 500);
       }
     });
 
@@ -157,56 +146,7 @@ class BufferedComPortService extends EventEmitter {
     });
   }
 
-  // Helper method to detect if we have a complete scanner message
-  isCompleteMessage(data) {
-    const trimmedData = data.trim();
-
-    // All scanner messages now end with @ delimiter
-    if (trimmedData.includes("@")) {
-      this.log(
-        `Complete message detected (@ found): "${trimmedData}"`,
-        "debug"
-      );
-      return true;
-    }
-
-    // For very short data, likely incomplete
-    if (trimmedData.length < 2) {
-      this.log(`Data too short: "${trimmedData}"`, "debug");
-      return false;
-    }
-
-    // Default to incomplete for other cases (waiting for @)
-    this.log(
-      `Data appears incomplete (waiting for @): "${trimmedData}"`,
-      "debug"
-    );
-    return false;
-  }
-
-  // Helper method to extract the final meaningful message from concatenated responses
-  extractFinalMessage(data) {
-    const trimmedData = data.trim();
-
-    // Split by @ and get the last non-empty segment
-    const segments = trimmedData
-      .split("@")
-      .filter((segment) => segment.trim() !== "");
-
-    if (segments.length === 0) {
-      this.log(`No valid segments found in: "${trimmedData}"`, "debug");
-      return trimmedData;
-    }
-
-    // Get the last complete segment
-    const lastSegment = segments[segments.length - 1].trim();
-
-    this.log(
-      `Extracted final message: "${lastSegment}" from segments: [${segments.join(", ")}]`,
-      "debug"
-    );
-    return lastSegment;
-  }
+  // Delimiter-based helpers removed; using idle-timeout buffering instead
 
   async closePort() {
     if (!this.isInitialized) {
