@@ -153,6 +153,21 @@ io.on("connection", (socket) => {
     logger.info(`Client disconnected: ${socket.id}`);
   });
 
+  // Guard: ensure cycle idle (1410.0 == 0) before writing trigger bits
+  async function ensureCycleIdleOrWarn(actionLabel) {
+    try {
+      const isRunning = await readBit(1410, 0, false);
+      if (isRunning) {
+        logger.error(`❌ ${actionLabel} blocked: cycle already running (1410.0 == 1)`);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      logger.error(`❌ ${actionLabel} check failed for 1410.0: ${e?.message || e}`);
+      return false;
+    }
+  }
+
   socket.on("write-modbus-register", async ({ address, bit, value }) => {
     try {
       await writeModbusBit(address, bit, value);
@@ -172,6 +187,7 @@ io.on("connection", (socket) => {
   // UI Scanner Trigger Event
   socket.on("scanner_trigger", async () => {
     try {
+      if (!(await ensureCycleIdleOrWarn("Scanner trigger"))) return;
       logger.info(`Client ${socket.id} triggered scanner (1481.0)`);
       await writeBit(1481, 0, 1);
       logger.info("✅ Scanner trigger bit 1481.0 set to 1");
@@ -378,6 +394,13 @@ io.on("connection", (socket) => {
           throw new Error(`Unknown control type: ${type}`);
       }
 
+      // Only guard UI-triggered cycle actions: marking/scanner/light groups
+      if (
+        ["SCANNER", "SCANNER_TRIGGER", "MARKON", "LIGHT"].includes(type)
+      ) {
+        if (!(await ensureCycleIdleOrWarn(`Manual control ${type}`))) return;
+      }
+
       // Turn on the bit
       await writeBit(targetRegister, 0, 1);
       logger.info(
@@ -497,6 +520,7 @@ io.on("connection", (socket) => {
   // UI Mark On Event
   socket.on("mark_on", async () => {
     try {
+      if (!(await ensureCycleIdleOrWarn("Mark on"))) return;
       logger.info(`Client ${socket.id} triggered mark on (1480.0)`);
       await writeBit(1480, 0, 1);
       logger.info("✅ Mark on bit 1480.0 set to 1");
@@ -518,6 +542,7 @@ io.on("connection", (socket) => {
   // UI Light On Event
   socket.on("light_on", async () => {
     try {
+      if (!(await ensureCycleIdleOrWarn("Light on"))) return;
       logger.info(`Client ${socket.id} triggered light on (1482.0)`);
       await writeBit(1482, 0, 1);
       logger.info("✅ Light on bit 1482.0 set to 1");
