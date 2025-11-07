@@ -89,6 +89,7 @@ class ScannerController {
     this.isPulseOn = false;
     this.currentDayId = 1;
     this.lastResetDate = this.getLastResetTime();
+    this.pendingOcrData = null; // Store OCR data from supervisor input
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
@@ -669,11 +670,15 @@ class ScannerController {
   // New method to encapsulate the main scan cycle logic
   async executeScanCycle(comService, partNumber) {
     try {
+      // Clear any pending OCR data at the start of each cycle
+      this.clearPendingOcrData();
+
       // First check for 1410.0
       logger.info("Waiting for start signal (1400.0)...");
       const resetResult = await this.checkResetOrBit(1400, 0, 1);
       if (resetResult === true) {
         logger.info("Reset detected, restarting cycle");
+        this.clearPendingOcrData(); // Clear on reset
         return;
       }
 
@@ -681,6 +686,7 @@ class ScannerController {
       const firstScanResult = await this.handleFirstScan(comService);
       if (!firstScanResult.shouldContinue) {
         logger.info("Cycle stopped after first scan");
+        this.clearPendingOcrData(); // Clear on early exit
         return;
       }
       /**
@@ -712,6 +718,7 @@ class ScannerController {
           grading: "N/A",
           isUpdate: true,
         });
+        this.clearPendingOcrData(); // Clear on reset/early exit
         return;
       }
 
@@ -719,6 +726,7 @@ class ScannerController {
       const ocrScanResult = await this.handleSecondScan(comService, "");
       if (!ocrScanResult.success) {
         logger.info("Second scan (OCR) failed, stopping cycle");
+        this.clearPendingOcrData(); // Clear on failure
         return;
       }
 
@@ -729,6 +737,7 @@ class ScannerController {
       );
       if (!barcodeData) {
         // this.barcodeGenerator.decSerialNo();
+        this.clearPendingOcrData(); // Clear on early exit
         return;
       }
 
@@ -754,6 +763,7 @@ class ScannerController {
           grading: "N/A",
           isUpdate: true,
         });
+        this.clearPendingOcrData(); // Clear on reset/early exit
         return;
       }
 
@@ -768,7 +778,12 @@ class ScannerController {
         this.cycleCount++;
         logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
       }
+
+      // Clear pending OCR data after cycle completion (successful or not)
+      this.clearPendingOcrData();
     } catch (error) {
+      // Clear pending OCR data on error
+      this.clearPendingOcrData();
       throw error;
     }
   }
@@ -1110,11 +1125,36 @@ class ScannerController {
     }
   }
 
+  // Method to set OCR data from supervisor input
+  setPendingOcrData(ocrData) {
+    this.pendingOcrData = ocrData;
+    logger.info("📝 Supervisor OCR data received and stored:", ocrData);
+  }
+
+  // Method to clear pending OCR data
+  clearPendingOcrData() {
+    if (this.pendingOcrData) {
+      logger.info("🧹 Clearing pending OCR data");
+      this.pendingOcrData = null;
+    }
+  }
+
   async handleSecondScan(comService, barcodeData) {
-    const secondScannerData = await this.fetchScannerData(comService, {
-      scanType: "second",
-    });
-    logger.info("🔄 Second scanner data:", secondScannerData);
+    let secondScannerData;
+
+    // Check if supervisor has provided OCR data
+    if (this.pendingOcrData) {
+      logger.info("👤 Using supervisor-provided OCR data instead of scanner");
+      secondScannerData = this.pendingOcrData;
+      // Clear the pending OCR data after use
+      this.pendingOcrData = null;
+    } else {
+      // Normal flow: read from scanner
+      secondScannerData = await this.fetchScannerData(comService, {
+        scanType: "second",
+      });
+      logger.info("🔄 Second scanner data:", secondScannerData);
+    }
 
     // Check if scanner data is "NG"
     if (secondScannerData.trim().toUpperCase() === "NG") {
@@ -1437,6 +1477,7 @@ class ScannerController {
       await writeBit(1500, 3, 1);
       await this.resetBits();
       this.barcodeGenerator.decSerialNo(); // Decrement serial number if needed
+      this.clearPendingOcrData(); // Clear pending OCR data on reset
       // await this.clearCodeFile(CODE_FILE_PATH);
       throw new Error("RESET_DETECTED");
     } catch (error) {

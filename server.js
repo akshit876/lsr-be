@@ -591,6 +591,38 @@ io.on("connection", (socket) => {
       });
     }
   });
+
+  // Handle OCR data from supervisor
+  socket.on("ocr_data", async ({ data }) => {
+    try {
+      if (!data || typeof data !== "string") {
+        throw new Error("Invalid OCR data. Expected a non-empty string.");
+      }
+
+      const trimmedData = data.trim();
+      if (trimmedData.length === 0) {
+        throw new Error("OCR data cannot be empty.");
+      }
+
+      logger.info("📝 Received OCR data from supervisor:", trimmedData);
+
+      // Store the OCR data in scanner controller for use in handleSecondScan
+      scannerController.setPendingOcrData(trimmedData);
+
+      socket.emit("ocr_data_response", {
+        success: true,
+        message: "OCR data received and will be used for next scan",
+      });
+
+      logger.success("OCR data stored successfully for next scan cycle");
+    } catch (error) {
+      logger.error("❌ Error handling OCR data:", error);
+      socket.emit("ocr_data_response", {
+        success: false,
+        message: error.message,
+      });
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3002;
