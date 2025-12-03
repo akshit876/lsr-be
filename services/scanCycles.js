@@ -842,9 +842,27 @@ class ScannerController {
     }
   }
 
-  // Utility function to convert letter to month number (A=1, B=2, etc.)
+  // Utility function to convert letter to month number
+  // Month codes: JAN-A(1), FEB-B(2), MAR-C(3), APR-D(4), MAY-E(5), JUN-F(6),
+  // JUL-G(7), AUG-H(8), SEP-J(9), Oct-K(10), Nov-L(11), Dec-M(12)
+  // Note: I is skipped
   letterToMonth(letter) {
-    return letter.toUpperCase().charCodeAt(0) - "A".charCodeAt(0) + 1;
+    const upperLetter = letter.toUpperCase();
+    const monthMap = {
+      A: 1, // JAN
+      B: 2, // FEB
+      C: 3, // MAR
+      D: 4, // APR
+      E: 5, // MAY
+      F: 6, // JUN
+      G: 7, // JUL
+      H: 8, // AUG
+      J: 9, // SEP (I is skipped)
+      K: 10, // Oct
+      L: 11, // Nov
+      M: 12, // Dec
+    };
+    return monthMap[upperLetter] || 0;
   }
 
   // Utility function to get days in month
@@ -894,17 +912,39 @@ class ScannerController {
         return { isValid: false, error: "Invalid shift. Must be A, B, or C" };
       }
 
-      // Validate month (1-12)
-      if (month < 1 || month > 12) {
+      // Validate month letter (A-H, J, K, L, M - I is skipped)
+      const validMonthLetters = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "J",
+        "K",
+        "L",
+        "M",
+      ];
+      if (
+        !validMonthLetters.includes(monthLetter.toUpperCase()) ||
+        month < 1 ||
+        month > 12
+      ) {
         if (this.io) {
           this.io.emit("validation_error", {
             timestamp: new Date(),
             error: "Invalid month letter",
-            details: `Month letter must be A-L. Received: ${monthLetter}`,
-            message: `OCR Error: Invalid month letter in OCR data '${fullOCRData}'. Month letter must be A-L. Received: ${monthLetter}`,
+            details: `Month letter must be A-H, J, K, L, or M (I is skipped). Received: ${monthLetter}`,
+            message: `OCR Error: Invalid month letter in OCR data '${fullOCRData}'. Month letter must be A-H, J, K, L, or M (I is skipped). Received: ${monthLetter}`,
           });
         }
-        return { isValid: false, error: "Invalid month letter. Must be A-L" };
+        return {
+          isValid: false,
+          error:
+            "Invalid month letter. Must be A-H, J, K, L, or M (I is skipped)",
+        };
       }
 
       // Validate year
