@@ -22,16 +22,29 @@ REM Step 2: Start Flask Live Inspector Service
 REM ============================================================
 echo [2/4] Starting Flask Live Inspector Service...
 set FLASK_DIR=D:\lsr-be\python\spinnaker_python-4.2.0.88-cp310-cp310-win_amd64\live_inspector
-set VENV_PYTHON=D:\lsr-be\python\venv\Scripts\python.exe
+set VENV_PYTHON_ROOT=D:\lsr-be\python\venv\python.exe
+set VENV_PYTHON_SCRIPTS=D:\lsr-be\python\venv\Scripts\python.exe
 
-REM Use direct Python executable from venv (no conda needed)
-if exist "%VENV_PYTHON%" (
-    powershell -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c \"%VENV_PYTHON%\" flask_service.py' -NoNewWindow -WorkingDirectory '%FLASK_DIR%'"
-) else (
-    echo    WARNING: Venv Python not found at %VENV_PYTHON%
-    echo    Trying system Python...
-    powershell -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c python flask_service.py' -NoNewWindow -WorkingDirectory '%FLASK_DIR%'"
+REM Check both possible locations (conda venv has python.exe in root, standard venv has it in Scripts)
+if exist "%VENV_PYTHON_ROOT%" (
+    set VENV_PYTHON=%VENV_PYTHON_ROOT%
+    goto :start_flask
 )
+if exist "%VENV_PYTHON_SCRIPTS%" (
+    set VENV_PYTHON=%VENV_PYTHON_SCRIPTS%
+    goto :start_flask
+)
+
+REM If neither found, try system Python
+echo    WARNING: Venv Python not found
+echo    Trying system Python...
+powershell -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c python flask_service.py' -NoNewWindow -WorkingDirectory '%FLASK_DIR%'"
+goto :flask_done
+
+:start_flask
+powershell -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c \"%VENV_PYTHON%\" flask_service.py' -NoNewWindow -WorkingDirectory '%FLASK_DIR%'"
+
+:flask_done
 
 timeout /t 5 /nobreak >nul
 echo    Flask service started on port 5000
