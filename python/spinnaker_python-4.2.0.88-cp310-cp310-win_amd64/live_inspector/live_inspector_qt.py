@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import threading
 import time
-import json
+import csv
 import os
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
@@ -217,6 +217,10 @@ class MainWindow(QMainWindow):
         # Debug folder for saving results
         self.debug_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'debug')
         os.makedirs(self.debug_folder, exist_ok=True)
+        
+        # CSV file path for inspection results
+        self.csv_file = os.path.join(self.debug_folder, 'inspection_results.csv')
+        self._initialize_csv()
         
         self.setup_ui()
         
@@ -551,31 +555,51 @@ class MainWindow(QMainWindow):
             self.view.set_mask_cv(np.zeros((h,w), dtype=np.uint8))
             self.cached_mask = None
 
+    def _initialize_csv(self):
+        """Initialize CSV file with headers if it doesn't exist."""
+        if not os.path.exists(self.csv_file):
+            try:
+                with open(self.csv_file, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([
+                        'Timestamp',
+                        'Status',
+                        'MAE',
+                        'SSIM',
+                        'Correlation',
+                        'SSIM_Threshold',
+                        'Corr_Threshold',
+                        'Message'
+                    ])
+            except Exception as e:
+                self.log(f"Error initializing CSV: {str(e)}")
+
     def save_inspection_result(self, res):
-        """Save inspection result as JSON file."""
+        """Save inspection result as CSV row."""
         try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # Include milliseconds
-            filename = f"inspection_{timestamp}.json"
-            filepath = os.path.join(self.debug_folder, filename)
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            status = "PASS" if res['passed'] else "FAIL"
             
-            # Prepare result data (remove test_frame if present, it's too large for JSON)
-            result_data = {
-                'timestamp': datetime.now().isoformat(),
-                'passed': res['passed'],
-                'mae': float(res['mae']),
-                'ssim': float(res['ssim']),
-                'corr': float(res['corr']),
-                'message': res.get('msg', 'OK'),
-                'ssim_threshold': float(self.spin_ssim.value()),
-                'corr_threshold': float(self.spin_corr.value())
-            }
+            # Prepare row data
+            row_data = [
+                timestamp,
+                status,
+                f"{res['mae']:.2f}",
+                f"{res['ssim']:.4f}",
+                f"{res['corr']:.4f}",
+                f"{self.spin_ssim.value():.2f}",
+                f"{self.spin_corr.value():.2f}",
+                res.get('msg', 'OK')
+            ]
             
-            with open(filepath, 'w') as f:
-                json.dump(result_data, f, indent=2)
+            # Append to CSV file
+            with open(self.csv_file, 'a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(row_data)
             
-            self.log(f"Result saved: {filename}")
+            self.log(f"Result saved to CSV: {status}")
         except Exception as e:
-            self.log(f"Error saving result: {str(e)}")
+            self.log(f"Error saving result to CSV: {str(e)}")
 
     def save_failure_images(self, res):
         """Save test image and heatmap when inspection fails."""
