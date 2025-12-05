@@ -1,6 +1,7 @@
 """
 Flask REST API service for Live Inspector functionality.
 Provides endpoints for image inspection using FLIR cameras.
+Production-ready version with proper logging, error handling, and configuration.
 """
 import os
 import sys
@@ -8,6 +9,9 @@ import json
 import base64
 import cv2
 import numpy as np
+import logging
+from logging.handlers import RotatingFileHandler
+from datetime import datetime
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import tempfile
@@ -18,9 +22,49 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from core_inspector import analyze_image
 from live_camera_helper import LiveCameraHelper
 
+# Configuration from environment variables
+FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
+FLASK_PORT = int(os.getenv('FLASK_PORT', '5000'))
+FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+
+# Default paths for reference and mask images
+DEFAULT_REF_PATH = os.getenv(
+    'DEFAULT_REF_PATH',
+    r'D:\lsr-be\python\spinnaker_python-4.2.0.88-cp310-cp310-win_amd64\live_inspector\capture_0001.png'
+)
+DEFAULT_MASK_PATH = os.getenv(
+    'DEFAULT_MASK_PATH',
+    r'D:\lsr-be\python\spinnaker_python-4.2.0.88-cp310-cp310-win_amd64\live_inspector\mask_saved.png'
+)
+
+# Normalize paths (handle both forward and backward slashes)
+DEFAULT_REF_PATH = os.path.normpath(DEFAULT_REF_PATH)
+DEFAULT_MASK_PATH = os.path.normpath(DEFAULT_MASK_PATH)
+
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
+
+# Setup logging
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL),
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        RotatingFileHandler(
+            os.path.join(log_dir, 'flask_service.log'),
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5
+        ),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 # Global camera helper instance
 camera_helper = None
@@ -31,7 +75,9 @@ def init_camera():
     if camera_helper is None:
         camera_helper = LiveCameraHelper()
         if not camera_helper.connect():
-            app.logger.warning(f"Camera connection failed: {camera_helper.error_msg}")
+            logger.warning(f"Camera connection failed: {camera_helper.error_msg}")
+        else:
+            logger.info("Camera initialized successfully")
     return camera_helper
 
 def allowed_file(filename):
@@ -60,15 +106,56 @@ def encode_image_to_base64(image):
     image_base64 = base64.b64encode(buffer).decode('utf-8')
     return image_base64
 
+def load_image_safe(path_or_base64, default_path=None, description="image"):
+    """Load image from path or base64, with fallback to default path."""
+    try:
+        # Try as file path first
+        if os.path.exists(path_or_base64):
+            img = cv2.imread(path_or_base64)
+            if img is not None:
+                logger.debug(f"Loaded {description} from file: {path_or_base64}")
+                return img
+        
+        # Try as base64
+        try:
+            img = decode_base64_image(path_or_base64)
+            logger.debug(f"Loaded {description} from base64")
+            return img
+        except:
+            pass
+        
+        # Fallback to default path if provided
+        if default_path and os.path.exists(default_path):
+            logger.info(f"Using default {description} path: {default_path}")
+            img = cv2.imread(default_path)
+            if img is not None:
+                return img
+        
+        raise ValueError(f"Could not load {description}")
+    except Exception as e:
+        logger.error(f"Error loading {description}: {str(e)}")
+        raise
+
+@app.before_request
+def log_request_info():
+    """Log request information."""
+    logger.debug(f"Request: {request.method} {request.path}")
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint."""
-    cam = init_camera()
-    return jsonify({
-        'status': 'healthy',
-        'camera_available': not cam.mock_mode,
-        'camera_error': cam.error_msg if cam.mock_mode else None
-    })
+    try:
+        cam = init_camera()
+        return jsonify({
+            'status': 'healthy',
+            'camera_available': not cam.mock_mode,
+            'camera_error': cam.error_msg if cam.mock_mode else None,
+            'default_ref_path': DEFAULT_REF_PATH if os.path.exists(DEFAULT_REF_PATH) else None,
+            'default_mask_path': DEFAULT_MASK_PATH if os.path.exists(DEFAULT_MASK_PATH) else None
+        })
+    except Exception as e:
+        logger.error(f"Health check error: {str(e)}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
 
 @app.route('/api/inspect', methods=['POST'])
 def inspect_image():
@@ -77,15 +164,16 @@ def inspect_image():
     
     Request body (JSON):
     {
-        "reference_image": "base64_encoded_image" or file path,
+        "reference_image": "base64_encoded_image" or file path (optional, uses default if not provided),
         "test_image": "base64_encoded_image" or file path (optional, uses live camera if not provided),
-        "mask_image": "base64_encoded_image" or file path,
+        "mask_image": "base64_encoded_image" or file path (optional, uses default if not provided),
         "ssim_threshold": 0.70,
         "corr_threshold": 0.90,
         "use_live_camera": false,
-        "return_images": false  // Whether to return heatmap/overlay as base64
+        "return_images": false
     }
     """
+    start_time = datetime.now()
     try:
         data = request.get_json()
         if not data:
@@ -97,33 +185,23 @@ def inspect_image():
         use_live_camera = data.get('use_live_camera', False)
         return_images = data.get('return_images', False)
         
-        # Load reference image
-        ref_input = data.get('reference_image')
-        if not ref_input:
-            return jsonify({'error': 'reference_image is required'}), 400
+        # Load reference image (use default if not provided)
+        ref_input = data.get('reference_image', DEFAULT_REF_PATH)
+        try:
+            ref_img = load_image_safe(ref_input, DEFAULT_REF_PATH, "reference")
+        except Exception as e:
+            logger.error(f"Failed to load reference image: {str(e)}")
+            return jsonify({'error': f'Failed to load reference image: {str(e)}'}), 400
         
-        if os.path.exists(ref_input):
-            ref_img = cv2.imread(ref_input)
-        else:
-            ref_img = decode_base64_image(ref_input)
-        
-        if ref_img is None:
-            return jsonify({'error': 'Failed to load reference image'}), 400
-        
-        # Load mask image
-        mask_input = data.get('mask_image')
-        if not mask_input:
-            return jsonify({'error': 'mask_image is required'}), 400
-        
-        if os.path.exists(mask_input):
-            mask_img = cv2.imread(mask_input, cv2.IMREAD_GRAYSCALE)
-        else:
-            mask_img = decode_base64_image(mask_input)
+        # Load mask image (use default if not provided)
+        mask_input = data.get('mask_image', DEFAULT_MASK_PATH)
+        try:
+            mask_img = load_image_safe(mask_input, DEFAULT_MASK_PATH, "mask")
             if len(mask_img.shape) == 3:
                 mask_img = cv2.cvtColor(mask_img, cv2.COLOR_BGR2GRAY)
-        
-        if mask_img is None:
-            return jsonify({'error': 'Failed to load mask image'}), 400
+        except Exception as e:
+            logger.error(f"Failed to load mask image: {str(e)}")
+            return jsonify({'error': f'Failed to load mask image: {str(e)}'}), 400
         
         # Resize mask to match reference if needed
         if mask_img.shape != ref_img.shape[:2]:
@@ -136,19 +214,18 @@ def inspect_image():
             cam = init_camera()
             test_img = cam.snap()
             if test_img is None:
+                logger.error("Failed to capture image from camera")
                 return jsonify({'error': 'Failed to capture image from camera'}), 500
         else:
             # Use provided test image
-            if os.path.exists(test_input):
-                test_img = cv2.imread(test_input)
-            else:
-                test_img = decode_base64_image(test_input)
-            
-            if test_img is None:
-                return jsonify({'error': 'Failed to load test image'}), 400
+            try:
+                test_img = load_image_safe(test_input, None, "test")
+            except Exception as e:
+                logger.error(f"Failed to load test image: {str(e)}")
+                return jsonify({'error': f'Failed to load test image: {str(e)}'}), 400
         
         # Perform analysis
-        result = analyze_image(ref_img, test_img, mask_img, ssim_thresh, corr_thresh)
+        result = analyze_image(ref_img, test_img, mask_img, ssim_thresh, corr_thresh, preprocess=True)
         
         # Prepare response
         response = {
@@ -164,12 +241,18 @@ def inspect_image():
             response['heatmap'] = encode_image_to_base64(result['heatmap'])
             response['overlay'] = encode_image_to_base64(result['overlay'])
         
+        # Log inspection result
+        elapsed = (datetime.now() - start_time).total_seconds()
+        logger.info(f"Inspection completed: {'PASS' if result['passed'] else 'FAIL'} "
+                   f"(SSIM: {result['ssim']:.3f}, Corr: {result['corr']:.3f}) in {elapsed:.2f}s")
+        
         return jsonify(response)
     
     except ValueError as e:
+        logger.warning(f"Validation error: {str(e)}")
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        app.logger.error(f"Inspection error: {str(e)}", exc_info=True)
+        logger.error(f"Inspection error: {str(e)}", exc_info=True)
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @app.route('/api/capture', methods=['POST'])
@@ -179,7 +262,7 @@ def capture_image():
     
     Request body (JSON, optional):
     {
-        "return_base64": true  // Return as base64 string
+        "return_base64": true
     }
     """
     try:
@@ -190,7 +273,10 @@ def capture_image():
         img = cam.snap()
         
         if img is None:
+            logger.error("Failed to capture image from camera")
             return jsonify({'error': 'Failed to capture image from camera'}), 500
+        
+        logger.info("Image captured successfully")
         
         if return_base64:
             return jsonify({
@@ -211,7 +297,7 @@ def capture_image():
             })
     
     except Exception as e:
-        app.logger.error(f"Capture error: {str(e)}", exc_info=True)
+        logger.error(f"Capture error: {str(e)}", exc_info=True)
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @app.route('/api/upload', methods=['POST'])
@@ -236,6 +322,8 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        logger.info(f"File uploaded: {filename}")
+        
         # Optionally return as base64
         return_base64 = request.form.get('return_base64', 'false').lower() == 'true'
         
@@ -255,7 +343,7 @@ def upload_file():
             })
     
     except Exception as e:
-        app.logger.error(f"Upload error: {str(e)}", exc_info=True)
+        logger.error(f"Upload error: {str(e)}", exc_info=True)
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @app.route('/api/camera/status', methods=['GET'])
@@ -268,9 +356,21 @@ def camera_status():
         'error': cam.error_msg if cam.mock_mode else None
     })
 
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Get current configuration (without sensitive data)."""
+    return jsonify({
+        'default_ref_path': DEFAULT_REF_PATH,
+        'default_mask_path': DEFAULT_MASK_PATH,
+        'ref_exists': os.path.exists(DEFAULT_REF_PATH),
+        'mask_exists': os.path.exists(DEFAULT_MASK_PATH),
+        'max_upload_size_mb': app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
+    })
+
 @app.errorhandler(413)
 def request_entity_too_large(error):
     """Handle file too large error."""
+    logger.warning("Request entity too large")
     return jsonify({'error': 'File too large. Maximum size is 16MB'}), 413
 
 @app.errorhandler(404)
@@ -281,16 +381,25 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_error(error):
     """Handle 500 errors."""
+    logger.error(f"Internal server error: {str(error)}", exc_info=True)
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
+    logger.info("=" * 60)
+    logger.info("Starting Flask Live Inspector Service")
+    logger.info(f"Host: {FLASK_HOST}, Port: {FLASK_PORT}")
+    logger.info(f"Debug Mode: {FLASK_DEBUG}")
+    logger.info(f"Default Reference: {DEFAULT_REF_PATH}")
+    logger.info(f"Default Mask: {DEFAULT_MASK_PATH}")
+    logger.info("=" * 60)
+    
     # Initialize camera on startup
     init_camera()
     
     # Run Flask app
     app.run(
-        host='0.0.0.0',
-        port=5000,
-        debug=True
+        host=FLASK_HOST,
+        port=FLASK_PORT,
+        debug=FLASK_DEBUG,
+        threaded=True
     )
-

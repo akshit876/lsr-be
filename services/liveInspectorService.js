@@ -129,8 +129,8 @@ async function uploadImage(imagePath, returnBase64 = false) {
  * @returns {Promise<Object>} Inspection result
  */
 async function runInspection({
-  referenceImage,
-  maskImage,
+  referenceImage = null,
+  maskImage = null,
   testImage = null,
   useLiveCamera = true,
   ssimThreshold = 0.7,
@@ -139,37 +139,39 @@ async function runInspection({
   imagesAsBase64 = true,
 }) {
   try {
-    // Prepare images - convert file paths to base64 if needed
-    let refImageData = referenceImage;
-    let maskImageData = maskImage;
-    let testImageData = testImage;
-
-    // Check if inputs are file paths (not base64)
-    if (fs.existsSync(referenceImage)) {
-      refImageData = encodeImageToBase64(referenceImage);
-    }
-
-    if (fs.existsSync(maskImage)) {
-      maskImageData = encodeImageToBase64(maskImage);
-    }
-
-    if (testImage && fs.existsSync(testImage)) {
-      testImageData = encodeImageToBase64(testImage);
-    }
-
     // Prepare request payload
     const payload = {
-      reference_image: refImageData,
-      mask_image: maskImageData,
       ssim_threshold: ssimThreshold,
       corr_threshold: corrThreshold,
       use_live_camera: useLiveCamera && !testImage,
       return_images: returnImages,
     };
 
+    // Add reference image if provided (otherwise Flask will use default)
+    if (referenceImage) {
+      if (fs.existsSync(referenceImage)) {
+        payload.reference_image = encodeImageToBase64(referenceImage);
+      } else {
+        payload.reference_image = referenceImage; // Assume base64
+      }
+    }
+
+    // Add mask image if provided (otherwise Flask will use default)
+    if (maskImage) {
+      if (fs.existsSync(maskImage)) {
+        payload.mask_image = encodeImageToBase64(maskImage);
+      } else {
+        payload.mask_image = maskImage; // Assume base64
+      }
+    }
+
     // Add test image if provided and not using live camera
     if (testImage && !useLiveCamera) {
-      payload.test_image = testImageData;
+      if (fs.existsSync(testImage)) {
+        payload.test_image = encodeImageToBase64(testImage);
+      } else {
+        payload.test_image = testImage; // Assume base64
+      }
     }
 
     // Call Flask API
@@ -194,16 +196,17 @@ async function runInspection({
 
 /**
  * Simplified inspection function - matches the old node_integration_example.js interface
+ * Uses default paths if refPath or maskPath are not provided
  *
- * @param {string} refPath - Absolute path to Reference Image
- * @param {string} maskPath - Absolute path to Mask Image
+ * @param {string} [refPath] - Absolute path to Reference Image (optional, uses default if not provided)
+ * @param {string} [maskPath] - Absolute path to Mask Image (optional, uses default if not provided)
  * @param {number} ssimThresh - Minimum SSIM (0.0 - 1.0)
  * @param {number} corrThresh - Minimum Correlation (0.0 - 1.0)
  * @returns {Promise<Object>} The inspection result
  */
 async function runLiveInspection(
-  refPath,
-  maskPath,
+  refPath = null,
+  maskPath = null,
   ssimThresh = 0.7,
   corrThresh = 0.9
 ) {
