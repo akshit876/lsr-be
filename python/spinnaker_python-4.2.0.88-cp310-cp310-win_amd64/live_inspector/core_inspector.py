@@ -29,7 +29,30 @@ def get_ssim(img1, img2):
     ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
     return ssim_map.mean(), ssim_map
 
-def analyze_image(ref_img, test_img, mask_img, ssim_thresh=0.90, corr_thresh=0.90):
+def preprocess_image(img, denoise=True, normalize=True):
+    """
+    Preprocess image to reduce noise and normalize for better comparison.
+    
+    Args:
+        img: Input grayscale image
+        denoise: Apply denoising filter
+        normalize: Normalize brightness/contrast
+    """
+    processed = img.copy()
+    
+    # Denoise to reduce camera noise
+    if denoise:
+        processed = cv2.fastNlMeansDenoising(processed, None, h=10, templateWindowSize=7, searchWindowSize=21)
+    
+    # Normalize brightness and contrast (helps with lighting variations)
+    if normalize:
+        # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        processed = clahe.apply(processed)
+    
+    return processed
+
+def analyze_image(ref_img, test_img, mask_img, ssim_thresh=0.90, corr_thresh=0.90, preprocess=True):
     """
     Analyzes a test image against a reference image within a masked region.
     
@@ -39,6 +62,7 @@ def analyze_image(ref_img, test_img, mask_img, ssim_thresh=0.90, corr_thresh=0.9
         mask_img (np.array): Mask image (Gray, 0=Ignore, >0=ROI).
         ssim_thresh (float): Minimum SSIM score to pass.
         corr_thresh (float): Minimum Correlation score to pass.
+        preprocess (bool): Apply image preprocessing (denoising, normalization).
         
     Returns:
         dict: {
@@ -56,6 +80,11 @@ def analyze_image(ref_img, test_img, mask_img, ssim_thresh=0.90, corr_thresh=0.9
     
     if len(test_img.shape) == 3: g_test = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
     else: g_test = test_img.copy()
+    
+    # Preprocess images to reduce noise and normalize
+    if preprocess:
+        g_ref = preprocess_image(g_ref, denoise=True, normalize=True)
+        g_test = preprocess_image(g_test, denoise=True, normalize=True)
     
     # Ensure sizing
     if g_test.shape != g_ref.shape:
@@ -83,9 +112,18 @@ def analyze_image(ref_img, test_img, mask_img, ssim_thresh=0.90, corr_thresh=0.9
     std_ref = np.std(pixels_ref)
     std_test = np.std(pixels_test)
     if std_ref < 1e-4:
-        corr = 1.0 if abs(np.mean(pixels_ref) - np.mean(pixels_test)) < 10 else 0.0
+        # For uniform regions, check if mean values are close
+        mean_diff = abs(np.mean(pixels_ref) - np.mean(pixels_test))
+        corr = 1.0 if mean_diff < 10 else max(0.0, 1.0 - (mean_diff / 255.0))
     else:
-        corr = np.corrcoef(pixels_ref, pixels_test)[0, 1]
+        corr_matrix = np.corrcoef(pixels_ref, pixels_test)
+        if corr_matrix.shape == (2, 2):
+            corr = corr_matrix[0, 1]
+            # Handle NaN cases (can happen with very similar images)
+            if np.isnan(corr):
+                corr = 1.0 if np.allclose(pixels_ref, pixels_test, atol=5) else 0.0
+        else:
+            corr = 0.0
         
     # 3. SSIM (Masked)
     x,y,w,h = cv2.boundingRect(mask_img)

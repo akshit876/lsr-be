@@ -213,6 +213,8 @@ class MainWindow(QMainWindow):
         self.last_frame = None
         self.last_process_time = 0
         self.last_test_frame = None  # Store last test frame for saving on failure
+        self.retry_count = 3  # Number of retries for inspection
+        self.retry_delay = 0.1  # Delay between retries (seconds)
         
         # Debug folder for saving results
         self.debug_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'debug')
@@ -471,15 +473,48 @@ class MainWindow(QMainWindow):
         self.log("Running Single Inspection...")
         ssim_t = self.spin_ssim.value()
         corr_t = self.spin_corr.value()
-        res = analyze_image(self.ref_img, frame, self.cached_mask, ssim_t, corr_t)
-        # Store test frame reference for saving
-        res['test_frame'] = frame
-        self.on_result_ready(res) 
+        
+        # Try inspection with retries to handle intermittent failures
+        best_result = None
+        best_score = -1
+        
+        for attempt in range(self.retry_count):
+            if attempt > 0:
+                # Wait a bit and capture a fresh frame for retry
+                time.sleep(self.retry_delay)
+                if not self.is_live:
+                    frame = self.cam.snap()
+                    if frame is None:
+                        continue
+            
+            res = analyze_image(self.ref_img, frame, self.cached_mask, ssim_t, corr_t, preprocess=True)
+            res['test_frame'] = frame
+            res['attempt'] = attempt + 1
+            
+            # Calculate combined score
+            combined_score = (res['ssim'] + res['corr']) / 2.0
+            
+            # If passed, use this result immediately
+            if res['passed']:
+                self.log(f"Inspection PASSED on attempt {attempt + 1}")
+                self.on_result_ready(res)
+                return
+            
+            # Keep track of best result
+            if combined_score > best_score:
+                best_score = combined_score
+                best_result = res
+        
+        # If all retries failed, use the best result
+        if best_result:
+            self.log(f"Inspection FAILED after {self.retry_count} attempts (best SSIM: {best_result['ssim']:.3f}, Corr: {best_result['corr']:.3f})")
+            self.on_result_ready(best_result) 
 
     def run_analysis_async(self, test_frame, ssim_t, corr_t):
         # Store test frame for potential saving on failure
         self.last_test_frame = test_frame.copy()
-        res = analyze_image(self.ref_img, test_frame, self.cached_mask, ssim_t, corr_t)
+        # Use preprocessing to reduce noise
+        res = analyze_image(self.ref_img, test_frame, self.cached_mask, ssim_t, corr_t, preprocess=True)
         # Store test frame reference in result for saving
         res['test_frame'] = test_frame
         self.signals.result_ready.emit(res)
@@ -494,12 +529,12 @@ class MainWindow(QMainWindow):
         msg = f"<span style='color:{color}'><b>[{status}]</b> MAE:{res['mae']:.1f} SSIM:{res['ssim']:.3f} Corr:{res['corr']:.3f}</span>"
         self.log_box.append(msg)
         
-        # Save inspection result
-        self.save_inspection_result(res)
-        
-        # If failed, save images for debugging
+        # If failed, save images for debugging first (so paths are available for CSV)
         if not res['passed']:
             self.save_failure_images(res)
+        
+        # Save inspection result (includes failure image paths if available)
+        self.save_inspection_result(res)
         
         if self.rb_heat.isChecked():
             self.show_result_frame(res['heatmap'])
@@ -569,7 +604,13 @@ class MainWindow(QMainWindow):
                         'Correlation',
                         'SSIM_Threshold',
                         'Corr_Threshold',
-                        'Message'
+                        'SSIM_Passed',
+                        'Corr_Passed',
+                        'Failure_Reason',
+                        'Attempt',
+                        'Test_Image_Path',
+                        'Heatmap_Path',
+                        'Overlay_Path'
                     ])
             except Exception as e:
                 self.log(f"Error initializing CSV: {str(e)}")
@@ -580,16 +621,53 @@ class MainWindow(QMainWindow):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
             status = "PASS" if res['passed'] else "FAIL"
             
-            # Prepare row data
+            # Calculate which criteria failed
+            ssim_thresh = self.spin_ssim.value()
+            corr_thresh = self.spin_corr.value()
+            ssim_passed = res['ssim'] > ssim_thresh
+            corr_passed = res['corr'] > corr_thresh
+            
+            # Determine failure reason
+            failure_reason = "N/A"
+            if not res['passed']:
+                if not ssim_passed and not corr_passed:
+                    failure_reason = "Both SSIM and Correlation failed"
+                elif not ssim_passed:
+                    failure_reason = f"SSIM failed ({res['ssim']:.4f} < {ssim_thresh:.2f})"
+                elif not corr_passed:
+                    failure_reason = f"Correlation failed ({res['corr']:.4f} < {corr_thresh:.2f})"
+            
+            attempt_num = res.get('attempt', 1)
+            
+            # Get image paths if failure images were saved
+            test_image_path = ""
+            heatmap_path = ""
+            overlay_path = ""
+            
+            if not res['passed'] and 'failure_image_paths' in res:
+                paths = res['failure_image_paths']
+                if paths.get('test_image'):
+                    test_image_path = os.path.relpath(paths['test_image'], os.path.dirname(self.csv_file))
+                if paths.get('heatmap'):
+                    heatmap_path = os.path.relpath(paths['heatmap'], os.path.dirname(self.csv_file))
+                if paths.get('overlay'):
+                    overlay_path = os.path.relpath(paths['overlay'], os.path.dirname(self.csv_file))
+            
             row_data = [
                 timestamp,
                 status,
                 f"{res['mae']:.2f}",
                 f"{res['ssim']:.4f}",
                 f"{res['corr']:.4f}",
-                f"{self.spin_ssim.value():.2f}",
-                f"{self.spin_corr.value():.2f}",
-                res.get('msg', 'OK')
+                f"{ssim_thresh:.2f}",
+                f"{corr_thresh:.2f}",
+                "YES" if ssim_passed else "NO",
+                "YES" if corr_passed else "NO",
+                failure_reason,
+                f"Attempt {attempt_num}",
+                test_image_path,
+                heatmap_path,
+                overlay_path
             ]
             
             # Append to CSV file
@@ -604,27 +682,41 @@ class MainWindow(QMainWindow):
     def save_failure_images(self, res):
         """Save test image and heatmap when inspection fails."""
         try:
+            # Use the same timestamp format as CSV for matching
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
             base_name = f"failure_{timestamp}"
+            
+            # Store paths in result for CSV reference
+            saved_paths = {
+                'test_image': None,
+                'heatmap': None,
+                'overlay': None
+            }
             
             # Save test image (captured frame)
             test_frame = res.get('test_frame', self.last_test_frame)
             if test_frame is not None:
                 test_image_path = os.path.join(self.debug_folder, f"{base_name}_test.png")
                 cv2.imwrite(test_image_path, test_frame)
+                saved_paths['test_image'] = test_image_path
                 self.log(f"Test image saved: {base_name}_test.png")
             
             # Save heatmap
             if 'heatmap' in res and res['heatmap'] is not None:
                 heatmap_path = os.path.join(self.debug_folder, f"{base_name}_heatmap.png")
                 cv2.imwrite(heatmap_path, res['heatmap'])
+                saved_paths['heatmap'] = heatmap_path
                 self.log(f"Heatmap saved: {base_name}_heatmap.png")
             
             # Save overlay as well
             if 'overlay' in res and res['overlay'] is not None:
                 overlay_path = os.path.join(self.debug_folder, f"{base_name}_overlay.png")
                 cv2.imwrite(overlay_path, res['overlay'])
+                saved_paths['overlay'] = overlay_path
                 self.log(f"Overlay saved: {base_name}_overlay.png")
+            
+            # Store paths in result for CSV saving
+            res['failure_image_paths'] = saved_paths
                 
         except Exception as e:
             self.log(f"Error saving failure images: {str(e)}")
