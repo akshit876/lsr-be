@@ -213,8 +213,8 @@ class MainWindow(QMainWindow):
         self.last_frame = None
         self.last_process_time = 0
         self.last_test_frame = None  # Store last test frame for saving on failure
-        self.retry_count = 3  # Number of retries for inspection
-        self.retry_delay = 0.1  # Delay between retries (seconds)
+        self.retry_count = 1  # Reduced to 1 to avoid hangs (can be increased if needed)
+        self.retry_delay = 0.05  # Reduced delay
         
         # Debug folder for saving results
         self.debug_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'debug')
@@ -471,10 +471,14 @@ class MainWindow(QMainWindow):
             return
             
         self.log("Running Single Inspection...")
+        
+        # Run inspection in background thread to avoid blocking UI
         ssim_t = self.spin_ssim.value()
         corr_t = self.spin_corr.value()
-        
-        # Try inspection with retries to handle intermittent failures
+        threading.Thread(target=self._run_single_inspection_async, args=(frame, ssim_t, corr_t), daemon=True).start()
+    
+    def _run_single_inspection_async(self, frame, ssim_t, corr_t):
+        """Run single inspection with retries in background thread."""
         best_result = None
         best_score = -1
         
@@ -496,8 +500,7 @@ class MainWindow(QMainWindow):
             
             # If passed, use this result immediately
             if res['passed']:
-                self.log(f"Inspection PASSED on attempt {attempt + 1}")
-                self.on_result_ready(res)
+                self.signals.result_ready.emit(res)
                 return
             
             # Keep track of best result
@@ -507,8 +510,7 @@ class MainWindow(QMainWindow):
         
         # If all retries failed, use the best result
         if best_result:
-            self.log(f"Inspection FAILED after {self.retry_count} attempts (best SSIM: {best_result['ssim']:.3f}, Corr: {best_result['corr']:.3f})")
-            self.on_result_ready(best_result) 
+            self.signals.result_ready.emit(best_result) 
 
     def run_analysis_async(self, test_frame, ssim_t, corr_t):
         # Store test frame for potential saving on failure
@@ -529,9 +531,10 @@ class MainWindow(QMainWindow):
         msg = f"<span style='color:{color}'><b>[{status}]</b> MAE:{res['mae']:.1f} SSIM:{res['ssim']:.3f} Corr:{res['corr']:.3f}</span>"
         self.log_box.append(msg)
         
-        # If failed, save images for debugging first (so paths are available for CSV)
+        # If failed, save images synchronously first (so paths are available for CSV)
+        # But do it quickly without heavy processing
         if not res['passed']:
-            self.save_failure_images(res)
+            self._save_failure_images_quick(res)
         
         # Save inspection result (includes failure image paths if available)
         self.save_inspection_result(res)
@@ -616,7 +619,12 @@ class MainWindow(QMainWindow):
                 self.log(f"Error initializing CSV: {str(e)}")
 
     def save_inspection_result(self, res):
-        """Save inspection result as CSV row."""
+        """Save inspection result as CSV row (non-blocking)."""
+        # Run in background thread to avoid blocking UI
+        threading.Thread(target=self._save_inspection_result_thread, args=(res,), daemon=True).start()
+    
+    def _save_inspection_result_thread(self, res):
+        """Save inspection result as CSV row in background thread."""
         try:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
             status = "PASS" if res['passed'] else "FAIL"
@@ -675,12 +683,15 @@ class MainWindow(QMainWindow):
                 writer = csv.writer(f)
                 writer.writerow(row_data)
             
-            self.log(f"Result saved to CSV: {status}")
+            # Use QTimer to safely update UI from background thread
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self.log(f"Result saved to CSV: {status}"))
         except Exception as e:
-            self.log(f"Error saving result to CSV: {str(e)}")
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self.log(f"Error saving result to CSV: {str(e)}"))
 
-    def save_failure_images(self, res):
-        """Save test image and heatmap when inspection fails."""
+    def _save_failure_images_quick(self, res):
+        """Save failure images quickly (synchronous, but fast)."""
         try:
             # Use the same timestamp format as CSV for matching
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]

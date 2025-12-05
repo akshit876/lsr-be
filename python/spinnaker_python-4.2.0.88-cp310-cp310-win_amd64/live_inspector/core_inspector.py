@@ -29,7 +29,7 @@ def get_ssim(img1, img2):
     ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
     return ssim_map.mean(), ssim_map
 
-def preprocess_image(img, denoise=True, normalize=True):
+def preprocess_image(img, denoise=True, normalize=True, fast_mode=True):
     """
     Preprocess image to reduce noise and normalize for better comparison.
     
@@ -37,12 +37,19 @@ def preprocess_image(img, denoise=True, normalize=True):
         img: Input grayscale image
         denoise: Apply denoising filter
         normalize: Normalize brightness/contrast
+        fast_mode: Use faster Gaussian blur instead of slow NL-means denoising
     """
     processed = img.copy()
     
     # Denoise to reduce camera noise
     if denoise:
-        processed = cv2.fastNlMeansDenoising(processed, None, h=10, templateWindowSize=7, searchWindowSize=21)
+        if fast_mode:
+            # Use fast Gaussian blur instead of slow NL-means denoising
+            # This is much faster and still effective for noise reduction
+            processed = cv2.GaussianBlur(processed, (5, 5), 1.0)
+        else:
+            # Slow but more effective denoising (use only when needed)
+            processed = cv2.fastNlMeansDenoising(processed, None, h=10, templateWindowSize=7, searchWindowSize=21)
     
     # Normalize brightness and contrast (helps with lighting variations)
     if normalize:
@@ -81,10 +88,10 @@ def analyze_image(ref_img, test_img, mask_img, ssim_thresh=0.90, corr_thresh=0.9
     if len(test_img.shape) == 3: g_test = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
     else: g_test = test_img.copy()
     
-    # Preprocess images to reduce noise and normalize
+    # Preprocess images to reduce noise and normalize (use fast mode by default)
     if preprocess:
-        g_ref = preprocess_image(g_ref, denoise=True, normalize=True)
-        g_test = preprocess_image(g_test, denoise=True, normalize=True)
+        g_ref = preprocess_image(g_ref, denoise=True, normalize=True, fast_mode=True)
+        g_test = preprocess_image(g_test, denoise=True, normalize=True, fast_mode=True)
     
     # Ensure sizing
     if g_test.shape != g_ref.shape:
