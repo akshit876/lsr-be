@@ -48,21 +48,26 @@ Edit the batch files to change:
 
 ### Flask Service Won't Start
 
-1. **Check conda venv exists:**
+1. **Check venv Python exists:**
    ```batch
    dir D:\lsr-be\python\venv\Scripts\python.exe
    ```
 
-2. **Manually activate and test:**
-   ```powershell
+2. **Test Flask service manually:**
+   ```batch
    cd D:\lsr-be\python\spinnaker_python-4.2.0.88-cp310-cp310-win_amd64\live_inspector
-   conda activate ..\..\venv
-   python flask_service.py
+   D:\lsr-be\python\venv\Scripts\python.exe flask_service.py
    ```
 
-3. **If conda activate doesn't work, use direct Python:**
+3. **Or use the test script:**
    ```batch
-   D:\lsr-be\python\venv\Scripts\python.exe flask_service.py
+   start-flask-only.bat
+   ```
+
+4. **If venv doesn't work, check if it was created properly:**
+   ```batch
+   cd D:\lsr-be\python
+   python -m venv venv
    ```
 
 ### Services Already Running
@@ -96,8 +101,7 @@ npm run start
 ### Terminal 2: Flask Service
 ```batch
 cd D:\lsr-be\python\spinnaker_python-4.2.0.88-cp310-cp310-win_amd64\live_inspector
-conda activate ..\..\venv
-python flask_service.py
+D:\lsr-be\python\venv\Scripts\python.exe flask_service.py
 ```
 
 ### Terminal 3: Next.js Frontend

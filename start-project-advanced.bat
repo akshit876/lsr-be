@@ -38,22 +38,16 @@ REM ============================================================
 REM Step 2: Start Flask Live Inspector Service
 REM ============================================================
 echo [2/4] Starting Flask Live Inspector Service...
-cd /d "%FLASK_DIR%"
 
-REM Check if venv exists
-if not exist "%VENV_DIR%\Scripts\python.exe" (
-    echo    WARNING: Conda venv not found at %VENV_DIR%
+REM Check if venv exists and use direct Python executable
+set PYTHON_EXE=%VENV_DIR%\Scripts\python.exe
+if exist "%PYTHON_EXE%" (
+    echo    Using venv Python: %PYTHON_EXE%
+    powershell -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c \"%PYTHON_EXE%\" flask_service.py' -NoNewWindow -WorkingDirectory '%FLASK_DIR%'"
+) else (
+    echo    WARNING: Venv Python not found at %PYTHON_EXE%
     echo    Attempting to use system Python...
     powershell -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c python flask_service.py' -NoNewWindow -WorkingDirectory '%FLASK_DIR%'"
-) else (
-    REM Use conda activate or direct venv python
-    set PYTHON_EXE=%VENV_DIR%\Scripts\python.exe
-    if exist "%PYTHON_EXE%" (
-        powershell -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c \"%PYTHON_EXE%\" flask_service.py' -NoNewWindow -WorkingDirectory '%FLASK_DIR%'"
-    ) else (
-        REM Try conda activate
-        powershell -WindowStyle Hidden -Command "Start-Process cmd -ArgumentList '/c conda activate %VENV_DIR% && python flask_service.py' -NoNewWindow -WorkingDirectory '%FLASK_DIR%'"
-    )
 )
 
 timeout /t 5 /nobreak >nul
