@@ -120,3 +120,7 @@ python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/__pycache_
 python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/build/
 python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/dist/
 python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/*.spec
+
+# Debug folder for inspection results
+python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/debug/
+python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/debug/**

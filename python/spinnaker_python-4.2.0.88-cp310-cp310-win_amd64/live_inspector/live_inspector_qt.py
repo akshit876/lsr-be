@@ -3,6 +3,9 @@ import numpy as np
 import cv2
 import threading
 import time
+import json
+import os
+from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QToolBar, QPushButton, QSlider, QLabel, QFileDialog, QSplitter, 
                              QTextEdit, QFrame, QRadioButton, QButtonGroup, QGraphicsView, QGraphicsScene, 
@@ -209,6 +212,11 @@ class MainWindow(QMainWindow):
         self.processing_busy = False # Drop frames if processing slow
         self.last_frame = None
         self.last_process_time = 0
+        self.last_test_frame = None  # Store last test frame for saving on failure
+        
+        # Debug folder for saving results
+        self.debug_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'debug')
+        os.makedirs(self.debug_folder, exist_ok=True)
         
         self.setup_ui()
         
@@ -460,10 +468,16 @@ class MainWindow(QMainWindow):
         ssim_t = self.spin_ssim.value()
         corr_t = self.spin_corr.value()
         res = analyze_image(self.ref_img, frame, self.cached_mask, ssim_t, corr_t)
+        # Store test frame reference for saving
+        res['test_frame'] = frame
         self.on_result_ready(res) 
 
     def run_analysis_async(self, test_frame, ssim_t, corr_t):
+        # Store test frame for potential saving on failure
+        self.last_test_frame = test_frame.copy()
         res = analyze_image(self.ref_img, test_frame, self.cached_mask, ssim_t, corr_t)
+        # Store test frame reference in result for saving
+        res['test_frame'] = test_frame
         self.signals.result_ready.emit(res)
 
     @pyqtSlot(dict)
@@ -475,6 +489,13 @@ class MainWindow(QMainWindow):
         
         msg = f"<span style='color:{color}'><b>[{status}]</b> MAE:{res['mae']:.1f} SSIM:{res['ssim']:.3f} Corr:{res['corr']:.3f}</span>"
         self.log_box.append(msg)
+        
+        # Save inspection result
+        self.save_inspection_result(res)
+        
+        # If failed, save images for debugging
+        if not res['passed']:
+            self.save_failure_images(res)
         
         if self.rb_heat.isChecked():
             self.show_result_frame(res['heatmap'])
@@ -529,6 +550,60 @@ class MainWindow(QMainWindow):
             h, w = self.ref_img.shape[:2]
             self.view.set_mask_cv(np.zeros((h,w), dtype=np.uint8))
             self.cached_mask = None
+
+    def save_inspection_result(self, res):
+        """Save inspection result as JSON file."""
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # Include milliseconds
+            filename = f"inspection_{timestamp}.json"
+            filepath = os.path.join(self.debug_folder, filename)
+            
+            # Prepare result data (remove test_frame if present, it's too large for JSON)
+            result_data = {
+                'timestamp': datetime.now().isoformat(),
+                'passed': res['passed'],
+                'mae': float(res['mae']),
+                'ssim': float(res['ssim']),
+                'corr': float(res['corr']),
+                'message': res.get('msg', 'OK'),
+                'ssim_threshold': float(self.spin_ssim.value()),
+                'corr_threshold': float(self.spin_corr.value())
+            }
+            
+            with open(filepath, 'w') as f:
+                json.dump(result_data, f, indent=2)
+            
+            self.log(f"Result saved: {filename}")
+        except Exception as e:
+            self.log(f"Error saving result: {str(e)}")
+
+    def save_failure_images(self, res):
+        """Save test image and heatmap when inspection fails."""
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            base_name = f"failure_{timestamp}"
+            
+            # Save test image (captured frame)
+            test_frame = res.get('test_frame', self.last_test_frame)
+            if test_frame is not None:
+                test_image_path = os.path.join(self.debug_folder, f"{base_name}_test.png")
+                cv2.imwrite(test_image_path, test_frame)
+                self.log(f"Test image saved: {base_name}_test.png")
+            
+            # Save heatmap
+            if 'heatmap' in res and res['heatmap'] is not None:
+                heatmap_path = os.path.join(self.debug_folder, f"{base_name}_heatmap.png")
+                cv2.imwrite(heatmap_path, res['heatmap'])
+                self.log(f"Heatmap saved: {base_name}_heatmap.png")
+            
+            # Save overlay as well
+            if 'overlay' in res and res['overlay'] is not None:
+                overlay_path = os.path.join(self.debug_folder, f"{base_name}_overlay.png")
+                cv2.imwrite(overlay_path, res['overlay'])
+                self.log(f"Overlay saved: {base_name}_overlay.png")
+                
+        except Exception as e:
+            self.log(f"Error saving failure images: {str(e)}")
 
     def closeEvent(self, event):
         if self.is_live: self.cam.stop_stream()
