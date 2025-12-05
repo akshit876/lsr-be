@@ -31,7 +31,7 @@ LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
 # Default paths for reference and mask images
 DEFAULT_REF_PATH = os.getenv(
     'DEFAULT_REF_PATH',
-    r'D:\lsr-be\python\spinnaker_python-4.2.0.88-cp310-cp310-win_amd64\live_inspector\capture_0001.png'
+    r'D:\img\newOK\capture_0001.png'
 )
 DEFAULT_MASK_PATH = os.getenv(
     'DEFAULT_MASK_PATH',

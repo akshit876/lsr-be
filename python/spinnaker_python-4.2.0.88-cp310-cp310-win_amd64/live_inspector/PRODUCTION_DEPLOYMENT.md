@@ -18,7 +18,7 @@ FLASK_DEBUG=False
 LOG_LEVEL=INFO
 
 # Default Image Paths
-DEFAULT_REF_PATH=D:\lsr-be\python\spinnaker_python-4.2.0.88-cp310-cp310-win_amd64\live_inspector\capture_0001.png
+DEFAULT_REF_PATH=D:\img\newOK\capture_0001.png
 DEFAULT_MASK_PATH=D:\lsr-be\python\spinnaker_python-4.2.0.88-cp310-cp310-win_amd64\live_inspector\mask_saved.png
 ```
 
