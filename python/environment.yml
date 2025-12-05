@@ -1,0 +1,13 @@
+name: live-inspector
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy>=1.21.0
+  - opencv>=4.5.0
+  - pip:
+    - Flask>=2.3.0
+    - Werkzeug>=2.3.0
+

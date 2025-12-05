@@ -50,3 +50,73 @@ next-env.d.ts
 /services/logs/**
 /com_port_logs
 /com_port_logs/**
+
+# Python
+# Virtual environments
+python/venv/
+python/env/
+python/.venv/
+python/*.egg-info/
+python/.eggs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+python/build/
+python/dist/
+python/*.egg
+python/*.egg-info/
+python/.eggs/
+python/wheels/
+python/pip-wheel-metadata/
+python/share/python-wheels/
+python/*.manifest
+python/*.spec
+
+# PyInstaller
+python/*.manifest
+python/*.spec
+
+# Unit test / coverage reports
+python/htmlcov/
+python/.tox/
+python/.coverage
+python/.coverage.*
+python/.cache
+python/nosetests.xml
+python/coverage.xml
+python/*.cover
+python/.pytest_cache/
+
+# Jupyter Notebook
+python/.ipynb_checkpoints
+
+# pyenv
+python/.python-version
+
+# Environments
+python/.env
+python/.venv
+python/env/
+python/venv/
+python/ENV/
+python/env.bak/
+python/venv.bak/
+
+# IDE
+python/.vscode/
+python/.idea/
+python/*.swp
+python/*.swo
+python/*~
+
+# Spinnaker build artifacts
+python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/__pycache__/
+python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/build/
+python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/dist/
+python/spinnaker_python-4.2.0.88-cp310-cp310-win_amd64/live_inspector/*.spec
