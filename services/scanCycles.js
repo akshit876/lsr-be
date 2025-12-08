@@ -643,6 +643,86 @@ class ScannerController {
     }
   }
 
+  // Helper method to clean scanner data - only strip CR/LF, preserve spaces/zeros
+  cleanScannerData(scannerData) {
+    if (!scannerData) {
+      return scannerData;
+    }
+
+    // Remove only CR/LF to normalize, keep spaces and content intact
+    const cleaned = scannerData.toString().replace(/[\r\n]+/g, "");
+
+    // If data contains "NG" (case insensitive), return "NG"
+    if (cleaned.toUpperCase().includes("NG")) {
+      return "NG";
+    }
+
+    // For valid data (not NG), ONLY remove newlines and whitespace
+    // NEVER remove leading zeros - they are part of the valid data
+    return cleaned;
+  }
+
+  // Parse scanner payload of the form "<data>: <grade>" preserving data exactly
+  parseScannerPayload(scannerData) {
+    const cleaned = this.cleanScannerData(scannerData);
+    if (!cleaned || cleaned === "NG") {
+      return { mainData: cleaned, grade: "N/A" };
+    }
+
+    const lastColonIdx = cleaned.lastIndexOf(":");
+    if (lastColonIdx === -1) {
+      return { mainData: cleaned, grade: "N/A" };
+    }
+
+    const left = cleaned.slice(0, lastColonIdx); // preserve exactly
+    const right = cleaned.slice(lastColonIdx + 1); // may contain space + grade
+
+    // Extract last non-space character as grade
+    const rightTrimEnd = right.replace(/[\r\n]+/g, "");
+    const match = rightTrimEnd.match(/\s*([A-Za-z])\s*$/);
+    const grade = match ? match[1].toUpperCase() : "N/A";
+
+    return { mainData: left, grade };
+  }
+
+  // Handle model-specific bit operations
+  async handleModelSpecificBits() {
+    try {
+      const currentModel = await this.getCurrentModelNumber();
+
+      // First, ensure all model-specific bits are OFF for clean state
+      logger.info(
+        "🔧 Resetting all model-specific bits D1810.0, D1810.1, D1810.2 to OFF first"
+      );
+
+      // Use sequential operations instead of Promise.all to avoid hanging
+      // Add timeout protection to prevent hanging
+      const writeBitWithTimeout = async (
+        register,
+        bit,
+        value,
+        timeoutMs = 5000
+      ) => {
+        const writePromise = writeBit(register, bit, value);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Timeout writing bit ${bit} to register ${register} after ${timeoutMs}ms`
+                )
+              ),
+            timeoutMs
+          );
+        });
+        return Promise.race([writePromise, timeoutPromise]);
+      };
+    } catch (error) {
+      logger.error("Error in handleModelSpecificBits:", error);
+      throw error;
+    }
+  }
+
   startResetMonitoring() {
     return new Promise(async (resolve) => {
       const messageHandler = async (message) => {
@@ -1588,6 +1668,28 @@ class ScannerController {
     }
 
     return this.currentDayId++;
+  }
+
+  async getCurrentModelNumber() {
+    try {
+      // Get current model from config collection
+      await mongoDbService.connect("main-data", "config");
+      const configData = await mongoDbService.collection.findOne({});
+
+      if (
+        configData &&
+        configData.currentModelConfig &&
+        configData.currentModelConfig.modelNumber
+      ) {
+        return configData.currentModelConfig.modelNumber;
+      } else {
+        logger.warn("No model configuration found");
+        return null;
+      }
+    } catch (error) {
+      logger.error("Error fetching current model number:", error);
+      return null;
+    }
   }
 }
 

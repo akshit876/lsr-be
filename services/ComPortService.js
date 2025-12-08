@@ -16,7 +16,8 @@ class BufferedComPortService extends EventEmitter {
       logDir: options.logDir || "logs",
     };
     this.port = null;
-    this.buffer = "";
+    this.dataBuffer = "";
+    this.bufferTimeout = null;
     this.isInitialized = false;
     this.setupLogger();
 
@@ -88,10 +89,34 @@ class BufferedComPortService extends EventEmitter {
   }
 
   setupListeners() {
-    this.port.on("data", (data) => {
-      this.buffer += data.toString("utf8");
-      this.log(`Received raw data: ${data.toString("utf8")}`, "debug");
-      this.processBuffer();
+    this.log("Setting up improved data listeners with smart buffering");
+
+    // Buffer scanner data since it can come in chunks without delimiters
+    this.port.on("data", (buffer) => {
+      const newData = buffer.toString(); // preserve spaces and content as-is
+
+      if (newData) {
+        this.log(`Raw data chunk received: "${newData}"`, "debug");
+
+        // Add to buffer
+        this.dataBuffer += newData;
+
+        // Clear existing timeout
+        if (this.bufferTimeout) {
+          clearTimeout(this.bufferTimeout);
+        }
+
+        // No explicit delimiter now; emit after short idle period
+        this.bufferTimeout = setTimeout(() => {
+          if (this.dataBuffer) {
+            this.log(
+              `Buffered scanner data timeout reached: "${this.dataBuffer}"`
+            );
+            this.emit("dataGot", this.dataBuffer);
+            this.dataBuffer = ""; // Clear buffer
+          }
+        }, 500);
+      }
     });
 
     this.port.on("error", (err) => {
@@ -99,25 +124,7 @@ class BufferedComPortService extends EventEmitter {
     });
   }
 
-  processBuffer() {
-    let lineEnd = this.buffer.indexOf("\n");
-    while (lineEnd > -1) {
-      const line = this.buffer.slice(0, lineEnd).trim();
-      if (line) {
-        this.log(`Processed line: ${line}`, "info");
-        // Add the processed line to the queue
-        this.dataQueue.push({ line });
-        // Emit an event with the scanner data
-        this.emit("dataGot", line);
-      }
-      this.buffer = this.buffer.slice(lineEnd + 1);
-      lineEnd = this.buffer.indexOf("\n");
-    }
-  }
-
-  clearBuffer() {
-    this.buffer = ""; // Clear the buffer before second scan
-  }
+  // Delimiter-based helpers removed; using idle-timeout buffering instead
 
   async closePort() {
     if (!this.isInitialized) {

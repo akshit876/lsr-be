@@ -301,6 +301,21 @@ io.on("connection", (socket) => {
     logger.info(`Client disconnected: ${socket.id}`);
   });
 
+  // Guard: ensure cycle idle (1410.0 == 0) before writing trigger bits
+  async function ensureCycleIdleOrWarn(actionLabel) {
+    try {
+      const isRunning = await readBit(1410, 0, false);
+      if (isRunning) {
+        logger.error(`❌ ${actionLabel} blocked: cycle already running (1410.0 == 1)`);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      logger.error(`❌ ${actionLabel} check failed for 1410.0: ${e?.message || e}`);
+      return false;
+    }
+  }
+
   socket.on("write-modbus-register", async ({ address, bit, value }) => {
     try {
       await writeModbusBit(address, bit, value);
@@ -312,6 +327,383 @@ io.on("connection", (socket) => {
       logger.error(`Error writing to register for client ${socket.id}:`, error);
       socket.emit("error", {
         message: "Failed to write to register",
+        details: error.message,
+      });
+    }
+  });
+
+  // UI Scanner Trigger Event
+  socket.on("scanner_trigger", async () => {
+    try {
+      if (!(await ensureCycleIdleOrWarn("Scanner trigger"))) return;
+      logger.info(`Client ${socket.id} triggered scanner (1481.0)`);
+      await writeBit(1481, 0, 1);
+      logger.info("✅ Scanner trigger bit 1481.0 set to 1");
+      socket.emit("scanner_trigger_success", {
+        timestamp: new Date().toISOString(),
+        register: 1481,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(`Error triggering scanner for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to trigger scanner",
+        details: error.message,
+      });
+    }
+  });
+
+  // Manual Mode Event
+  socket.on("manual-mode", async (data) => {
+    try {
+      logger.info(`Client ${socket.id} activated manual mode (1483.0)`);
+      await writeBit(1483, 0, data.mode === "on" ? 1 : 0);
+
+      // Set speed if provided
+      if (data.speed) {
+        await writeRegister(1484, data.speed);
+        logger.info(`✅ Manual mode speed set to ${data.speed}`);
+      }
+
+      logger.info(`✅ Manual mode ${data.mode} activated`);
+      socket.emit("manual_mode_success", {
+        timestamp: new Date().toISOString(),
+        mode: data.mode,
+        speed: data.speed || 100,
+        register: 1483,
+        bit: 0,
+        value: data.mode === "on" ? 1 : 0,
+      });
+    } catch (error) {
+      logger.error(
+        `Error activating manual mode for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to activate manual mode",
+        details: error.message,
+      });
+    }
+  });
+
+  // Jog Forward Event
+  socket.on("jog-forward", async (data) => {
+    try {
+      logger.info(`Client ${socket.id} activated jog forward (1485.0)`);
+      await writeBit(1485, 0, 1);
+
+      // Set jog speed if provided
+      if (data.speed) {
+        await writeRegister(1486, data.speed);
+        logger.info(`✅ Jog forward speed set to ${data.speed}`);
+      }
+
+      logger.info("✅ Jog forward activated");
+      socket.emit("jog_forward_success", {
+        timestamp: new Date().toISOString(),
+        direction: "forward",
+        speed: data.speed || 50,
+        register: 1485,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(
+        `Error activating jog forward for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to activate jog forward",
+        details: error.message,
+      });
+    }
+  });
+
+  // Jog Reverse Event
+  socket.on("jog-reverse", async (data) => {
+    try {
+      logger.info(`Client ${socket.id} activated jog reverse (1487.0)`);
+      await writeBit(1487, 0, 1);
+
+      // Set jog speed if provided
+      if (data.speed) {
+        await writeRegister(1488, data.speed);
+        logger.info(`✅ Jog reverse speed set to ${data.speed}`);
+      }
+
+      logger.info("✅ Jog reverse activated");
+      socket.emit("jog_reverse_success", {
+        timestamp: new Date().toISOString(),
+        direction: "reverse",
+        speed: data.speed || 50,
+        register: 1487,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(
+        `Error activating jog reverse for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to activate jog reverse",
+        details: error.message,
+      });
+    }
+  });
+
+  // Jog Stop Event
+  socket.on("jog-stop", async () => {
+    try {
+      logger.info(`Client ${socket.id} stopped jog operation`);
+
+      // Stop both jog directions
+      await writeBit(1485, 0, 0); // Stop forward
+      await writeBit(1487, 0, 0); // Stop reverse
+
+      logger.info("✅ Jog operation stopped");
+      socket.emit("jog_stop_success", {
+        timestamp: new Date().toISOString(),
+        message: "Jog operation stopped",
+        registers: [
+          { register: 1485, bit: 0, value: 0 },
+          { register: 1487, bit: 0, value: 0 },
+        ],
+      });
+    } catch (error) {
+      logger.error(`Error stopping jog for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to stop jog operation",
+        details: error.message,
+      });
+    }
+  });
+
+  // Manual Mode Enter Event
+  socket.on("manual_mode_enter", async (data) => {
+    try {
+      logger.info(`Client ${socket.id} entered manual mode:`, data);
+      socket.emit("manual_mode_enter_success", {
+        timestamp: new Date().toISOString(),
+        message: "Manual mode entered successfully",
+      });
+    } catch (error) {
+      logger.error(
+        `Error entering manual mode for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to enter manual mode",
+        details: error.message,
+      });
+    }
+  });
+
+  // Manual Control Event (for main control buttons)
+  socket.on("manual_control", async (data) => {
+    try {
+      const { type, register, bit, description } = data;
+      logger.info(
+        `Client ${socket.id} manual control: ${type} (${register}.${bit}) - ${description}`
+      );
+
+      // Handle different control types
+      let targetRegister;
+      switch (type) {
+        case "HOME":
+          targetRegister = 1480;
+          break;
+        case "LOGO":
+          targetRegister = 1481;
+          break;
+        case "CODE":
+          targetRegister = 1482;
+          break;
+        case "CASTING_TRACEABILITY":
+          targetRegister = 1483;
+          break;
+        case "HUMAN_READABLE":
+          targetRegister = 1484;
+          break;
+        case "SCANNER":
+          targetRegister = 1485;
+          break;
+        case "SCANNER_TRIGGER":
+          targetRegister = 1486;
+          break;
+        case "MARKON":
+          targetRegister = 1487;
+          break;
+        case "LIGHT":
+          targetRegister = 1488;
+          break;
+        default:
+          throw new Error(`Unknown control type: ${type}`);
+      }
+
+      // Only guard UI-triggered cycle actions: marking/scanner/light groups
+      if (
+        ["SCANNER", "SCANNER_TRIGGER", "MARKON", "LIGHT"].includes(type)
+      ) {
+        if (!(await ensureCycleIdleOrWarn(`Manual control ${type}`))) return;
+      }
+
+      // Turn on the bit
+      await writeBit(targetRegister, 0, 1);
+      logger.info(
+        `✅ Manual control ${type} activated on register ${targetRegister}`
+      );
+
+      // Auto-reset after 1 second
+      setTimeout(async () => {
+        try {
+          await writeBit(targetRegister, 0, 0);
+          logger.info(
+            `🔄 Auto-reset: ${type} bit ${targetRegister}.0 set to 0`
+          );
+        } catch (resetError) {
+          logger.error(`❌ Auto-reset failed for ${type}:`, resetError);
+        }
+      }, 1000);
+
+      socket.emit("manual_control_success", {
+        timestamp: new Date().toISOString(),
+        type,
+        register,
+        bit,
+        description,
+        value: 1,
+        autoReset: true,
+        resetDelay: 1000,
+      });
+    } catch (error) {
+      logger.error(
+        `Error executing manual control for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to execute manual control",
+        details: error.message,
+      });
+    }
+  });
+
+  // Jog Control Event (for movement controls)
+  socket.on("jog_control", async (data) => {
+    try {
+      const { type, action, register, bit, description } = data;
+      logger.info(
+        `Client ${socket.id} jog control: ${type} (${register}.${bit}) - ${description} - ${action}`
+      );
+
+      // Handle different jog types
+      switch (type) {
+        case "X_JOG_PLUS":
+          await writeBit(1490, 0, action === "start" ? 1 : 0); // Example register
+          break;
+        case "X_JOG_MINUS":
+          await writeBit(1491, 0, action === "start" ? 1 : 0); // Example register
+          break;
+        case "Z_JOG_PLUS":
+          await writeBit(1492, 0, action === "start" ? 1 : 0); // Example register
+          break;
+        case "Z_JOG_MINUS":
+          await writeBit(1493, 0, action === "start" ? 1 : 0); // Example register
+          break;
+        default:
+          throw new Error(`Unknown jog type: ${type}`);
+      }
+
+      logger.info(`✅ Jog control ${type} ${action} executed`);
+      socket.emit("jog_control_success", {
+        timestamp: new Date().toISOString(),
+        type,
+        register,
+        bit,
+        description,
+        action,
+        value: action === "start" ? 1 : 0,
+      });
+    } catch (error) {
+      logger.error(
+        `Error executing jog control for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to execute jog control",
+        details: error.message,
+      });
+    }
+  });
+
+  // Emergency Stop Event
+  socket.on("emergency_stop", async () => {
+    try {
+      logger.info(`Client ${socket.id} triggered emergency stop`);
+
+      // Emergency stop logic - stop all operations
+      await writeBit(1499, 0, 1); // Emergency stop bit
+
+      logger.info("✅ Emergency stop executed");
+      socket.emit("emergency_stop_success", {
+        timestamp: new Date().toISOString(),
+        message: "Emergency stop executed successfully",
+        register: 1499,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(
+        `Error executing emergency stop for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to execute emergency stop",
+        details: error.message,
+      });
+    }
+  });
+
+  // UI Mark On Event
+  socket.on("mark_on", async () => {
+    try {
+      if (!(await ensureCycleIdleOrWarn("Mark on"))) return;
+      logger.info(`Client ${socket.id} triggered mark on (1480.0)`);
+      await writeBit(1480, 0, 1);
+      logger.info("✅ Mark on bit 1480.0 set to 1");
+      socket.emit("mark_on_success", {
+        timestamp: new Date().toISOString(),
+        register: 1480,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(`Error triggering mark on for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to trigger mark on",
+        details: error.message,
+      });
+    }
+  });
+
+  // UI Light On Event
+  socket.on("light_on", async () => {
+    try {
+      if (!(await ensureCycleIdleOrWarn("Light on"))) return;
+      logger.info(`Client ${socket.id} triggered light on (1482.0)`);
+      await writeBit(1482, 0, 1);
+      logger.info("✅ Light on bit 1482.0 set to 1");
+      socket.emit("light_on_success", {
+        timestamp: new Date().toISOString(),
+        register: 1482,
+        bit: 0,
+        value: 1,
+      });
+    } catch (error) {
+      logger.error(`Error triggering light on for client ${socket.id}:`, error);
+      socket.emit("error", {
+        message: "Failed to trigger light on",
         details: error.message,
       });
     }
