@@ -1680,8 +1680,8 @@ class ScannerController {
       // Extract grade and main data for verification
       const { mainData, grade } = this.parseScannerPayload(scannerData);
 
-      // Validate grade: only allow A, B, or C
-      const allowedGrades = ["A", "B", "C"];
+      // Validate grade: only allow A or B
+      const allowedGrades = ["A", "B"];
       const isGradeAllowed = allowedGrades.includes(
         (grade || "").toUpperCase()
       );
