@@ -62,10 +62,10 @@ class BarcodeGenerator {
       logger.info(`🔍 Debug - fetchedPartNumber: "${fetchedPartNumber}"`);
       logger.info(`🔍 Debug - provided partNumber: "${partNumber}"`);
 
-      // Get next serial number
+      // Get next serial number and ensure it's always exactly 5 digits
       let serialString =
         await this.serialNumberService.getNextDecSerialNumber2();
-      serialString = String(serialString).padStart(5, "0");
+      serialString = String(serialString).padStart(5, "0").slice(-5); // Ensure exactly 5 digits
 
       // Check if configData has the expected structure
       if (
@@ -138,7 +138,34 @@ class BarcodeGenerator {
       logger.info("Generated barcode text:", barcodeText);
       logger.info("Serial number:", serialString);
 
-      // --- Generate codeToPrint ---
+      // --- Generate codeToPrint in two-line format ---
+      // Format: Line 1: DD + MonthLetter + YY + SerialNumber (e.g., "02J2400001")
+      //         Line 2: PartNumber + "-" + LastTwoDigitsAfterDash (e.g., "8875867-03")
+
+      // Month letter mapping (A=Jan, B=Feb, C=Mar, D=Apr, E=May, F=Jun, G=Jul, H=Aug, J=Sep, K=Oct, L=Nov, M=Dec - I is skipped)
+      const monthLetters = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "J",
+        "K",
+        "L",
+        "M",
+      ];
+      const monthIndex = now.getMonth(); // 0-11
+      const monthLetter = monthLetters[monthIndex];
+
+      // Line 1: DD + MonthLetter + YY + SerialNumber
+      const dd = String(now.getDate()).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const line1 = `${dd}${monthLetter}${yy}${serialString}`;
+
+      // Line 2: Extract part number and get last two digits after dash
       // Helper to get field value by name
       function getFieldValue(name) {
         const f = configData.currentModelConfig.fields.find(
@@ -146,23 +173,32 @@ class BarcodeGenerator {
         );
         return f ? f.value : "";
       }
-      const partNo = getFieldValue(
+
+      // Get part number from config or use finalPartNumber
+      let partNo = getFieldValue(
         "Part number according to GS 90019 (alphanumeric)"
       );
-      const changeIndex = getFieldValue("Change index according to GS 91005-8");
-      const buffer1 = getFieldValue("Buffer 1");
-      const today = new Date();
-      const dd = String(today.getDate()).padStart(2, "0");
-      const mm = String(today.getMonth() + 1).padStart(2, "0");
-      const yy = String(today.getFullYear()).slice(-2);
-      const dateStr = `${dd}-${mm}-${yy}`;
-      const codeToPrint = [
-        partNo,
-        changeIndex,
-        serialString,
-        dateStr,
-        buffer1,
-      ].join("\n");
+      if (!partNo || partNo.trim() === "") {
+        partNo = finalPartNumber;
+      }
+
+      // Extract last two digits after dash from part number
+      let lastTwoDigits = "00"; // Default if no dash found
+      if (partNo && partNo.includes("-")) {
+        const parts = partNo.split("-");
+        if (parts.length > 1) {
+          const afterDash = parts[parts.length - 1]; // Get last part after dash
+          lastTwoDigits = afterDash.slice(-2).padStart(2, "0"); // Get last 2 digits, pad if needed
+        }
+      }
+
+      // Line 2: PartNumber + "-" + LastTwoDigits
+      const line2 = `${partNo}-${lastTwoDigits}`;
+
+      // Combine into two-line format
+      const codeToPrint = `${line1}\n${line2}`;
+
+      logger.info(`Generated codeToPrint - Line 1: ${line1}, Line 2: ${line2}`);
 
       return {
         text: barcodeText,
@@ -194,9 +230,10 @@ class BarcodeGenerator {
       const { partNumber: fetchedPartNumber } =
         await fetchPartNumberAndData(mongoDbService);
       console.log({ partNumber: fetchedPartNumber });
-      // Fetch the next serial number
-      const serialString =
+      // Fetch the next serial number and ensure it's always exactly 5 digits
+      let serialString =
         await this.serialNumberService.getNextDecSerialNumber2();
+      serialString = String(serialString).padStart(5, "0").slice(-5); // Ensure exactly 5 digits
 
       // Generate the final barcode string including the part number
       const barcodeText = `${fetchedPartNumber || ""}04101${julianDate}${serialString}`;
@@ -206,8 +243,10 @@ class BarcodeGenerator {
         serialNo: serialString,
       };
     } else {
-      const serialString =
+      // Fetch the next serial number and ensure it's always exactly 5 digits
+      let serialString =
         await this.serialNumberService.getNextDecSerialNumber2();
+      serialString = String(serialString).padStart(5, "0").slice(-5); // Ensure exactly 5 digits
 
       // Generate the final barcode string including the part number
       const barcodeText = `${partNumber || ""}04101${julianDate}${serialString}`;
