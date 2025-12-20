@@ -165,7 +165,8 @@ class BarcodeGenerator {
       const yy = String(now.getFullYear()).slice(-2);
       const line1 = `${dd}${monthLetter}${yy}${serialString}`;
 
-      // Line 2: Extract part number and get last two digits after dash
+      // Line 2: Extract PART NO and get last two digits after dash
+
       // Helper to get field value by name
       function getFieldValue(name) {
         const f = configData.currentModelConfig.fields.find(
@@ -174,26 +175,56 @@ class BarcodeGenerator {
         return f ? f.value : "";
       }
 
-      // Get part number from config or use finalPartNumber
-      let partNo = getFieldValue(
-        "Part number according to GS 90019 (alphanumeric)"
-      );
+      // Get PART NO from config
+      let partNo = getFieldValue("PART NO");
       if (!partNo || partNo.trim() === "") {
+        logger.warn("⚠️ PART NO not found in config, using finalPartNumber");
         partNo = finalPartNumber;
       }
 
-      // Extract last two digits after dash from part number
-      let lastTwoDigits = "00"; // Default if no dash found
-      if (partNo && partNo.includes("-")) {
-        const parts = partNo.split("-");
-        if (parts.length > 1) {
-          const afterDash = parts[parts.length - 1]; // Get last part after dash
-          lastTwoDigits = afterDash.slice(-2).padStart(2, "0"); // Get last 2 digits, pad if needed
+      // Extract last two digits from PART NO and remove them from the main part
+      let partNoWithoutLastTwo = partNo;
+      let lastTwoDigits = "00"; // Default if no digits found
+
+      if (partNo) {
+        // Extract only digits from PART NO to find last 2 digits
+        const digitsOnly = partNo.replace(/\D/g, ""); // Remove all non-digits
+        if (digitsOnly.length >= 2) {
+          lastTwoDigits = digitsOnly.slice(-2); // Get last 2 digits (e.g., "03")
+
+          // Remove last 2 digit characters from PART NO
+          // Find positions of all digits, then remove the last 2
+          const digitPositions = [];
+          for (let i = 0; i < partNo.length; i++) {
+            if (/\d/.test(partNo[i])) {
+              digitPositions.push(i);
+            }
+          }
+
+          if (digitPositions.length >= 2) {
+            // Remove the last 2 digit positions
+            const positionsToRemove = digitPositions.slice(-2);
+            // Build new string excluding those positions
+            partNoWithoutLastTwo = "";
+            for (let i = 0; i < partNo.length; i++) {
+              if (!positionsToRemove.includes(i)) {
+                partNoWithoutLastTwo += partNo[i];
+              }
+            }
+          }
+        } else if (digitsOnly.length === 1) {
+          lastTwoDigits = `0${digitsOnly}`; // Pad single digit
+          // Remove the single digit
+          const digitIndex = partNo.lastIndexOf(digitsOnly);
+          if (digitIndex !== -1) {
+            partNoWithoutLastTwo =
+              partNo.slice(0, digitIndex) + partNo.slice(digitIndex + 1);
+          }
         }
       }
 
-      // Line 2: PartNumber + "-" + LastTwoDigits
-      const line2 = `${partNo}-${lastTwoDigits}`;
+      // Line 2: PART NO (without last 2 digits) + "-" + LastTwoDigits
+      const line2 = `${partNoWithoutLastTwo}-${lastTwoDigits}`;
 
       // Combine into two-line format
       const codeToPrint = `${line1}\n${line2}`;
