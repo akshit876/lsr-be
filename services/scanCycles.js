@@ -170,13 +170,13 @@ class ScannerController {
   }
 
   async resetBits() {
-      logger.info("🔄 Resetting bits...");
+    logger.info("🔄 Resetting bits...");
     await this.resetSpecificBits(1414, [3, 4, 6, 7]);
     await this.resetSpecificBits(1415, [4]);
 
     // Note: Model-specific bits are NOT reset here - they stay ON throughout the session
 
-      logger.success("Bits reset successfully");
+    logger.success("Bits reset successfully");
   }
 
   async resetSpecificBits(register, bitsToReset) {
@@ -373,12 +373,13 @@ class ScannerController {
           const safetyCurtain = await readBit(1490, 4); // Safety curtain interrupted. 1490.4
           const fixtureProgramMismatch = await readBit(1490, 5); // Fixture and marking program mismatch. 1490.5
           const servoNotHome = await readBit(1490, 6); // Servo not home position. 1490.6
+          const grooveMissing = await readBit(1490, 7); // Groove missing. 1490.7
 
           console.log(
-            `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
+            `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}, grooveMissing=${grooveMissing}`
           );
           logger.debug(
-            `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}`
+            `🔍 Safety bits read: partPresent=${partPresent}, emergencyStop=${emergencyStop}, safetySensor=${safetySensor}, emergencyPushButton=${emergencyPushButton}, safetyCurtain=${safetyCurtain}, fixtureProgramMismatch=${fixtureProgramMismatch}, servoNotHome=${servoNotHome}, grooveMissing=${grooveMissing}`
           );
 
           // Check safety conditions
@@ -390,15 +391,15 @@ class ScannerController {
             const ioInstance = io || this.io;
             if (ioInstance) {
               ioInstance.emit("safety_violation", {
-                  timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString(),
                 violation: "Part not present ",
                 cycleNumber: this.cycleCount,
-                });
-              }
+              });
+            }
 
             resolve("safety_violation");
             return;
-            }
+          }
 
           if (emergencyStop) {
             cleanup();
@@ -421,7 +422,7 @@ class ScannerController {
           }
 
           if (safetySensor) {
-        cleanup();
+            cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 0)"
             );
@@ -524,6 +525,25 @@ class ScannerController {
             resolve("safety_violation");
             return;
           }
+
+          // Check for groove missing
+          if (grooveMissing) {
+            cleanup();
+            logger.error("🚨 SAFETY VIOLATION: Groove missing (1490.7 = 1)");
+
+            // Emit safety violation event to UI immediately
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Groove missing",
+                cycleNumber: this.cycleCount,
+              });
+            }
+
+            resolve("safety_violation");
+            return;
+          }
         } catch (error) {
           console.error(
             `❌ Error checking safety conditions: ${error.message}`
@@ -593,29 +613,29 @@ class ScannerController {
 
       // Initial checks
       const performInitialCheck = async () => {
-      try {
-        const [resetSignal, bitValue] = await Promise.all([
-          readBit(1600, 0),
-          readBit(register, bit),
-        ]);
+        try {
+          const [resetSignal, bitValue] = await Promise.all([
+            readBit(1600, 0),
+            readBit(register, bit),
+          ]);
 
-        if (resetSignal) {
-          cleanup();
-          logger.info("Reset signal detected on initial check");
-          await this.resetBits();
-          resolve(true);
-          return;
-        }
+          if (resetSignal) {
+            cleanup();
+            logger.info("Reset signal detected on initial check");
+            await this.resetBits();
+            resolve(true);
+            return;
+          }
 
-        if (Number(bitValue) === Number(value)) {
-          cleanup();
-          logger.info(`Target bit matched on initial check`);
-          resolve(false);
-          return;
+          if (Number(bitValue) === Number(value)) {
+            cleanup();
+            logger.info(`Target bit matched on initial check`);
+            resolve(false);
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error in initial checks: ${error.message}`);
         }
-      } catch (error) {
-        logger.error(`Error in initial checks: ${error.message}`);
-      }
       };
 
       performInitialCheck();
@@ -696,9 +716,10 @@ class ScannerController {
 
       // Use upsert pattern: check if record exists, update if found, insert if not
       // Use MarkingData as primary identifier since it's unique
-      const filter = markingData && markingData.trim() !== ""
-        ? { MarkingData: markingData }
-        : { SerialNumber: serialNumber, ModelNumber: modelNumber };
+      const filter =
+        markingData && markingData.trim() !== ""
+          ? { MarkingData: markingData }
+          : { SerialNumber: serialNumber, ModelNumber: modelNumber };
 
       if (isUpdate) {
         // Update existing record
@@ -865,56 +886,56 @@ class ScannerController {
     // First check for 1410.0 (start signal)
     logger.info("Waiting for start signal (1410.0)...");
     const resetResult = await this.checkResetOrBit(1410, 0, 1);
-      if (resetResult === true) {
-        logger.info("Reset detected, restarting cycle");
-        return;
-      }
+    if (resetResult === true) {
+      logger.info("Reset detected, restarting cycle");
+      return;
+    }
 
     // Check if we need to set additional bit for specific model
     await this.handleModelSpecificBits();
 
-      // Step 1: First Scanner Check
+    // Step 1: First Scanner Check
     const firstScanResult = await this.handleFirstScan(tcpScannerService);
-      if (!firstScanResult.shouldContinue) {
-        logger.info("Cycle stopped after first scan");
-        return;
-      }
+    if (!firstScanResult.shouldContinue) {
+      logger.info("Cycle stopped after first scan");
+      return;
+    }
 
     // Step 2: Generate and Write Barcode (simplified, no OCR)
     const barcodeData = await this.generateAndWriteBarcode(partNumber);
-      if (!barcodeData) {
-        return;
-      }
+    if (!barcodeData) {
+      return;
+    }
 
-      // Step 3: Signal Transfer and Wait
-      logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
-      await writeBit(1414, 15, 1);
+    // Step 3: Signal Transfer and Wait
+    logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
+    await writeBit(1414, 15, 1);
 
-      logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-      if (await this.checkResetOrBit(1410, 3, 1)) {
-        logger.warn(
-          "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
-        );
+    logger.info("🔍 Checking for reset or waiting for bit 1410.3");
+    if (await this.checkResetOrBit(1410, 3, 1)) {
+      logger.warn(
+        "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
+      );
       // await sleep(1000);
-        await this.saveToMongoDB({
-          io: this.io,
-          serialNumber: barcodeData.serialNo,
-          markingData: barcodeData.text,
-          scannerData: "N/A",
-          result: "NG",
-          grading: "N/A",
-          isUpdate: true,
-        });
-        return;
-      }
+      await this.saveToMongoDB({
+        io: this.io,
+        serialNumber: barcodeData.serialNo,
+        markingData: barcodeData.text,
+        scannerData: "N/A",
+        result: "NG",
+        grading: "N/A",
+        isUpdate: true,
+      });
+      return;
+    }
 
     // Step 4: Verification Scanner Check
     const verificationScanResult = await this.handleVerificationScan(
       tcpScannerService,
-        barcodeData
-      );
+      barcodeData
+    );
 
-      // Step 5: Final Checks and Cleanup
+    // Step 5: Final Checks and Cleanup
     logger.info("🔍 Starting final checks and cycle completion...");
     const finalChecksResult = await this.performFinalChecks();
     logger.info(`📋 Final checks result: ${finalChecksResult}`);
@@ -925,8 +946,8 @@ class ScannerController {
     // Note: Model-specific bits are kept ON throughout the session, not reset after each cycle
 
     if (finalChecksResult) {
-        this.cycleCount++;
-        logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
+      this.cycleCount++;
+      logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
       logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
 
       // Trigger UI refresh on successful cycle completion
@@ -1095,7 +1116,7 @@ class ScannerController {
               );
             })
             .catch((err) => {
-      logger.error(
+              logger.error(
                 `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
                 err
               );
@@ -1224,7 +1245,7 @@ class ScannerController {
           "✅ Additional bit D1810.0 set to ON for FRONT_LEFT 1025969 model"
         );
       } else if (currentModel === "FRONT_RIGHT 1025974") {
-      logger.info(
+        logger.info(
           "🔧 Model FRONT_RIGHT 1025974 detected - setting additional bit D1810.1"
         );
         await writeBitWithTimeout(1810, 1, 1);
