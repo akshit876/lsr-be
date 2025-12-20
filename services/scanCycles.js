@@ -695,16 +695,22 @@ class ScannerController {
       };
 
       if (isUpdate) {
-        // Find and update the most recent record for this serial number AND model
+        // Find and update the most recent record using MarkingData (most reliable identifier)
+        // Fallback to SerialNumber + ModelNumber if MarkingData is not available
         logger.info(
-          `🔄 Attempting to update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+          `🔄 Attempting to update record for MarkingData: ${markingData || "N/A"}`
         );
         logger.info(
           `📊 Update data: ScannerData=${scannerData}, Result=${result}`
         );
 
+        // Use MarkingData as primary filter since it's unique and we know it exists from first save
+        const filter = markingData && markingData.trim() !== ""
+          ? { MarkingData: markingData }
+          : { SerialNumber: serialNumber, ModelNumber: modelNumber };
+
         const updateResult = await mongoDbService.updateLastRecord(
-          { SerialNumber: serialNumber, ModelNumber: modelNumber },
+          filter,
           { $set: data },
           "main-data",
           "records"
@@ -712,15 +718,18 @@ class ScannerController {
 
         if (updateResult) {
           logger.info(
-            `✅ Successfully updated MongoDB record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+            `✅ Successfully updated MongoDB record using filter: ${JSON.stringify(filter)}`
           );
           logger.info(`📋 Updated fields: ${JSON.stringify(data)}`);
         } else {
           logger.warn(
-            `⚠️ Failed to find/update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+            `⚠️ Failed to find/update record for filter: ${JSON.stringify(filter)}`
           );
-          logger.warn(`🔍 Trying to insert as new record instead`);
-          await mongoDbService.insertRecord(data, "main-data", "records");
+          logger.warn(
+            `⚠️ Record may not exist yet or filter mismatch. Not attempting duplicate insert.`
+          );
+          // Don't try to insert - if update fails, the record either doesn't exist
+          // or there's a mismatch. The duplicate check would catch it anyway.
         }
       } else {
         // Insert new record
