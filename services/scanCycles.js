@@ -82,8 +82,18 @@ class ScannerController {
       try {
         logger.info("🔍 Creating TcpScannerService instance...");
         this.tcpScannerService = new TcpScannerService(TCP_SCANNER_CONFIG);
+
+        // Add error handler to prevent unhandled error events
+        this.tcpScannerService.on("error", (err) => {
+          logger.error(`TCP Scanner Service error: ${err.message}`, err);
+          // Don't throw - let the reconnect mechanism handle it
+        });
+
         logger.info(
           `🔍 tcpScannerService created: ${this.tcpScannerService ? "exists" : "null"}`
+        );
+        logger.info(
+          `🔍 TCP Scanner Config - Host: ${TCP_SCANNER_CONFIG.host}, Port: ${TCP_SCANNER_CONFIG.port}`
         );
 
         logger.info("🔍 Calling initTcpConnection...");
