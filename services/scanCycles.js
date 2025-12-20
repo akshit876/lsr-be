@@ -170,13 +170,13 @@ class ScannerController {
   }
 
   async resetBits() {
-    logger.info("🔄 Resetting bits...");
+      logger.info("🔄 Resetting bits...");
     await this.resetSpecificBits(1414, [3, 4, 6, 7]);
     await this.resetSpecificBits(1415, [4]);
 
     // Note: Model-specific bits are NOT reset here - they stay ON throughout the session
 
-    logger.success("Bits reset successfully");
+      logger.success("Bits reset successfully");
   }
 
   async resetSpecificBits(register, bitsToReset) {
@@ -390,15 +390,15 @@ class ScannerController {
             const ioInstance = io || this.io;
             if (ioInstance) {
               ioInstance.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
+                  timestamp: new Date().toISOString(),
                 violation: "Part not present ",
                 cycleNumber: this.cycleCount,
-              });
-            }
+                });
+              }
 
             resolve("safety_violation");
             return;
-          }
+            }
 
           if (emergencyStop) {
             cleanup();
@@ -421,7 +421,7 @@ class ScannerController {
           }
 
           if (safetySensor) {
-            cleanup();
+        cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 0)"
             );
@@ -593,29 +593,29 @@ class ScannerController {
 
       // Initial checks
       const performInitialCheck = async () => {
-        try {
-          const [resetSignal, bitValue] = await Promise.all([
-            readBit(1600, 0),
-            readBit(register, bit),
-          ]);
+      try {
+        const [resetSignal, bitValue] = await Promise.all([
+          readBit(1600, 0),
+          readBit(register, bit),
+        ]);
 
-          if (resetSignal) {
-            cleanup();
-            logger.info("Reset signal detected on initial check");
-            await this.resetBits();
-            resolve(true);
-            return;
-          }
-
-          if (Number(bitValue) === Number(value)) {
-            cleanup();
-            logger.info(`Target bit matched on initial check`);
-            resolve(false);
-            return;
-          }
-        } catch (error) {
-          logger.error(`Error in initial checks: ${error.message}`);
+        if (resetSignal) {
+          cleanup();
+          logger.info("Reset signal detected on initial check");
+          await this.resetBits();
+          resolve(true);
+          return;
         }
+
+        if (Number(bitValue) === Number(value)) {
+          cleanup();
+          logger.info(`Target bit matched on initial check`);
+          resolve(false);
+          return;
+        }
+      } catch (error) {
+        logger.error(`Error in initial checks: ${error.message}`);
+      }
       };
 
       performInitialCheck();
@@ -694,20 +694,20 @@ class ScannerController {
         CurrentId: currentId,
       };
 
+      // Use upsert pattern: check if record exists, update if found, insert if not
+      // Use MarkingData as primary identifier since it's unique
+      const filter = markingData && markingData.trim() !== ""
+        ? { MarkingData: markingData }
+        : { SerialNumber: serialNumber, ModelNumber: modelNumber };
+
       if (isUpdate) {
-        // Find and update the most recent record using MarkingData (most reliable identifier)
-        // Fallback to SerialNumber + ModelNumber if MarkingData is not available
+        // Update existing record
         logger.info(
           `🔄 Attempting to update record for MarkingData: ${markingData || "N/A"}`
         );
         logger.info(
           `📊 Update data: ScannerData=${scannerData}, Result=${result}`
         );
-
-        // Use MarkingData as primary filter since it's unique and we know it exists from first save
-        const filter = markingData && markingData.trim() !== ""
-          ? { MarkingData: markingData }
-          : { SerialNumber: serialNumber, ModelNumber: modelNumber };
 
         const updateResult = await mongoDbService.updateLastRecord(
           filter,
@@ -726,20 +726,59 @@ class ScannerController {
             `⚠️ Failed to find/update record for filter: ${JSON.stringify(filter)}`
           );
           logger.warn(
-            `⚠️ Record may not exist yet or filter mismatch. Not attempting duplicate insert.`
+            `⚠️ Record may not exist yet. Attempting to insert as new record.`
           );
-          // Don't try to insert - if update fails, the record either doesn't exist
-          // or there's a mismatch. The duplicate check would catch it anyway.
+          // If update fails, try to insert (will be caught by duplicate check if exists)
+          await mongoDbService.insertRecord(data, "main-data", "records");
         }
       } else {
-        // Insert new record
-        logger.info(
-          `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
-        );
-        await mongoDbService.insertRecord(data, "main-data", "records");
-        logger.info(
-          `✅ Data saved to MongoDB with CurrentId: ${currentId}, Model: ${modelNumber}`
-        );
+        // Check if record exists first, update if found, insert if not
+        if (markingData && markingData.trim() !== "") {
+          const duplicateCheck = await mongoDbService.checkMarkingDataExists(
+            markingData,
+            "main-data",
+            "records"
+          );
+
+          if (duplicateCheck.exists) {
+            logger.info(
+              `🔄 Record with MarkingData already exists, updating instead of inserting`
+            );
+            const updateResult = await mongoDbService.updateLastRecord(
+              filter,
+              { $set: data },
+              "main-data",
+              "records"
+            );
+            if (updateResult) {
+              logger.info(
+                `✅ Successfully updated existing record for MarkingData: ${markingData}`
+              );
+            } else {
+              logger.warn(
+                `⚠️ Failed to update existing record, but duplicate check confirmed it exists`
+              );
+            }
+          } else {
+            // No duplicate found, safe to insert
+            logger.info(
+              `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+            );
+            await mongoDbService.insertRecord(data, "main-data", "records");
+            logger.info(
+              `✅ Data saved to MongoDB with CurrentId: ${currentId}, Model: ${modelNumber}`
+            );
+          }
+        } else {
+          // No MarkingData available, just insert (will be caught by duplicate check if needed)
+          logger.info(
+            `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+          );
+          await mongoDbService.insertRecord(data, "main-data", "records");
+          logger.info(
+            `✅ Data saved to MongoDB with CurrentId: ${currentId}, Model: ${modelNumber}`
+          );
+        }
       }
 
       if (io) {
@@ -826,56 +865,56 @@ class ScannerController {
     // First check for 1410.0 (start signal)
     logger.info("Waiting for start signal (1410.0)...");
     const resetResult = await this.checkResetOrBit(1410, 0, 1);
-    if (resetResult === true) {
-      logger.info("Reset detected, restarting cycle");
-      return;
-    }
+      if (resetResult === true) {
+        logger.info("Reset detected, restarting cycle");
+        return;
+      }
 
     // Check if we need to set additional bit for specific model
     await this.handleModelSpecificBits();
 
-    // Step 1: First Scanner Check
+      // Step 1: First Scanner Check
     const firstScanResult = await this.handleFirstScan(tcpScannerService);
-    if (!firstScanResult.shouldContinue) {
-      logger.info("Cycle stopped after first scan");
-      return;
-    }
+      if (!firstScanResult.shouldContinue) {
+        logger.info("Cycle stopped after first scan");
+        return;
+      }
 
     // Step 2: Generate and Write Barcode (simplified, no OCR)
     const barcodeData = await this.generateAndWriteBarcode(partNumber);
-    if (!barcodeData) {
-      return;
-    }
+      if (!barcodeData) {
+        return;
+      }
 
-    // Step 3: Signal Transfer and Wait
-    logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
-    await writeBit(1414, 15, 1);
+      // Step 3: Signal Transfer and Wait
+      logger.info("✍️ Writing bit 1414.15(F) to signal file transfer");
+      await writeBit(1414, 15, 1);
 
-    logger.info("🔍 Checking for reset or waiting for bit 1410.3");
-    if (await this.checkResetOrBit(1410, 3, 1)) {
-      logger.warn(
-        "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
-      );
+      logger.info("🔍 Checking for reset or waiting for bit 1410.3");
+      if (await this.checkResetOrBit(1410, 3, 1)) {
+        logger.warn(
+          "⚠️ Reset detected while waiting for 1410.3, restarting cycle"
+        );
       // await sleep(1000);
-      await this.saveToMongoDB({
-        io: this.io,
-        serialNumber: barcodeData.serialNo,
-        markingData: barcodeData.text,
-        scannerData: "N/A",
-        result: "NG",
-        grading: "N/A",
-        isUpdate: true,
-      });
-      return;
-    }
+        await this.saveToMongoDB({
+          io: this.io,
+          serialNumber: barcodeData.serialNo,
+          markingData: barcodeData.text,
+          scannerData: "N/A",
+          result: "NG",
+          grading: "N/A",
+          isUpdate: true,
+        });
+        return;
+      }
 
     // Step 4: Verification Scanner Check
     const verificationScanResult = await this.handleVerificationScan(
       tcpScannerService,
-      barcodeData
-    );
+        barcodeData
+      );
 
-    // Step 5: Final Checks and Cleanup
+      // Step 5: Final Checks and Cleanup
     logger.info("🔍 Starting final checks and cycle completion...");
     const finalChecksResult = await this.performFinalChecks();
     logger.info(`📋 Final checks result: ${finalChecksResult}`);
@@ -886,8 +925,8 @@ class ScannerController {
     // Note: Model-specific bits are kept ON throughout the session, not reset after each cycle
 
     if (finalChecksResult) {
-      this.cycleCount++;
-      logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
+        this.cycleCount++;
+        logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
       logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
 
       // Trigger UI refresh on successful cycle completion
@@ -1056,7 +1095,7 @@ class ScannerController {
               );
             })
             .catch((err) => {
-              logger.error(
+      logger.error(
                 `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
                 err
               );
@@ -1185,7 +1224,7 @@ class ScannerController {
           "✅ Additional bit D1810.0 set to ON for FRONT_LEFT 1025969 model"
         );
       } else if (currentModel === "FRONT_RIGHT 1025974") {
-        logger.info(
+      logger.info(
           "🔧 Model FRONT_RIGHT 1025974 detected - setting additional bit D1810.1"
         );
         await writeBitWithTimeout(1810, 1, 1);
@@ -1398,7 +1437,7 @@ class ScannerController {
       const isVerified = await this.verifyAndRetryWrite(barcodeText, 2);
       logger.info(`✅ File verification: ${isVerified ? "PASSED" : "FAILED"}`);
 
-      // Add MongoDB write after file verification
+      // Save initial data to MongoDB (will check for duplicates and update if exists)
       if (isVerified) {
         logger.info("💾 Saving initial data to MongoDB...");
         await this.saveToMongoDB({
@@ -1408,7 +1447,7 @@ class ScannerController {
           scannerData: "N/A", // No scanner data at this point
           result: "N/A", // File write was successful
           grading: "N/A", // No grading at this point
-          isUpdate: false,
+          isUpdate: false, // Will check for duplicate and update if exists
         });
         logger.info("✅ MongoDB save completed");
       }

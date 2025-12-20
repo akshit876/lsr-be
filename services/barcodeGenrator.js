@@ -97,19 +97,33 @@ class BarcodeGenerator {
       // Map values to fields from config using exact field names from UI
       const fields = configData.currentModelConfig.fields.map((field) => {
         let mappedValue;
-        switch (field.fieldName) {
-          case "Production year":
-            mappedValue = year;
-            break;
-          case "Day of production year":
-            mappedValue = julianDate;
-            break;
-          case "Day production counter (Serial number)":
-            mappedValue = serialString;
-            break;
-          default:
-            mappedValue = field.value || "";
-            break;
+        const fieldNameLower = field.fieldName.toLowerCase().trim();
+
+        // Match field names more flexibly
+        if (
+          fieldNameLower.includes("production year") &&
+          !fieldNameLower.includes("day")
+        ) {
+          mappedValue = year;
+        } else if (
+          fieldNameLower.includes("day of production year") ||
+          fieldNameLower === "julian date" ||
+          (fieldNameLower.includes("day") &&
+            fieldNameLower.includes("production year"))
+        ) {
+          mappedValue = julianDate;
+        } else if (
+          fieldNameLower.includes("serial") ||
+          fieldNameLower.includes("production counter") ||
+          fieldNameLower.includes("day production counter")
+        ) {
+          // Always use the fresh serial number from the service - NEVER use old config value
+          mappedValue = serialString;
+          logger.info(
+            `🔢 SERIAL NUMBER MAPPING: Field "${field.fieldName}" matched - using fresh serial: ${serialString} (was: "${field.value}")`
+          );
+        } else {
+          mappedValue = field.value || "";
         }
         const mappedField = { ...field, value: mappedValue };
         logger.info(
@@ -117,6 +131,19 @@ class BarcodeGenerator {
         );
         return mappedField;
       });
+
+      // Double-check: Ensure serial number is in the barcode even if field mapping failed
+      // Find any field that might be the serial number and force update it
+      const serialField = fields.find((f) => {
+        const name = f.fieldName.toLowerCase().trim();
+        return name.includes("serial") || name.includes("counter");
+      });
+      if (serialField && serialField.value !== serialString) {
+        logger.warn(
+          `⚠️ Serial number field "${serialField.fieldName}" had value "${serialField.value}" but should be "${serialString}" - forcing update`
+        );
+        serialField.value = serialString;
+      }
 
       logger.info("🔍 Debug - Fields after mapping (checked only):");
       fields
@@ -129,14 +156,37 @@ class BarcodeGenerator {
         });
 
       // Generate barcode by combining only checked fields in order, EXCLUDING Buffer 1
-      const barcodeText = fields
+      const checkedFields = fields
         .filter((field) => field.isChecked && field.fieldName !== "Buffer 1") // Exclude Buffer 1
-        .sort((a, b) => a.order - b.order) // Sort by order
+        .sort((a, b) => a.order - b.order); // Sort by order
+
+      logger.info("🔍 Fields included in barcode (in order):");
+      checkedFields.forEach((field, idx) => {
+        logger.info(
+          `  ${idx + 1}. [Order: ${field.order}] ${field.fieldName} = "${field.value}"`
+        );
+      });
+
+      const barcodeText = checkedFields
         .map((field) => field.value || "") // Get values
         .join(""); // Join without separator
 
-      logger.info("Generated barcode text:", barcodeText);
-      logger.info("Serial number:", serialString);
+      logger.info(`✅ Generated barcode text: "${barcodeText}"`);
+      logger.info(`🔢 Expected serial number in barcode: "${serialString}"`);
+
+      // Verify serial number is in the barcode
+      if (!barcodeText.includes(serialString)) {
+        logger.error(
+          `❌ CRITICAL: Serial number "${serialString}" is NOT in barcode text "${barcodeText}"!`
+        );
+        logger.error(
+          `   This means the serial number field is either not checked or not mapped correctly.`
+        );
+      } else {
+        logger.info(
+          `✅ Verified: Serial number "${serialString}" is present in barcode text`
+        );
+      }
 
       // --- Generate codeToPrint in two-line format ---
       // Format: Line 1: DD + MonthLetter + YY + SerialNumber (e.g., "02J2400001")
