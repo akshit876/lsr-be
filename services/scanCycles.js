@@ -56,6 +56,8 @@ class ScannerController {
     this.isPulseOn = false;
     this.currentDayId = 1;
     this.lastResetDate = this.getLastResetTime();
+    this.keyenceLogoMismatch = false;
+    this.keyenceBarcodeData = null;
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
@@ -848,6 +850,15 @@ class ScannerController {
         isUpdate: true,
       });
       return;
+    }
+
+    // Step 3.5: Keyence Scanner Check (after marking is done)
+    const keyenceResult = await this.handleKeyenceScannerCheck(barcodeData);
+    if (keyenceResult === false) {
+      // Logo mismatch detected - will be stored as NG after final scan step
+      logger.warn(
+        "⚠️ Keyence scanner detected logo mismatch - will mark as NG"
+      );
     }
 
     // Step 4: Verification Scanner Check
@@ -1646,6 +1657,80 @@ class ScannerController {
     }
   }
 
+  async handleKeyenceScannerCheck(barcodeData) {
+    try {
+      logger.section("Keyence Scanner Check (Logo Inspection)");
+      logger.info("🔍 Waiting for Keyence scanner result (bit 1490.5)...");
+
+      // Wait for bit 1490.5 to become 1 (scanner ready/result available)
+      const resetResult = await this.checkResetOrBit(1490, 5, 1);
+      if (resetResult === true) {
+        logger.warn(
+          "⚠️ Reset detected while waiting for Keyence scanner, restarting cycle"
+        );
+        throw new Error("RESET_DETECTED");
+      }
+
+      logger.info(
+        "✅ Keyence scanner ready - reading result from bit 1490.6..."
+      );
+
+      // Read bit 1490.6 to get the result (0 = logo mismatch, 1 = OK)
+      const keyenceResult = await readBit(1490, 6, false);
+      logger.info(
+        `📊 Keyence scanner result: ${keyenceResult ? "OK (1)" : "Logo Mismatch (0)"}`
+      );
+
+      if (keyenceResult === false || keyenceResult === 0) {
+        // Result is 0 - Logo mismatch detected
+        logger.error("❌ Keyence scanner detected logo mismatch!");
+
+        // Raise alarm to UI using the same pattern as safety violations
+        const ioInstance = this.io;
+        if (ioInstance) {
+          ioInstance.emit("safety_violation", {
+            timestamp: new Date().toISOString(),
+            violation: "Logo mismatch detected",
+            cycleNumber: this.cycleCount,
+          });
+        }
+
+        // Store the result for later use (will be saved as NG after final scan step)
+        this.keyenceLogoMismatch = true;
+        this.keyenceBarcodeData = barcodeData;
+
+        // Turn off both 1490.5 and 1490.6 bits
+        logger.info("🔄 Turning off bits 1490.5 and 1490.6...");
+        await Promise.all([writeBit(1490, 5, 0), writeBit(1490, 6, 0)]);
+        logger.success("✅ Bits 1490.5 and 1490.6 turned off");
+
+        return false; // Logo mismatch
+      } else {
+        // Result is 1 - OK, proceed as normal
+        logger.success("✅ Keyence scanner result: OK - logo matches");
+
+        // Turn off both 1490.5 and 1490.6 bits
+        logger.info("🔄 Turning off bits 1490.5 and 1490.6...");
+        await Promise.all([writeBit(1490, 5, 0), writeBit(1490, 6, 0)]);
+        logger.success("✅ Bits 1490.5 and 1490.6 turned off");
+
+        // Clear any previous mismatch flag
+        this.keyenceLogoMismatch = false;
+        this.keyenceBarcodeData = null;
+
+        return true; // OK
+      }
+    } catch (error) {
+      if (error.message === "RESET_DETECTED") {
+        throw error;
+      }
+      logger.error("❌ Error in Keyence scanner check:", error);
+      // On error, assume OK to continue workflow
+      this.keyenceLogoMismatch = false;
+      return true;
+    }
+  }
+
   async performFinalChecks() {
     try {
       logger.info("🔍 Performing final checks...");
@@ -1728,17 +1813,30 @@ class ScannerController {
         logger.warn("⚠️ Verification NG: data does not match");
       }
 
+      // Check if Keyence scanner detected logo mismatch - override result to NG if so
+      const finalResult = this.keyenceLogoMismatch ? false : isFinalOk;
+
+      if (this.keyenceLogoMismatch) {
+        logger.warn(
+          "⚠️ Overriding result to NG due to Keyence logo mismatch detection"
+        );
+      }
+
       await this.saveToMongoDB({
         io: this.io,
         serialNumber: barcodeData.serialNo,
         markingData: barcodeData.text,
         scannerData: effectiveScannerData, // Main data without grade
         grading: grade, // Use extracted grade
-        result: isFinalOk,
+        result: finalResult,
         isUpdate: true,
       });
 
-      return { success: isFinalOk };
+      // Clear Keyence mismatch flag after saving
+      this.keyenceLogoMismatch = false;
+      this.keyenceBarcodeData = null;
+
+      return { success: finalResult };
     } catch (error) {
       if (error.message === "RESET_DETECTED") {
         logger.warn(
