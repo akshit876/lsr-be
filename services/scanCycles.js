@@ -1660,10 +1660,10 @@ class ScannerController {
   async handleKeyenceScannerCheck(barcodeData) {
     try {
       logger.section("Keyence Scanner Check (Logo Inspection)");
-      logger.info("🔍 Waiting for Keyence scanner result (bit 1490.5)...");
+      logger.info("🔍 Waiting for Keyence scanner result (bit 1900.0)...");
 
-      // Wait for bit 1490.5 to become 1 (scanner ready/result available)
-      const resetResult = await this.checkResetOrBit(1490, 5, 1);
+      // Wait for bit 1900.0 to become 1 (waiting for scanner result)
+      const resetResult = await this.checkResetOrBit(1900, 0, 1);
       if (resetResult === true) {
         logger.warn(
           "⚠️ Reset detected while waiting for Keyence scanner, restarting cycle"
@@ -1671,19 +1671,21 @@ class ScannerController {
         throw new Error("RESET_DETECTED");
       }
 
+      logger.info("✅ Keyence scanner ready - checking result bits...");
+
+      // Read bits 1900.1 (OK) and 1900.2 (NOK) to get the result
+      const [okBit, nokBit] = await Promise.all([
+        readBit(1900, 1, false),
+        readBit(1900, 2, false),
+      ]);
+
       logger.info(
-        "✅ Keyence scanner ready - reading result from bit 1490.6..."
+        `📊 Keyence scanner result: OK bit (1900.1) = ${okBit}, NOK bit (1900.2) = ${nokBit}`
       );
 
-      // Read bit 1490.6 to get the result (0 = logo mismatch, 1 = OK)
-      const keyenceResult = await readBit(1490, 6, false);
-      logger.info(
-        `📊 Keyence scanner result: ${keyenceResult ? "OK (1)" : "Logo Mismatch (0)"}`
-      );
-
-      if (keyenceResult === false || keyenceResult === 0) {
-        // Result is 0 - Logo mismatch detected
-        logger.error("❌ Keyence scanner detected logo mismatch!");
+      if (nokBit === true || nokBit === 1) {
+        // Bit 1900.2 is on - NOK scan detected
+        logger.error("❌ Keyence scanner detected NOK scan - logo mismatch!");
 
         // Raise alarm to UI using the same pattern as safety violations
         const ioInstance = this.io;
@@ -1699,26 +1701,47 @@ class ScannerController {
         this.keyenceLogoMismatch = true;
         this.keyenceBarcodeData = barcodeData;
 
-        // Turn off both 1490.5 and 1490.6 bits
-        logger.info("🔄 Turning off bits 1490.5 and 1490.6...");
-        await Promise.all([writeBit(1490, 5, 0), writeBit(1490, 6, 0)]);
-        logger.success("✅ Bits 1490.5 and 1490.6 turned off");
+        // Turn off bits 1900.0, 1900.1, and 1900.2
+        logger.info("🔄 Turning off bits 1900.0, 1900.1, and 1900.2...");
+        await Promise.all([
+          writeBit(1900, 0, 0),
+          writeBit(1900, 1, 0),
+          writeBit(1900, 2, 0),
+        ]);
+        logger.success("✅ Bits 1900.0, 1900.1, and 1900.2 turned off");
 
         return false; // Logo mismatch
-      } else {
-        // Result is 1 - OK, proceed as normal
+      } else if (okBit === true || okBit === 1) {
+        // Bit 1900.1 is on - OK scan
         logger.success("✅ Keyence scanner result: OK - logo matches");
 
-        // Turn off both 1490.5 and 1490.6 bits
-        logger.info("🔄 Turning off bits 1490.5 and 1490.6...");
-        await Promise.all([writeBit(1490, 5, 0), writeBit(1490, 6, 0)]);
-        logger.success("✅ Bits 1490.5 and 1490.6 turned off");
+        // Turn off bits 1900.0, 1900.1, and 1900.2
+        logger.info("🔄 Turning off bits 1900.0, 1900.1, and 1900.2...");
+        await Promise.all([
+          writeBit(1900, 0, 0),
+          writeBit(1900, 1, 0),
+          writeBit(1900, 2, 0),
+        ]);
+        logger.success("✅ Bits 1900.0, 1900.1, and 1900.2 turned off");
 
         // Clear any previous mismatch flag
         this.keyenceLogoMismatch = false;
         this.keyenceBarcodeData = null;
 
         return true; // OK
+      } else {
+        // Neither bit is set - unexpected state
+        logger.warn(
+          "⚠️ Keyence scanner: Neither OK nor NOK bit is set - unexpected state"
+        );
+        // Turn off bits and proceed as OK to continue workflow
+        await Promise.all([
+          writeBit(1900, 0, 0),
+          writeBit(1900, 1, 0),
+          writeBit(1900, 2, 0),
+        ]);
+        this.keyenceLogoMismatch = false;
+        return true;
       }
     } catch (error) {
       if (error.message === "RESET_DETECTED") {
