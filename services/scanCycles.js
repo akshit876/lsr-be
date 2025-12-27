@@ -1671,13 +1671,59 @@ class ScannerController {
         throw new Error("RESET_DETECTED");
       }
 
-      logger.info("✅ Keyence scanner ready - checking result bits...");
+      logger.info(
+        "✅ Keyence scanner ready - waiting 100ms for result bits..."
+      );
+
+      // Wait 100ms - generally OK bit comes after this delay
+      await sleep(100);
 
       // Read bits 1900.1 (OK) and 1900.2 (NOK) to get the result
-      const [okBit, nokBit] = await Promise.all([
+      let [okBit, nokBit] = await Promise.all([
         readBit(1900, 1, false),
         readBit(1900, 2, false),
       ]);
+
+      // If neither bit is set yet, do a short polling loop (max 2 seconds)
+      if (!okBit && !nokBit) {
+        logger.info("⏳ Result bits not set yet, polling...");
+        let attempts = 0;
+        const maxAttempts = 20; // 2 seconds max wait (20 * 100ms)
+
+        while (attempts < maxAttempts && !okBit && !nokBit) {
+          // Check for reset during polling
+          if (await this.checkReset()) {
+            logger.warn("⚠️ Reset detected during Keyence result polling");
+            throw new Error("RESET_DETECTED");
+          }
+
+          await sleep(100); // Wait 100ms before next check
+
+          [okBit, nokBit] = await Promise.all([
+            readBit(1900, 1, false),
+            readBit(1900, 2, false),
+          ]);
+
+          if (okBit || nokBit) {
+            logger.info(
+              `✅ Result bit detected: OK (1900.1) = ${okBit}, NOK (1900.2) = ${nokBit}`
+            );
+            break;
+          }
+
+          attempts++;
+        }
+
+        if (!okBit && !nokBit) {
+          logger.warn(
+            "⚠️ Timeout waiting for Keyence result bits - neither OK nor NOK bit was set after 2 seconds"
+          );
+          // Don't reset bits - let PLC handle it, proceed as OK to continue workflow
+          this.keyenceLogoMismatch = false;
+          logger.info("✅ Proceeding as OK due to timeout");
+          return true;
+        }
+      }
 
       logger.info(
         `📊 Keyence scanner result: OK bit (1900.1) = ${okBit}, NOK bit (1900.2) = ${nokBit}`
@@ -1701,45 +1747,31 @@ class ScannerController {
         this.keyenceLogoMismatch = true;
         this.keyenceBarcodeData = barcodeData;
 
-        // Turn off bits 1900.0, 1900.1, and 1900.2
-        logger.info("🔄 Turning off bits 1900.0, 1900.1, and 1900.2...");
-        await Promise.all([
-          writeBit(1900, 0, 0),
-          writeBit(1900, 1, 0),
-          writeBit(1900, 2, 0),
-        ]);
-        logger.success("✅ Bits 1900.0, 1900.1, and 1900.2 turned off");
+        // Don't reset bits - let PLC handle it
+        logger.info("✅ NOK result detected - bits will be handled by PLC");
 
         return false; // Logo mismatch
       } else if (okBit === true || okBit === 1) {
         // Bit 1900.1 is on - OK scan
         logger.success("✅ Keyence scanner result: OK - logo matches");
 
-        // Turn off bits 1900.0, 1900.1, and 1900.2
-        logger.info("🔄 Turning off bits 1900.0, 1900.1, and 1900.2...");
-        await Promise.all([
-          writeBit(1900, 0, 0),
-          writeBit(1900, 1, 0),
-          writeBit(1900, 2, 0),
-        ]);
-        logger.success("✅ Bits 1900.0, 1900.1, and 1900.2 turned off");
+        // Don't reset bits - let PLC handle it
+        logger.info("✅ OK result detected - bits will be handled by PLC");
 
         // Clear any previous mismatch flag
         this.keyenceLogoMismatch = false;
         this.keyenceBarcodeData = null;
 
+        logger.info(
+          "✅ Keyence scanner check completed successfully - proceeding to verification scan"
+        );
         return true; // OK
       } else {
         // Neither bit is set - unexpected state
         logger.warn(
           "⚠️ Keyence scanner: Neither OK nor NOK bit is set - unexpected state"
         );
-        // Turn off bits and proceed as OK to continue workflow
-        await Promise.all([
-          writeBit(1900, 0, 0),
-          writeBit(1900, 1, 0),
-          writeBit(1900, 2, 0),
-        ]);
+        // Don't reset bits - let PLC handle it, proceed as OK to continue workflow
         this.keyenceLogoMismatch = false;
         return true;
       }
