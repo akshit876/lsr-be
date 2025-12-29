@@ -336,6 +336,7 @@ class ScannerController {
       };
 
       // Safety check interval - runs every 500ms to monitor safety conditions
+      // Only emits alarms to UI - does NOT stop waiting for the start bit
       const safetyCheckInterval = setInterval(async () => {
         try {
           // Read safety bits from register 1490
@@ -345,83 +346,58 @@ class ScannerController {
           const emergencyPushButton = await readBit(1490, 3, false); // Emergency push button
           const safetyCurtain = await readBit(1490, 4, false); // Safety curtain
 
-          // Check safety conditions and emit violations
-          if (partPresent) {
-            cleanup();
+          // Emit safety violations to UI (but continue waiting for start bit)
+          if (partPresent && this.io) {
             logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Part not present",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            resolve("safety_violation");
-            return;
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Part not present",
+              cycleNumber: this.cycleCount,
+            });
           }
 
-          if (emergencyStop) {
-            cleanup();
+          if (emergencyStop && this.io) {
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
             );
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Emergency stop activated",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            resolve("safety_violation");
-            return;
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Emergency stop activated",
+              cycleNumber: this.cycleCount,
+            });
           }
 
-          if (safetySensor) {
-            cleanup();
+          if (safetySensor && this.io) {
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor triggered (1490.2 = 1)"
             );
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Safety sensor triggered",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            resolve("safety_violation");
-            return;
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Safety sensor triggered",
+              cycleNumber: this.cycleCount,
+            });
           }
 
-          if (emergencyPushButton) {
-            cleanup();
+          if (emergencyPushButton && this.io) {
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency push button pressed (1490.3 = 1)"
             );
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Emergency push button pressed",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            resolve("safety_violation");
-            return;
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Emergency push button pressed",
+              cycleNumber: this.cycleCount,
+            });
           }
 
-          if (safetyCurtain) {
-            cleanup();
+          if (safetyCurtain && this.io) {
             logger.error(
               "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 1)"
             );
-            if (this.io) {
-              this.io.emit("safety_violation", {
-                timestamp: new Date().toISOString(),
-                violation: "Safety curtain interrupted",
-                cycleNumber: this.cycleCount,
-              });
-            }
-            resolve("safety_violation");
-            return;
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Safety curtain interrupted",
+              cycleNumber: this.cycleCount,
+            });
           }
         } catch (error) {
           logger.error(`Error checking safety conditions: ${error.message}`);
