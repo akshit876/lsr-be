@@ -141,111 +141,92 @@ class MongoDBService {
         // Even if connected, ensure we're using the correct database and collection
         this.db = this.client.db(DB_NAME);
         this.collection = this.db.collection(COLLECTION_NAME);
-        logger.info("Ensuring connection to main-data.records collection");
       }
 
-      // Get current time and today's 6 AM
-      const now = new Date();
-      const todaySixAM = new Date(now);
-      todaySixAM.setHours(6, 0, 0, 0);
+      logger.info("🔍 Fetching records for UI: limit=500");
 
-      // If current time is before 6 AM, use previous day's 6 AM
-      if (now < todaySixAM) {
-        todaySixAM.setDate(todaySixAM.getDate() - 1);
-      }
-
-      // First, get the total counts for each day window
-      const dayWindowCounts = await this.collection
+      // Use aggregation to calculate day window position efficiently in ONE query
+      const data = await this.collection
         .aggregate([
+          // Sort by timestamp descending first
+          { $sort: { Timestamp: -1 } },
+          // Limit to 500 records
+          { $limit: 500 },
+          // Calculate day window (6 AM to 6 AM)
           {
             $addFields: {
               dayWindow: {
-                $let: {
-                  vars: {
-                    timestamp: "$Timestamp",
-                    sixAM: {
-                      $dateFromParts: {
-                        year: { $year: "$Timestamp" },
-                        month: { $month: "$Timestamp" },
-                        day: { $dayOfMonth: "$Timestamp" },
-                        hour: 6,
+                $cond: {
+                  if: { $lt: [{ $hour: "$Timestamp" }, 6] },
+                  then: {
+                    $dateFromParts: {
+                      year: {
+                        $year: {
+                          $subtract: ["$Timestamp", 24 * 60 * 60 * 1000],
+                        },
                       },
+                      month: {
+                        $month: {
+                          $subtract: ["$Timestamp", 24 * 60 * 60 * 1000],
+                        },
+                      },
+                      day: {
+                        $dayOfMonth: {
+                          $subtract: ["$Timestamp", 24 * 60 * 60 * 1000],
+                        },
+                      },
+                      hour: 6,
                     },
                   },
-                  in: {
-                    $cond: {
-                      if: { $lt: ["$Timestamp", "$$sixAM"] },
-                      then: {
-                        $subtract: [
-                          "$$sixAM",
-                          { $multiply: [24 * 60 * 60 * 1000, 1] },
-                        ],
-                      },
-                      else: "$$sixAM",
+                  else: {
+                    $dateFromParts: {
+                      year: { $year: "$Timestamp" },
+                      month: { $month: "$Timestamp" },
+                      day: { $dayOfMonth: "$Timestamp" },
+                      hour: 6,
                     },
                   },
                 },
               },
             },
           },
+          // Calculate rank within each day window
           {
-            $group: {
-              _id: "$dayWindow",
-              count: { $sum: 1 },
+            $setWindowFields: {
+              partitionBy: "$dayWindow",
+              sortBy: { Timestamp: 1 },
+              output: {
+                dayPosition: { $rank: {} },
+              },
             },
           },
+          // Sort again by timestamp descending for final output
+          { $sort: { Timestamp: -1 } },
         ])
         .toArray();
 
-      // Create a map of day windows to their total counts
-      const dayWindowTotalCounts = new Map(
-        dayWindowCounts.map(({ _id, count }) => [_id.getTime(), count])
-      );
+      logger.info(`✅ Fetched ${data.length} records`);
 
-      // Now fetch the limited data
-      const data = await this.collection
-        .find({})
-        .sort({ Timestamp: -1 })
-        .limit(700)
-        .toArray();
-
-      // Transform the data with correct IDs
-      const transformedData = await Promise.all(
-        data.map(async (item) => {
-          const itemTimestamp = new Date(item?.Timestamp);
-          let windowStart = new Date(itemTimestamp);
-          windowStart.setHours(6, 0, 0, 0);
-          if (itemTimestamp < windowStart) {
-            windowStart.setDate(windowStart.getDate() - 1);
-          }
-
-          const totalCount =
-            dayWindowTotalCounts.get(windowStart.getTime()) || 0;
-          const position = await this.collection.countDocuments({
-            Timestamp: {
-              $gte: windowStart,
-              $lt: itemTimestamp,
-            },
-          });
-
-          return {
-            Id: position + 1,
-            Timestamp: item?.Timestamp,
-            SerialNumber: item?.SerialNumber,
-            MarkingData: item?.MarkingData,
-            ScannerData: item?.ScannerData,
-            Shift: item?.Shift,
-            Result: item?.Result,
-            User: item?.User,
-            Grade: item?.Grade,
-            Date: item?.Date,
-          };
-        })
-      );
+      // Transform the data - use dayPosition as Id (daily counter)
+      const transformedData = data.map((item) => ({
+        Id: item.dayPosition || 1,
+        Timestamp: item?.Timestamp,
+        SerialNumber: item?.SerialNumber,
+        MarkingData: item?.MarkingData,
+        ScannerData: item?.ScannerData,
+        Shift: item?.Shift,
+        Result: item?.Result,
+        User: item?.User,
+        Grade: item?.Grade,
+        Date: item?.Date,
+        remark: item?.remark,
+      }));
 
       // Send the data to the client
       socket.emit("csv-data", { data: transformedData });
-      logger.info(`Emitted MongoDB data to client: ${socket.id}`);
+      logger.info(
+        `✅ Emitted ${transformedData.length} records to client: ${socket.id}`
+      );
     } catch (error) {
       logger.error("Error in sendMongoDbDataToClient: ", error.message);
       socket.emit("error", { message: "Error fetching data from database" });
