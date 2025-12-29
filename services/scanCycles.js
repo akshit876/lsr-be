@@ -330,7 +330,103 @@ class ScannerController {
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
+        if (safetyCheckInterval) {
+          clearInterval(safetyCheckInterval);
+        }
       };
+
+      // Safety check interval - runs every 500ms to monitor safety conditions
+      const safetyCheckInterval = setInterval(async () => {
+        try {
+          // Read safety bits from register 1490
+          const partPresent = await readBit(1490, 0, false); // Part not present
+          const emergencyStop = await readBit(1490, 1, false); // Emergency stop
+          const safetySensor = await readBit(1490, 2, false); // Safety sensor
+          const emergencyPushButton = await readBit(1490, 3, false); // Emergency push button
+          const safetyCurtain = await readBit(1490, 4, false); // Safety curtain
+
+          // Check safety conditions and emit violations
+          if (partPresent) {
+            cleanup();
+            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Part not present",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (emergencyStop) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+            );
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency stop activated",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (safetySensor) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor triggered (1490.2 = 1)"
+            );
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety sensor triggered",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (emergencyPushButton) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency push button pressed (1490.3 = 1)"
+            );
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency push button pressed",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+
+          if (safetyCurtain) {
+            cleanup();
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 1)"
+            );
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety curtain interrupted",
+                cycleNumber: this.cycleCount,
+              });
+            }
+            resolve("safety_violation");
+            return;
+          }
+        } catch (error) {
+          logger.error(`Error checking safety conditions: ${error.message}`);
+        }
+      }, 500);
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
