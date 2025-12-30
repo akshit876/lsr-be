@@ -44,11 +44,22 @@ class BarcodeGenerator {
       const fullYear = now.getFullYear().toString();
       // Use the last two digits of the year (e.g., "25" for 2025)
       const year = fullYear.slice(-2);
-      // Convert month from number to alphabet: 1=A, 2=B, 3=C, ..., 12=L
+      // Convert month: 1-9 use 1-9, 10=X, 11=Y, 12=Z
       const monthNumber = now.getMonth() + 1; // getMonth() returns 0-11, so +1 gives 1-12
-      const month = String.fromCharCode(64 + monthNumber); // ASCII 65=A, 66=B, etc.
+      let month;
+      if (monthNumber >= 1 && monthNumber <= 9) {
+        month = monthNumber.toString();
+      } else if (monthNumber === 10) {
+        month = "X";
+      } else if (monthNumber === 11) {
+        month = "Y";
+      } else if (monthNumber === 12) {
+        month = "Z";
+      }
       const day = format(now, "dd");
       const shift = this.shiftUtility.getCurrentShift(now);
+      // Get current hour in 24-hour format for FOR STORE field
+      const currentHour = now.getHours().toString().padStart(2, "0");
 
       // Get Julian date (day of year)
       const startOfYear = new Date(now.getFullYear(), 0, 0);
@@ -109,7 +120,7 @@ class BarcodeGenerator {
             mappedValue = serialString;
             break;
           case "FOR STORE":
-            mappedValue = field.value || ""; // Use configured value
+            mappedValue = currentHour; // Use current hour in 24-hour format
             break;
           case "Shift": // Note: "Shift" not "SHIFT"
             mappedValue = shift;
