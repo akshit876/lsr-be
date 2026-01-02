@@ -1016,19 +1016,47 @@ class ScannerController {
 
       // Generate barcode data using simplified method
       logger.info("🔄 Calling barcodeGenerator.generateBarcodeData...");
-      const { text: barcodeText, serialNo: serialString } =
-        await this.barcodeGenerator.generateBarcodeData({
-          mongoDbService,
-          partNumber,
-        });
+      const {
+        text: barcodeText,
+        serialNo: serialString,
+        fields,
+      } = await this.barcodeGenerator.generateBarcodeData({
+        mongoDbService,
+        partNumber,
+      });
       logger.info(`✅ Barcode generated: ${barcodeText}`);
       logger.info(`🔢 Serial Number: ${serialString}`);
+
+      // Calculate split point at Shift field for text.txt
+      let shiftSplitPoint = null;
+      if (fields) {
+        const checkedFields = fields
+          .filter((field) => field.isChecked)
+          .sort((a, b) => a.order - b.order);
+
+        // Find the index of Shift field
+        const shiftIndex = checkedFields.findIndex(
+          (field) => field.fieldName === "Shift"
+        );
+
+        if (shiftIndex >= 0) {
+          // Calculate the length of all fields before Shift
+          shiftSplitPoint = checkedFields
+            .slice(0, shiftIndex)
+            .reduce((sum, field) => sum + (field.value || "").length, 0);
+        }
+      }
 
       // Write both files using the reusable function
       logger.info("📁 Writing barcode data to files...");
       await Promise.all([
         this.writeToFile(CODE_FILE_PATH, barcodeText, "Barcode data"),
-        this.writeToFile(TEXT_FILE_PATH, barcodeText, "Barcode text"),
+        this.writeToFile(
+          TEXT_FILE_PATH,
+          barcodeText,
+          "Barcode text",
+          shiftSplitPoint
+        ),
       ]);
       logger.info("✅ Files written successfully");
 
@@ -1081,14 +1109,34 @@ class ScannerController {
   }
 
   // Reusable file writing function
-  async writeToFile(filePath, data, description = "Data") {
+  async writeToFile(filePath, data, description = "Data", splitPoint = null) {
     try {
-      await fs.writeFileSync(filePath, data.toString(), "utf8");
+      // Format barcode as 2 lines for TXT files
+      let formattedData = data.toString();
+      const isTxtFile = filePath.endsWith(".txt");
+      const isTextFile = filePath === TEXT_FILE_PATH;
+
+      if (isTxtFile && formattedData.length > 0) {
+        if (isTextFile && splitPoint !== null && splitPoint >= 0) {
+          // For text.txt, split at Shift field position
+          const line1 = formattedData.substring(0, splitPoint);
+          const line2 = formattedData.substring(splitPoint);
+          formattedData = `${line1}\n${line2}`;
+        } else {
+          // For other TXT files, split in the middle
+          const midPoint = Math.ceil(formattedData.length / 2);
+          const line1 = formattedData.substring(0, midPoint);
+          const line2 = formattedData.substring(midPoint);
+          formattedData = `${line1}\n${line2}`;
+        }
+      }
+
+      await fs.writeFileSync(filePath, formattedData, "utf8");
       logger.info(`✅ ${description} written to ${path.basename(filePath)}`);
 
       // Verify the write was successful
       const verificationData = await fs.readFileSync(filePath, "utf8");
-      if (verificationData !== data.toString()) {
+      if (verificationData !== formattedData) {
         throw new Error(
           `File verification failed for ${path.basename(filePath)}`
         );
