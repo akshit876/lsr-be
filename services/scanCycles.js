@@ -343,7 +343,7 @@ class ScannerController {
           const partPresent = await readBit(1490, 0, false); // Part not present
           const emergencyStop = await readBit(1490, 1, false); // Emergency stop
           const safetySensor = await readBit(1490, 2, false); // Safety sensor
-          const emergencyPushButton = await readBit(1490, 3, false); // Emergency push button
+          const fixtureLocatingPinNotInsert = await readBit(1490, 3, false); // Fixture Locating Pin Not Insert
           const safetyCurtain = await readBit(1490, 4, false); // Safety curtain
 
           // Emit safety violations to UI (but continue waiting for start bit)
@@ -378,13 +378,13 @@ class ScannerController {
             });
           }
 
-          if (emergencyPushButton && this.io) {
+          if (fixtureLocatingPinNotInsert && this.io) {
             logger.error(
-              "🚨 SAFETY VIOLATION: Emergency push button pressed (1490.3 = 1)"
+              "🚨 SAFETY VIOLATION: Fixture Locating Pin Not Insert (1490.3 = 1)"
             );
             this.io.emit("safety_violation", {
               timestamp: new Date().toISOString(),
-              violation: "Emergency push button pressed",
+              violation: "Fixture Locating Pin Not Insert",
               cycleNumber: this.cycleCount,
             });
           }
