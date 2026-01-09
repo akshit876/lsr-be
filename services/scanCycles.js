@@ -63,6 +63,15 @@ class ScannerController {
     this.currentDayId = 1;
     this.lastResetDate = this.getLastResetTime();
 
+    // Track previous alarm states to prevent repeated emissions
+    this.previousAlarmStates = {
+      partPresent: false,
+      emergencyStop: false,
+      safetySensor: false,
+      fixtureLocatingPinNotInsert: false,
+      safetyCurtain: false,
+    };
+
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
   }
@@ -346,17 +355,36 @@ class ScannerController {
           const fixtureLocatingPinNotInsert = await readBit(1490, 3, false); // Fixture Locating Pin Not Insert
           const safetyCurtain = await readBit(1490, 4, false); // Safety curtain
 
-          // Emit safety violations to UI (but continue waiting for start bit)
-          if (partPresent && this.io) {
+          // Emit safety violations to UI only on state change (false -> true)
+          // Emit clear events when state changes (true -> false)
+          if (partPresent && !this.previousAlarmStates.partPresent && this.io) {
             logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
             this.io.emit("safety_violation", {
               timestamp: new Date().toISOString(),
               violation: "Part not present",
               cycleNumber: this.cycleCount,
+              status: "active",
+            });
+          } else if (
+            !partPresent &&
+            this.previousAlarmStates.partPresent &&
+            this.io
+          ) {
+            logger.info("✅ SAFETY CLEARED: Part not present (1490.0 = 0)");
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Part not present",
+              cycleNumber: this.cycleCount,
+              status: "cleared",
             });
           }
+          this.previousAlarmStates.partPresent = partPresent;
 
-          if (emergencyStop && this.io) {
+          if (
+            emergencyStop &&
+            !this.previousAlarmStates.emergencyStop &&
+            this.io
+          ) {
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
             );
@@ -364,10 +392,28 @@ class ScannerController {
               timestamp: new Date().toISOString(),
               violation: "Emergency stop activated",
               cycleNumber: this.cycleCount,
+              status: "active",
+            });
+          } else if (
+            !emergencyStop &&
+            this.previousAlarmStates.emergencyStop &&
+            this.io
+          ) {
+            logger.info("✅ SAFETY CLEARED: Emergency stop (1490.1 = 0)");
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Emergency stop activated",
+              cycleNumber: this.cycleCount,
+              status: "cleared",
             });
           }
+          this.previousAlarmStates.emergencyStop = emergencyStop;
 
-          if (safetySensor && this.io) {
+          if (
+            safetySensor &&
+            !this.previousAlarmStates.safetySensor &&
+            this.io
+          ) {
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor triggered (1490.2 = 1)"
             );
@@ -375,10 +421,28 @@ class ScannerController {
               timestamp: new Date().toISOString(),
               violation: "Safety sensor triggered",
               cycleNumber: this.cycleCount,
+              status: "active",
+            });
+          } else if (
+            !safetySensor &&
+            this.previousAlarmStates.safetySensor &&
+            this.io
+          ) {
+            logger.info("✅ SAFETY CLEARED: Safety sensor (1490.2 = 0)");
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Safety sensor triggered",
+              cycleNumber: this.cycleCount,
+              status: "cleared",
             });
           }
+          this.previousAlarmStates.safetySensor = safetySensor;
 
-          if (fixtureLocatingPinNotInsert && this.io) {
+          if (
+            fixtureLocatingPinNotInsert &&
+            !this.previousAlarmStates.fixtureLocatingPinNotInsert &&
+            this.io
+          ) {
             logger.error(
               "🚨 SAFETY VIOLATION: Fixture Locating Pin Not Insert (1490.3 = 1)"
             );
@@ -386,10 +450,31 @@ class ScannerController {
               timestamp: new Date().toISOString(),
               violation: "Fixture Locating Pin Not Insert",
               cycleNumber: this.cycleCount,
+              status: "active",
+            });
+          } else if (
+            !fixtureLocatingPinNotInsert &&
+            this.previousAlarmStates.fixtureLocatingPinNotInsert &&
+            this.io
+          ) {
+            logger.info(
+              "✅ SAFETY CLEARED: Fixture Locating Pin Not Insert (1490.3 = 0)"
+            );
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Fixture Locating Pin Not Insert",
+              cycleNumber: this.cycleCount,
+              status: "cleared",
             });
           }
+          this.previousAlarmStates.fixtureLocatingPinNotInsert =
+            fixtureLocatingPinNotInsert;
 
-          if (safetyCurtain && this.io) {
+          if (
+            safetyCurtain &&
+            !this.previousAlarmStates.safetyCurtain &&
+            this.io
+          ) {
             logger.error(
               "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 1)"
             );
@@ -397,8 +482,22 @@ class ScannerController {
               timestamp: new Date().toISOString(),
               violation: "Safety curtain interrupted",
               cycleNumber: this.cycleCount,
+              status: "active",
+            });
+          } else if (
+            !safetyCurtain &&
+            this.previousAlarmStates.safetyCurtain &&
+            this.io
+          ) {
+            logger.info("✅ SAFETY CLEARED: Safety curtain (1490.4 = 0)");
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Safety curtain interrupted",
+              cycleNumber: this.cycleCount,
+              status: "cleared",
             });
           }
+          this.previousAlarmStates.safetyCurtain = safetyCurtain;
         } catch (error) {
           logger.error(`Error checking safety conditions: ${error.message}`);
         }
