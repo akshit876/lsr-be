@@ -59,6 +59,17 @@ class ScannerController {
     this.keyenceLogoMismatch = false;
     this.keyenceBarcodeData = null;
 
+    // Track previous alarm states to prevent repeated emissions and clear messages when PLC stops sending bits
+    this.previousAlarmStates = {
+      partPresent: false,
+      emergencyStop: false,
+      safetySensor: false,
+      emergencyPushButton: false,
+      safetyCurtain: false,
+      fixtureProgramMismatch: false,
+      servoNotHome: false,
+    };
+
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
   }
@@ -374,25 +385,44 @@ class ScannerController {
           );
 
           // Check safety conditions
-          if (partPresent) {
+          // Emit safety violations to UI only on state change (false -> true)
+          // Emit clear events when state changes (true -> false) - when PLC stops sending the bit
+          if (partPresent && !this.previousAlarmStates.partPresent) {
             cleanup();
-            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 0)");
+            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
 
             // Emit safety violation event to UI immediately
             const ioInstance = io || this.io;
             if (ioInstance) {
               ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
-                violation: "Part not present ",
+                violation: "Part not present",
                 cycleNumber: this.cycleCount,
+                status: "active",
               });
             }
 
             resolve("safety_violation");
             return;
+          } else if (
+            !partPresent &&
+            this.previousAlarmStates.partPresent &&
+            (io || this.io)
+          ) {
+            logger.info("✅ SAFETY CLEARED: Part not present (1490.0 = 0)");
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Part not present",
+                cycleNumber: this.cycleCount,
+                status: "cleared",
+              });
+            }
           }
+          this.previousAlarmStates.partPresent = partPresent;
 
-          if (emergencyStop) {
+          if (emergencyStop && !this.previousAlarmStates.emergencyStop) {
             cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
@@ -403,19 +433,36 @@ class ScannerController {
             if (ioInstance) {
               ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
-                violation: "Emergency stop activated ",
+                violation: "Emergency stop activated",
                 cycleNumber: this.cycleCount,
+                status: "active",
               });
             }
 
             resolve("safety_violation");
             return;
+          } else if (
+            !emergencyStop &&
+            this.previousAlarmStates.emergencyStop &&
+            (io || this.io)
+          ) {
+            logger.info("✅ SAFETY CLEARED: Emergency stop (1490.1 = 0)");
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency stop activated",
+                cycleNumber: this.cycleCount,
+                status: "cleared",
+              });
+            }
           }
+          this.previousAlarmStates.emergencyStop = emergencyStop;
 
-          if (safetySensor) {
+          if (safetySensor && !this.previousAlarmStates.safetySensor) {
             cleanup();
             logger.error(
-              "🚨 SAFETY VIOLATION: Safety sensor not engaged (1490.2 = 0)"
+              "🚨 SAFETY VIOLATION: Safety sensor triggered (1490.2 = 1)"
             );
 
             // Emit safety violation event to UI immediately
@@ -423,17 +470,37 @@ class ScannerController {
             if (ioInstance) {
               ioInstance.emit("safety_violation", {
                 timestamp: new Date().toISOString(),
-                violation: "Safety sensor not engaged",
+                violation: "Safety sensor triggered",
                 cycleNumber: this.cycleCount,
+                status: "active",
               });
             }
 
             resolve("safety_violation");
             return;
+          } else if (
+            !safetySensor &&
+            this.previousAlarmStates.safetySensor &&
+            (io || this.io)
+          ) {
+            logger.info("✅ SAFETY CLEARED: Safety sensor (1490.2 = 0)");
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety sensor triggered",
+                cycleNumber: this.cycleCount,
+                status: "cleared",
+              });
+            }
           }
+          this.previousAlarmStates.safetySensor = safetySensor;
 
           // Check for emergency push button pressed
-          if (emergencyPushButton) {
+          if (
+            emergencyPushButton &&
+            !this.previousAlarmStates.emergencyPushButton
+          ) {
             cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency push button pressed (1490.3 = 1)"
@@ -446,18 +513,37 @@ class ScannerController {
                 timestamp: new Date().toISOString(),
                 violation: "Emergency push button pressed",
                 cycleNumber: this.cycleCount,
+                status: "active",
               });
             }
 
             resolve("safety_violation");
             return;
+          } else if (
+            !emergencyPushButton &&
+            this.previousAlarmStates.emergencyPushButton &&
+            (io || this.io)
+          ) {
+            logger.info(
+              "✅ SAFETY CLEARED: Emergency push button (1490.3 = 0)"
+            );
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Emergency push button pressed",
+                cycleNumber: this.cycleCount,
+                status: "cleared",
+              });
+            }
           }
+          this.previousAlarmStates.emergencyPushButton = emergencyPushButton;
 
           // Check for safety curtain interrupted
-          if (safetyCurtain) {
+          if (safetyCurtain && !this.previousAlarmStates.safetyCurtain) {
             cleanup();
             logger.error(
-              "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 0)"
+              "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 1)"
             );
 
             // Emit safety violation event to UI immediately
@@ -467,15 +553,35 @@ class ScannerController {
                 timestamp: new Date().toISOString(),
                 violation: "Safety curtain interrupted",
                 cycleNumber: this.cycleCount,
+                status: "active",
               });
             }
 
             resolve("safety_violation");
             return;
+          } else if (
+            !safetyCurtain &&
+            this.previousAlarmStates.safetyCurtain &&
+            (io || this.io)
+          ) {
+            logger.info("✅ SAFETY CLEARED: Safety curtain (1490.4 = 0)");
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Safety curtain interrupted",
+                cycleNumber: this.cycleCount,
+                status: "cleared",
+              });
+            }
           }
+          this.previousAlarmStates.safetyCurtain = safetyCurtain;
 
           // Check for fixture and marking program mismatch
-          if (fixtureProgramMismatch) {
+          if (
+            fixtureProgramMismatch &&
+            !this.previousAlarmStates.fixtureProgramMismatch
+          ) {
             cleanup();
             logger.error(
               "🚨 SAFETY VIOLATION: Fixture and marking program mismatch (1490.5 = 1)"
@@ -489,18 +595,39 @@ class ScannerController {
                 violation:
                   "Fixture and marking program mismatch - check program and fixture",
                 cycleNumber: this.cycleCount,
+                status: "active",
               });
             }
 
             resolve("safety_violation");
             return;
+          } else if (
+            !fixtureProgramMismatch &&
+            this.previousAlarmStates.fixtureProgramMismatch &&
+            (io || this.io)
+          ) {
+            logger.info(
+              "✅ SAFETY CLEARED: Fixture and marking program mismatch (1490.5 = 0)"
+            );
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation:
+                  "Fixture and marking program mismatch - check program and fixture",
+                cycleNumber: this.cycleCount,
+                status: "cleared",
+              });
+            }
           }
+          this.previousAlarmStates.fixtureProgramMismatch =
+            fixtureProgramMismatch;
 
           // Check for servo not home position
-          if (servoNotHome) {
+          if (servoNotHome && !this.previousAlarmStates.servoNotHome) {
             cleanup();
             logger.error(
-              "🚨 SAFETY VIOLATION: Servo not home position (1490.6 = 0)"
+              "🚨 SAFETY VIOLATION: Servo not home position (1490.6 = 1)"
             );
 
             // Emit safety violation event to UI immediately
@@ -510,12 +637,31 @@ class ScannerController {
                 timestamp: new Date().toISOString(),
                 violation: "Servo not home position",
                 cycleNumber: this.cycleCount,
+                status: "active",
               });
             }
 
             resolve("safety_violation");
             return;
+          } else if (
+            !servoNotHome &&
+            this.previousAlarmStates.servoNotHome &&
+            (io || this.io)
+          ) {
+            logger.info(
+              "✅ SAFETY CLEARED: Servo not home position (1490.6 = 0)"
+            );
+            const ioInstance = io || this.io;
+            if (ioInstance) {
+              ioInstance.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation: "Servo not home position",
+                cycleNumber: this.cycleCount,
+                status: "cleared",
+              });
+            }
           }
+          this.previousAlarmStates.servoNotHome = servoNotHome;
         } catch (error) {
           console.error(
             `❌ Error checking safety conditions: ${error.message}`
