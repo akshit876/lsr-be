@@ -999,12 +999,32 @@ class ScannerController {
     }
 
     // Step 3.5: Keyence Scanner Check (after marking is done)
-    const keyenceResult = await this.handleKeyenceScannerCheck(barcodeData);
-    if (keyenceResult === false) {
-      // Logo mismatch detected - will be stored as NG after final scan step
-      logger.warn(
-        "⚠️ Keyence scanner detected logo mismatch - will mark as NG"
-      );
+    // Check if 1810.0 (logo bit) is ON - only do Keyence check if logo bit is ON
+    let keyenceResult = true; // Default to OK if logo check is skipped
+    try {
+      const logoBit = await readBit(1810, 0, false);
+      const isWithLogo = logoBit === true || logoBit === 1;
+
+      if (isWithLogo) {
+        logger.info(
+          "✅ Logo bit (1810.0) is ON - performing Keyence scanner check"
+        );
+        keyenceResult = await this.handleKeyenceScannerCheck(barcodeData);
+        if (keyenceResult === false) {
+          // Logo mismatch detected - will be stored as NG after final scan step
+          logger.warn(
+            "⚠️ Keyence scanner detected logo mismatch - will mark as NG"
+          );
+        }
+      } else {
+        logger.info(
+          "ℹ️ Logo bit (1810.0) is OFF - skipping Keyence scanner check"
+        );
+      }
+    } catch (error) {
+      logger.error("Error checking logo bit (1810.0):", error);
+      // On error, skip Keyence check and continue
+      logger.warn("⚠️ Skipping Keyence check due to error reading logo bit");
     }
 
     // Step 4: Verification Scanner Check
