@@ -429,7 +429,7 @@ io.on("connection", (socket) => {
       // Handle different jog types
       switch (type) {
         case "X_JOG_PLUS":
-          await writeBit(1490, 0, action === "start" ? 1 : 0); // Example register
+          await writeBit(1489, 0, action === "start" ? 1 : 0); // Example register
           break;
         case "X_JOG_MINUS":
           await writeBit(1491, 0, action === "start" ? 1 : 0); // Example register
