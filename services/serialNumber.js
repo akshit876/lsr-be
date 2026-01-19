@@ -223,7 +223,7 @@ class SerialNumberGeneratorService {
 
   async getNextSerialNumber() {
     await this.checkAndResetSerialNumber();
-    const serialNumber = this.currentSerialNumber.toString().padStart(2, "0");
+    const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
 
     // Save the USED serial number to model-wise configuration
     await this.saveUsedSerialNumber(this.currentSerialNumber);
@@ -291,17 +291,17 @@ class SerialNumberGeneratorService {
       }
     }
 
-    // VALIDATION: Ensure serial number doesn't exceed 99 (2-digit max)
-    if (serialToUse > 99) {
+    // VALIDATION: Ensure serial number doesn't exceed 999 (3-digit max)
+    if (serialToUse > 999) {
       logger.warn(
-        `⚠️ Serial number ${serialToUse} exceeds 99, rolling over to 1`
+        `⚠️ Serial number ${serialToUse} exceeds 999, rolling over to 1`
       );
       serialToUse = 1;
       this.currentSerialNumber = 1;
     }
 
-    // Format the serial number - MAX 2 DIGITS (01-99)
-    const serialNumber = serialToUse.toString().padStart(2, "0");
+    // Format the serial number - MAX 3 DIGITS (001-999)
+    const serialNumber = serialToUse.toString().padStart(3, "0");
 
     // Save the USED serial number to modelSerialConfig
     await this.saveUsedSerialNumber(serialToUse);
@@ -372,13 +372,13 @@ class SerialNumberGeneratorService {
       this.currentSerialNumber = modelStartingSerial;
       this.lastResetDate = now;
       logger.info(
-        `🔄 SERIAL RESET: Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(2, "0")}) at ${now.toISOString()}`
+        `🔄 SERIAL RESET: Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(3, "0")}) at ${now.toISOString()}`
       );
       await this.updateSerialConfigOnReset();
       return true;
     } else {
       logger.info(
-        `✅ NO SERIAL RESET: Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(2, "0")})`
+        `✅ NO SERIAL RESET: Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(3, "0")})`
       );
       return false;
     }
@@ -392,28 +392,28 @@ class SerialNumberGeneratorService {
       if (modelNumber) {
         // Model-specific starting serial configurations for ALL models
         if (modelNumber === "CMB-877") {
-          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S01)`);
-          return 1; // 2 digits max
+          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S001)`);
+          return 1; // 3 digits max
         } else if (modelNumber === "CMB-778") {
           // CMB-778 starts from 1
-          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S01)`);
+          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S001)`);
           return 1;
         } else {
           // All other models start from 1
           logger.info(
-            `✅ Model ${modelNumber} → starting serial: 1 (S01) [default for this model]`
+            `✅ Model ${modelNumber} → starting serial: 1 (S001) [default for this model]`
           );
           return 1;
         }
       } else {
         logger.warn(
-          "⚠️ No model number found, using default starting serial: 1 (S01)"
+          "⚠️ No model number found, using default starting serial: 1 (S001)"
         );
         return this.modelStartingSerials["default"];
       }
     } catch (error) {
       logger.error("❌ Error fetching model starting serial:", error);
-      logger.warn("⚠️ Defaulting to serial number 1 (S01) due to error");
+      logger.warn("⚠️ Defaulting to serial number 1 (S001) due to error");
       return this.modelStartingSerials["default"];
     }
   }
