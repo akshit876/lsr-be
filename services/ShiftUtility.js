@@ -26,7 +26,23 @@ export async function getShiftConfigFromDB() {
   const collection = mongoDbService.collection;
   const config = await collection.findOne({});
   console.log({ config });
-  return config ? config.shiftConfig : null; // Assuming the document structure has a field 'shiftConfig'
+  
+  // Check for new format: shifts array
+  if (config && config.shifts && Array.isArray(config.shifts)) {
+    // Transform the shifts array format to the expected format
+    const transformedConfig = {};
+    config.shifts.forEach((shift) => {
+      transformedConfig[shift.name] = {
+        start: shift.startTime,
+        end: shift.endTime,
+      };
+    });
+    console.log("Transformed shift config from MongoDB:", transformedConfig);
+    return transformedConfig;
+  }
+  
+  // Fallback to old format: shiftConfig object
+  return config ? config.shiftConfig : null;
 }
 
 export async function updateShiftConfigInDB(newConfig) {
@@ -40,12 +56,35 @@ export async function updateShiftConfigInDB(newConfig) {
 }
 class ShiftUtility {
   constructor(shiftConfig = null) {
-    // Initialize shiftConfig from MongoDB
+    // Initialize shiftConfig - can be passed directly or will use defaults
+    // Default configuration (fallback if MongoDB config not available):
+    // Shift A: 00:00 to 08:30 (midnight to 8:30 AM)
+    // Shift B: 08:30 to 17:30 (8:30 AM to 5:30 PM)
+    // Shift C: 17:30 to 00:00 (5:30 PM to midnight)
     this.shiftConfig = shiftConfig || {
       A: { start: "00:00", end: "08:30" },
-      B: { start: "08:30", end: "17:00" },
-      C: { start: "17:00", end: "00:00" },
+      B: { start: "08:30", end: "17:30" },
+      C: { start: "17:30", end: "00:00" },
     };
+  }
+
+  // Method to initialize shift config from MongoDB
+  async initializeFromDB() {
+    try {
+      const dbConfig = await getShiftConfigFromDB();
+      if (dbConfig) {
+        this.shiftConfig = dbConfig;
+        console.log("Shift configuration loaded from MongoDB:", this.shiftConfig);
+        return true;
+      } else {
+        console.log("No shift configuration found in MongoDB, using defaults");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error loading shift config from MongoDB:", error);
+      console.log("Using default shift configuration");
+      return false;
+    }
   }
 
   setShiftConfig(newConfig) {
@@ -53,24 +92,50 @@ class ShiftUtility {
   }
 
   getCurrentShift(currentTime = new Date()) {
-    for (const [shift, times] of Object.entries(this.shiftConfig)) {
+    const shifts = Object.entries(this.shiftConfig);
+    
+    for (let i = 0; i < shifts.length; i++) {
+      const [shift, times] = shifts[i];
       const start = this._parseTime(times.start, currentTime);
       let end = this._parseTime(times.end, currentTime);
+      let adjustedCurrentTime = currentTime;
 
       // Handle overnight shifts
-      if (isBefore(end, start)) {
+      const isOvernight = isBefore(end, start);
+      if (isOvernight) {
         end = addDays(end, 1);
         if (isBefore(currentTime, start)) {
-          currentTime = addDays(currentTime, 1);
+          adjustedCurrentTime = addDays(currentTime, 1);
         }
       }
 
-      if (
-        (isAfter(currentTime, start) ||
-          currentTime.getTime() === start.getTime()) &&
-        isBefore(currentTime, end)
-      ) {
-        return shift;
+      // For regular (non-overnight) shifts: 
+      // - Start time is inclusive (shift starts at this time)
+      // - End time is inclusive (shift includes this time, next shift starts after)
+      // For overnight shifts:
+      // - Start time is inclusive
+      // - End time is exclusive (shift ends before this time next day)
+      
+      if (isOvernight) {
+        // Overnight shift: start inclusive, end exclusive
+        if (
+          (isAfter(adjustedCurrentTime, start) ||
+            adjustedCurrentTime.getTime() === start.getTime()) &&
+          isBefore(adjustedCurrentTime, end)
+        ) {
+          return shift;
+        }
+      } else {
+        // Regular shift: both start and end are inclusive
+        // Time matches if: time >= start AND time <= end
+        if (
+          (isAfter(adjustedCurrentTime, start) ||
+            adjustedCurrentTime.getTime() === start.getTime()) &&
+          (isBefore(adjustedCurrentTime, end) ||
+            adjustedCurrentTime.getTime() === end.getTime())
+        ) {
+          return shift;
+        }
       }
     }
 

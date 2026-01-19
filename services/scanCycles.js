@@ -153,6 +153,17 @@ class ScannerController {
       // Initialize barcode generator
       logger.info("🏷️ Setting up barcode generator...");
       this.shiftUtility = new ShiftUtility();
+      // Load shift configuration from MongoDB
+      logger.info("🔄 Loading shift configuration from MongoDB...");
+      const configLoaded = await this.shiftUtility.initializeFromDB();
+      if (configLoaded) {
+        logger.success("✅ Shift configuration loaded from MongoDB");
+        logger.info(`   Shift A: ${this.shiftUtility.shiftConfig.A.start} - ${this.shiftUtility.shiftConfig.A.end}`);
+        logger.info(`   Shift B: ${this.shiftUtility.shiftConfig.B.start} - ${this.shiftUtility.shiftConfig.B.end}`);
+        logger.info(`   Shift C: ${this.shiftUtility.shiftConfig.C.start} - ${this.shiftUtility.shiftConfig.C.end}`);
+      } else {
+        logger.warn("⚠️ Using default shift configuration");
+      }
       this.barcodeGenerator = new BarcodeGenerator(this.shiftUtility);
       await this.barcodeGenerator.initialize("main-data", "records");
       logger.success("Barcode generator initialized");
