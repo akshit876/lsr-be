@@ -73,7 +73,22 @@ class ShiftUtility {
     try {
       const dbConfig = await getShiftConfigFromDB();
       if (dbConfig) {
-        this.shiftConfig = dbConfig;
+        // Ensure shifts are ordered correctly (A, B, C) for consistent iteration
+        const orderedConfig = {};
+        const shiftOrder = ['A', 'B', 'C'];
+        shiftOrder.forEach(shiftName => {
+          if (dbConfig[shiftName]) {
+            orderedConfig[shiftName] = dbConfig[shiftName];
+          }
+        });
+        // Add any other shifts that might exist
+        Object.keys(dbConfig).forEach(shiftName => {
+          if (!orderedConfig[shiftName]) {
+            orderedConfig[shiftName] = dbConfig[shiftName];
+          }
+        });
+        
+        this.shiftConfig = orderedConfig;
         console.log("Shift configuration loaded from MongoDB:", this.shiftConfig);
         return true;
       } else {
@@ -92,50 +107,71 @@ class ShiftUtility {
   }
 
   getCurrentShift(currentTime = new Date()) {
-    const shifts = Object.entries(this.shiftConfig);
+    // Sort shifts to check regular (non-overnight) shifts first, then overnight shifts
+    // This ensures regular shifts take priority at boundaries
+    // Also maintain order: A, B, C for consistent behavior
+    const shiftOrder = ['A', 'B', 'C'];
+    const shifts = shiftOrder
+      .filter(shiftName => this.shiftConfig[shiftName])
+      .map(shiftName => [shiftName, this.shiftConfig[shiftName]])
+      .concat(
+        Object.entries(this.shiftConfig).filter(([name]) => !shiftOrder.includes(name))
+      );
     
-    for (let i = 0; i < shifts.length; i++) {
-      const [shift, times] = shifts[i];
+    // Separate regular and overnight shifts
+    const regularShifts = [];
+    const overnightShifts = [];
+    
+    for (const [shift, times] of shifts) {
+      const start = this._parseTime(times.start, currentTime);
+      const end = this._parseTime(times.end, currentTime);
+      const isOvernight = isBefore(end, start);
+      
+      if (isOvernight) {
+        overnightShifts.push([shift, times]);
+      } else {
+        regularShifts.push([shift, times]);
+      }
+    }
+    
+    // Check regular shifts first (they take priority)
+    for (let i = 0; i < regularShifts.length; i++) {
+      const [shift, times] = regularShifts[i];
+      const start = this._parseTime(times.start, currentTime);
+      const end = this._parseTime(times.end, currentTime);
+      
+      // Regular shift: both start and end are inclusive
+      // Time matches if: time >= start AND time <= end
+      if (
+        (isAfter(currentTime, start) ||
+          currentTime.getTime() === start.getTime()) &&
+        (isBefore(currentTime, end) ||
+          currentTime.getTime() === end.getTime())
+      ) {
+        return shift;
+      }
+    }
+    
+    // Then check overnight shifts
+    for (let i = 0; i < overnightShifts.length; i++) {
+      const [shift, times] = overnightShifts[i];
       const start = this._parseTime(times.start, currentTime);
       let end = this._parseTime(times.end, currentTime);
       let adjustedCurrentTime = currentTime;
-
-      // Handle overnight shifts
-      const isOvernight = isBefore(end, start);
-      if (isOvernight) {
-        end = addDays(end, 1);
-        if (isBefore(currentTime, start)) {
-          adjustedCurrentTime = addDays(currentTime, 1);
-        }
-      }
-
-      // For regular (non-overnight) shifts: 
-      // - Start time is inclusive (shift starts at this time)
-      // - End time is inclusive (shift includes this time, next shift starts after)
-      // For overnight shifts:
-      // - Start time is inclusive
-      // - End time is exclusive (shift ends before this time next day)
       
-      if (isOvernight) {
-        // Overnight shift: start inclusive, end exclusive
-        if (
-          (isAfter(adjustedCurrentTime, start) ||
-            adjustedCurrentTime.getTime() === start.getTime()) &&
-          isBefore(adjustedCurrentTime, end)
-        ) {
-          return shift;
-        }
-      } else {
-        // Regular shift: both start and end are inclusive
-        // Time matches if: time >= start AND time <= end
-        if (
-          (isAfter(adjustedCurrentTime, start) ||
-            adjustedCurrentTime.getTime() === start.getTime()) &&
-          (isBefore(adjustedCurrentTime, end) ||
-            adjustedCurrentTime.getTime() === end.getTime())
-        ) {
-          return shift;
-        }
+      // Handle overnight shifts
+      end = addDays(end, 1);
+      if (isBefore(currentTime, start)) {
+        adjustedCurrentTime = addDays(currentTime, 1);
+      }
+      
+      // Overnight shift: start inclusive, end exclusive
+      if (
+        (isAfter(adjustedCurrentTime, start) ||
+          adjustedCurrentTime.getTime() === start.getTime()) &&
+        isBefore(adjustedCurrentTime, end)
+      ) {
+        return shift;
       }
     }
 
