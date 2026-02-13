@@ -256,7 +256,7 @@ class SerialNumberGeneratorService {
     let serialToUse;
 
     if (reset) {
-      // Reset case - use model starting serial
+      // Reset case - use model starting serial (checkAndResetSerialNumber already confirmed this is the first reset today)
       this.currentSerialNumber = modelStartingSerial;
       serialToUse = this.currentSerialNumber;
 
@@ -264,13 +264,56 @@ class SerialNumberGeneratorService {
         `🔄 RESET: Using starting serial ${serialToUse} for model: ${this.currentModelNumber}`
       );
     } else if (!modelConfig || !modelConfig.currentValue) {
-      // No model config exists - start with model's starting serial
-      this.currentSerialNumber = modelStartingSerial;
-      serialToUse = this.currentSerialNumber;
-
-      logger.info(
-        `🆕 NEW MODEL: Starting with serial ${serialToUse} for model: ${this.currentModelNumber}`
+      // ──────────────────────────────────────────────────────────────────────────
+      // CRITICAL FIX: No model config exists, but we're NOT supposed to reset today.
+      // Instead of using modelStartingSerial (which would cause same-day 0001),
+      // query the last record for this model and continue from there.
+      // ──────────────────────────────────────────────────────────────────────────
+      logger.warn(
+        `🆕 MISSING CONFIG for model: ${this.currentModelNumber}. Attempting to recover last serial from records...`
       );
+
+      let recoveredSerial = null;
+      try {
+        await MongoDBService.connect(
+          this.originalDbName,
+          this.originalCollectionName
+        );
+        const filter = this.currentModelNumber
+          ? { ModelNumber: this.currentModelNumber }
+          : {};
+        const lastRecord = await MongoDBService.collection
+          .find(filter)
+          .sort({ Timestamp: -1 })
+          .limit(1)
+          .toArray();
+
+        if (lastRecord.length && lastRecord[0].SerialNumber) {
+          const lastSerial = parseInt(lastRecord[0].SerialNumber, 10);
+          if (!isNaN(lastSerial) && lastSerial > 0) {
+            recoveredSerial = lastSerial + 1;
+            logger.info(
+              `✅ RECOVERED: Found last serial ${lastSerial} from records, continuing with ${recoveredSerial}`
+            );
+          }
+        }
+      } catch (recoverError) {
+        logger.warn(
+          `⚠️ Could not recover serial from records: ${recoverError.message}`
+        );
+      }
+
+      if (recoveredSerial !== null) {
+        this.currentSerialNumber = recoveredSerial;
+        serialToUse = this.currentSerialNumber;
+      } else {
+        // Truly no records exist for this model - use starting serial
+        this.currentSerialNumber = modelStartingSerial;
+        serialToUse = this.currentSerialNumber;
+        logger.warn(
+          `🆕 No records found for model ${this.currentModelNumber}, using starting serial ${serialToUse}`
+        );
+      }
     } else {
       // Model config exists - continue from currentValue + 1
       const existingValue = parseInt(modelConfig.currentValue, 10);
@@ -282,12 +325,54 @@ class SerialNumberGeneratorService {
           `✅ CONTINUING: Model ${this.currentModelNumber} from ${existingValue} to ${serialToUse}`
         );
       } else {
-        this.currentSerialNumber = modelStartingSerial;
-        serialToUse = this.currentSerialNumber;
-
+        // ──────────────────────────────────────────────────────────────────────────
+        // CRITICAL FIX: Invalid currentValue but we're NOT supposed to reset today.
+        // Recover from records instead of using modelStartingSerial.
+        // ──────────────────────────────────────────────────────────────────────────
         logger.warn(
-          `⚠️ INVALID DATA: Using starting serial ${serialToUse} for model: ${this.currentModelNumber}`
+          `⚠️ INVALID DATA: currentValue="${modelConfig.currentValue}" is not a number. Attempting recovery...`
         );
+
+        let recoveredSerial = null;
+        try {
+          await MongoDBService.connect(
+            this.originalDbName,
+            this.originalCollectionName
+          );
+          const filter = this.currentModelNumber
+            ? { ModelNumber: this.currentModelNumber }
+            : {};
+          const lastRecord = await MongoDBService.collection
+            .find(filter)
+            .sort({ Timestamp: -1 })
+            .limit(1)
+            .toArray();
+
+          if (lastRecord.length && lastRecord[0].SerialNumber) {
+            const lastSerial = parseInt(lastRecord[0].SerialNumber, 10);
+            if (!isNaN(lastSerial) && lastSerial > 0) {
+              recoveredSerial = lastSerial + 1;
+              logger.info(
+                `✅ RECOVERED: Found last serial ${lastSerial} from records, continuing with ${recoveredSerial}`
+              );
+            }
+          }
+        } catch (recoverError) {
+          logger.warn(
+            `⚠️ Could not recover serial from records: ${recoverError.message}`
+          );
+        }
+
+        if (recoveredSerial !== null) {
+          this.currentSerialNumber = recoveredSerial;
+          serialToUse = this.currentSerialNumber;
+        } else {
+          this.currentSerialNumber = modelStartingSerial;
+          serialToUse = this.currentSerialNumber;
+          logger.warn(
+            `⚠️ No records found for model ${this.currentModelNumber}, using starting serial ${serialToUse}`
+          );
+        }
       }
     }
 
@@ -322,11 +407,24 @@ class SerialNumberGeneratorService {
     return this.currentSerialNumber;
   }
 
+  /**
+   * RESET LOGIC: Reset happens ONLY ONCE per calendar day (at first request after midnight).
+   * Once we've reset for today, no further resets are allowed until the next calendar day.
+   *
+   * Previous causes of same-day duplicate 0001 (now prevented):
+   * 1. Last record query returns nothing (ModelNumber mismatch, missing on records, wrong collection)
+   * 2. lastRecordDate < todayStart (timestamp/timezone, or last record not yet saved)
+   * 3. modelSerialConfig missing or currentValue empty/invalid (getNextDecSerialNumber2 path)
+   * 4. getCurrentModelNumber() temporarily null → loadModelSerialConfig looks up "default" → no config → 0001
+   * 5. serialToUse > 9999 rollover (rare)
+   *
+   * FIX: Track lastResetDate and only allow ONE reset per calendar day.
+   */
   async checkAndResetSerialNumber() {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Get today's start
+    // Today at midnight (start of calendar day) - LOCAL TIME
     const todayStart = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -337,32 +435,111 @@ class SerialNumberGeneratorService {
       0
     );
 
-    let shouldReset = false;
+    // ──────────────────────────────────────────────────────────────────────────
+    // CRITICAL FIX: If we've already reset TODAY, do NOT reset again.
+    // This prevents same-day duplicate 0001 from any cause.
+    // ──────────────────────────────────────────────────────────────────────────
+    if (this.lastResetDate && this.lastResetDate >= todayStart) {
+      logger.info(
+        `🛡️ RESET GUARD: Already reset today at ${this.lastResetDate.toISOString()}. No second reset allowed until tomorrow.`
+      );
+      logger.info(
+        `✅ NO SERIAL RESET: Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+      );
+      return false;
+    }
+
+    // Also check the persisted lastReset in modelSerialConfig to survive server restarts
     try {
-      // Connect to records collection
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      const modelConfig = await MongoDBService.collection.findOne({
+        modelNumber: currentModel || "default",
+      });
+      if (modelConfig && modelConfig.lastReset) {
+        const persistedLastReset = new Date(modelConfig.lastReset);
+        if (persistedLastReset >= todayStart) {
+          // Update in-memory lastResetDate to match DB
+          this.lastResetDate = persistedLastReset;
+          logger.info(
+            `🛡️ RESET GUARD (from DB): Already reset today at ${persistedLastReset.toISOString()}. No second reset allowed until tomorrow.`
+          );
+          logger.info(
+            `✅ NO SERIAL RESET: Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+          );
+          return false;
+        }
+      }
+    } catch (dbError) {
+      logger.warn(
+        `⚠️ Could not check persisted lastReset in modelSerialConfig: ${dbError.message}`
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // If we reach here, we haven't reset today yet. Check if we SHOULD reset.
+    // Reset condition: last record is from BEFORE today (or no record exists).
+    // ──────────────────────────────────────────────────────────────────────────
+    let shouldReset = false;
+    let lastRecordDate = null;
+    try {
       await MongoDBService.connect(
         this.originalDbName,
         this.originalCollectionName
       );
-      // Find the last record for the current model
+
+      const filter = currentModel ? { ModelNumber: currentModel } : {};
+      logger.info(
+        `🕐 Serial reset check: model=${currentModel ?? "null"}, filter=${JSON.stringify(filter)}, now=${now.toISOString()}`
+      );
+
       const lastRecord = await MongoDBService.collection
-        .find(currentModel ? { ModelNumber: currentModel } : {})
+        .find(filter)
         .sort({ Timestamp: -1 })
         .limit(1)
         .toArray();
-      let lastRecordDate = null;
+
       if (lastRecord.length && lastRecord[0].Timestamp) {
         lastRecordDate = new Date(lastRecord[0].Timestamp);
+        const doc = lastRecord[0];
+        logger.info(
+          `🕐 Last record for this model: Timestamp=${lastRecordDate.toISOString()}, ModelNumber=${doc.ModelNumber ?? "missing"}, SerialNumber=${doc.SerialNumber ?? "missing"}`
+        );
+        if (lastRecordDate < todayStart) {
+          shouldReset = true;
+        }
+      } else {
+        // No record found for this model - only reset if it's genuinely a new day
+        // (check any record in DB to see if today has started)
+        const anyLastRecord = await MongoDBService.collection
+          .find({})
+          .sort({ Timestamp: -1 })
+          .limit(1)
+          .toArray();
+        if (anyLastRecord.length && anyLastRecord[0].Timestamp) {
+          const anyDate = new Date(anyLastRecord[0].Timestamp);
+          const anyDoc = anyLastRecord[0];
+          const anyModel = anyDoc.ModelNumber ?? "missing";
+          if (anyDate >= todayStart) {
+            // There are records from today (maybe different model) → don't reset
+            logger.warn(
+              `🕐 No record found for model "${currentModel}" but latest record in DB is from today (${anyDate.toISOString()}) with ModelNumber="${anyModel}". Treating as same day - NO RESET.`
+            );
+            shouldReset = false;
+          } else {
+            // All records are from before today → it's a new day, reset
+            shouldReset = true;
+          }
+        } else {
+          // No records at all in DB → first ever record, start fresh
+          shouldReset = true;
+        }
       }
-      if (!lastRecordDate || lastRecordDate < todayStart) {
-        shouldReset = true;
-      }
+
       logger.info(
-        `🕐 Serial reset check: lastRecordDate=${lastRecordDate}, todayStart=${todayStart}, shouldReset=${shouldReset}`
+        `🕐 Serial reset check: lastRecordDate=${lastRecordDate !== null ? lastRecordDate.toISOString() : "none"}, todayStart=${todayStart.toISOString()}, shouldReset=${shouldReset}`
       );
     } catch (error) {
       logger.error("❌ Error checking last record for serial reset:", error);
-      // On error, do not reset
       shouldReset = false;
     }
 
@@ -370,7 +547,7 @@ class SerialNumberGeneratorService {
       const modelStartingSerial = await this.getModelStartingSerial();
       const oldSerial = this.currentSerialNumber;
       this.currentSerialNumber = modelStartingSerial;
-      this.lastResetDate = now;
+      this.lastResetDate = now; // Mark that we've reset TODAY
       logger.info(
         `🔄 SERIAL RESET: Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) at ${now.toISOString()}`
       );

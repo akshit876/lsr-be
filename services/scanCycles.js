@@ -460,6 +460,24 @@ class ScannerController {
     result,
     isUpdate = false,
   }) {
+    // Prevent empty records: never persist when both serial and barcode are empty
+    const hasIdentity =
+      (serialNumber !== null &&
+        serialNumber !== undefined &&
+        String(serialNumber).trim() !== "") ||
+      (markingData !== null &&
+        markingData !== undefined &&
+        String(markingData).trim() !== "");
+    if (!hasIdentity) {
+      logger.warn(
+        "⚠️ Skipping MongoDB save: serialNumber and markingData are both empty (reset/error path). No empty record will be created."
+      );
+      if (io) {
+        mongoDbService.broadcastDataToAllClients?.(io, "main-data", "records");
+      }
+      return;
+    }
+
     const now = new Date();
     const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
 
