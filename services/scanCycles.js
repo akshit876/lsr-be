@@ -348,6 +348,16 @@ class ScannerController {
 
       // Safety check interval - runs every 500ms to monitor safety conditions
       // Only emits alarms to UI - does NOT stop waiting for the start bit
+      // Track previous state so we can emit safety_cleared when PLC bits go off
+      const prevSafety = {
+        partPresent: false,
+        emergencyStop: false,
+        safetySensor: false,
+        emergencyPushButton: false,
+        safetyCurtain: false,
+        slideFwdReedMissing: false,
+        slideHomeReedMissing: false,
+      };
       const safetyCheckInterval = setInterval(async () => {
         try {
           // Read safety bits from register 1490
@@ -358,6 +368,47 @@ class ScannerController {
           const safetyCurtain = await readBit(1490, 4, false); // Safety curtain
           const slideFwdReedMissing = await readBit(1490, 5, false); // SLIDE FWD REED-SWITCH MISSING
           const slideHomeReedMissing = await readBit(1490, 6, false); // SLIDE HOME REED-SWITCH MISSING
+
+          const emitCleared = (violation) => {
+            if (this.io) {
+              this.io.emit("safety_cleared", {
+                timestamp: new Date().toISOString(),
+                violation,
+                cycleNumber: this.cycleCount,
+              });
+            }
+          };
+
+          // Emit safety_cleared when a bit goes from 1 → 0 so UI can remove toasts
+          if (prevSafety.partPresent && !partPresent) {
+            emitCleared("Part not present");
+          }
+          if (prevSafety.emergencyStop && !emergencyStop) {
+            emitCleared("Emergency stop activated");
+          }
+          if (prevSafety.safetySensor && !safetySensor) {
+            emitCleared("Safety sensor triggered");
+          }
+          if (prevSafety.emergencyPushButton && !emergencyPushButton) {
+            emitCleared("Emergency push button pressed");
+          }
+          if (prevSafety.safetyCurtain && !safetyCurtain) {
+            emitCleared("Safety curtain interrupted");
+          }
+          if (prevSafety.slideFwdReedMissing && !slideFwdReedMissing) {
+            emitCleared("SLIDE FWD REED-SWITCH MISSING");
+          }
+          if (prevSafety.slideHomeReedMissing && !slideHomeReedMissing) {
+            emitCleared("SLIDE HOME REED-SWITCH MISSING");
+          }
+
+          prevSafety.partPresent = partPresent;
+          prevSafety.emergencyStop = emergencyStop;
+          prevSafety.safetySensor = safetySensor;
+          prevSafety.emergencyPushButton = emergencyPushButton;
+          prevSafety.safetyCurtain = safetyCurtain;
+          prevSafety.slideFwdReedMissing = slideFwdReedMissing;
+          prevSafety.slideHomeReedMissing = slideHomeReedMissing;
 
           // Emit safety violations to UI (but continue waiting for start bit)
           if (partPresent && this.io) {

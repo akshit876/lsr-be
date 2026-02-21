@@ -33,6 +33,25 @@ The backend emits **safety/alarm** events over Socket.IO. Your frontend can list
 
 ---
 
+### 1.1. When alarms clear (PLC bit goes off)
+
+**Event:** `safety_cleared`  
+**Emitted by:** Backend when a safety bit on register **1490** goes from 1 → 0.
+
+**Payload:** Same shape as `safety_violation`:
+
+```ts
+{
+  timestamp: string;
+  violation: string;   // Same string as when it fired (use to match and remove)
+  cycleNumber: number;
+}
+```
+
+**UI must:** On `safety_cleared`, remove or dismiss the toast/row for that `violation` so alarm UI does not stay on screen after the PLC has cleared it. Match by `payload.violation` (e.g. remove from active list or dismiss that toast).
+
+---
+
 ## 2. Connect to the backend
 
 Backend default: **http://localhost:3002** (or set `PORT` in env).  
@@ -51,20 +70,26 @@ Use your real backend URL in production (e.g. `https://your-api.com` or `http://
 
 ---
 
-## 3. Listen for alarms (vanilla JS / any framework)
+## 3. Listen for alarms and cleared (vanilla JS / any framework)
 
 ```js
 socket.on("safety_violation", (payload) => {
-  console.log("Alarm:", payload.violation, payload.timestamp);
-
-  // Example: show in UI
   showAlarm({
     message: payload.violation,
     time: payload.timestamp,
     cycle: payload.cycleNumber,
   });
 });
+
+// Remove/dismiss when PLC clears the alarm
+socket.on("safety_cleared", (payload) => {
+  removeAlarmByViolation(payload.violation);
+});
 ```
+
+**Toasts:** Show alarm toasts on the **right** side of the screen (e.g. `position: 'top-right'` or `bottom-right`) so they align with the rest of the UI.
+
+**Single alarm UI:** Use one alarm list or toast container for `safety_violation` / `safety_cleared`. Do not add a second alarm panel or duplicate widgets, or you will get “extra GUI” and inconsistent state.
 
 ---
 
@@ -95,12 +120,17 @@ export function AlarmsPanel() {
           time: payload.timestamp,
           cycle: payload.cycleNumber,
         },
-        ...prev.slice(0, 49), // keep last 50
+        ...prev.filter((a) => a.message !== payload.violation).slice(0, 49),
       ]);
+    });
+
+    s.on("safety_cleared", (payload) => {
+      setAlarms((prev) => prev.filter((a) => a.message !== payload.violation));
     });
 
     return () => {
       s.off("safety_violation");
+      s.off("safety_cleared");
       s.disconnect();
     };
   }, []);
@@ -158,14 +188,18 @@ onMounted(() => {
   socket.on("safety_violation", (payload) => {
     alarms.value = [
       { id: `${payload.timestamp}-${payload.violation}`, ...payload },
-      ...alarms.value.slice(0, 49),
+      ...alarms.value.filter((a) => a.violation !== payload.violation).slice(0, 49),
     ];
+  });
+  socket.on("safety_cleared", (payload) => {
+    alarms.value = alarms.value.filter((a) => a.violation !== payload.violation);
   });
 });
 
 onUnmounted(() => {
   if (socket) {
     socket.off("safety_violation");
+    socket.off("safety_cleared");
     socket.disconnect();
   }
 });
@@ -208,9 +242,10 @@ Backend allows origin **http://localhost:3000**. If your UI runs on another port
 
 | What | Value |
 |------|--------|
-| Socket event | `safety_violation` |
+| Alarm event | `safety_violation` (bit = 1) |
+| Clear event | `safety_cleared` (bit 1 → 0) — **listen and remove toasts** |
 | Backend URL (dev) | `http://localhost:3002` |
 | Payload | `{ timestamp, violation, cycleNumber }` |
 | New alarms | `SLIDE FWD REED-SWITCH MISSING`, `SLIDE HOME REED-SWITCH MISSING` |
 
-Listen with `socket.on("safety_violation", callback)` and render `payload.violation` (and optionally `timestamp`, `cycleNumber`) in your alarms list or banner.
+**UI checklist:** Use one alarm/toast area; position toasts on the **right**; on `safety_cleared` remove or dismiss the matching toast so alarms don’t stay after the PLC clears them.
