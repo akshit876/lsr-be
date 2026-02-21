@@ -356,6 +356,8 @@ class ScannerController {
           const safetySensor = await readBit(1490, 2, false); // Safety sensor
           const emergencyPushButton = await readBit(1490, 3, false); // Emergency push button
           const safetyCurtain = await readBit(1490, 4, false); // Safety curtain
+          const slideFwdReedMissing = await readBit(1490, 5, false); // SLIDE FWD REED-SWITCH MISSING
+          const slideHomeReedMissing = await readBit(1490, 6, false); // SLIDE HOME REED-SWITCH MISSING
 
           // Emit safety violations to UI (but continue waiting for start bit)
           if (partPresent && this.io) {
@@ -407,6 +409,28 @@ class ScannerController {
             this.io.emit("safety_violation", {
               timestamp: new Date().toISOString(),
               violation: "Safety curtain interrupted",
+              cycleNumber: this.cycleCount,
+            });
+          }
+
+          if (slideFwdReedMissing && this.io) {
+            logger.error(
+              "🚨 ALARM: SLIDE FWD REED-SWITCH MISSING (1490.5 = 1)"
+            );
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "SLIDE FWD REED-SWITCH MISSING",
+              cycleNumber: this.cycleCount,
+            });
+          }
+
+          if (slideHomeReedMissing && this.io) {
+            logger.error(
+              "🚨 ALARM: SLIDE HOME REED-SWITCH MISSING (1490.6 = 1)"
+            );
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "SLIDE HOME REED-SWITCH MISSING",
               cycleNumber: this.cycleCount,
             });
           }
