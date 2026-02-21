@@ -2,9 +2,9 @@ import { format, isAfter, isBefore } from "date-fns";
 import MongoDBService from "./mongoDbService.js";
 import logger from "../logger.js";
 
-// Serial number format: always 3 digits (001-999)
-const SERIAL_DIGITS = 3;
-const SERIAL_MAX = 999;
+// Serial number format: always 4 digits (0001-9999)
+const SERIAL_DIGITS = 4;
+const SERIAL_MAX = 9999;
 
 class SerialNumberGeneratorService {
   constructor() {
@@ -68,9 +68,8 @@ class SerialNumberGeneratorService {
 
   // ... rest of the methods remain the same
   extractSerialNumberFromOCR(ocrData) {
-    // Assuming the serial number is a 3-digit number in the OCR data
-    // Modify this regex if the format is different
-    const match = ocrData.match(/\d{3}/);
+    // Assuming the serial number is a 3- or 4-digit number in the OCR data
+    const match = ocrData.match(/\d{3,4}/);
     return match ? parseInt(match[0], 10) + 1 : 1; // Start from next number, or 1 if not found
   }
 
@@ -295,7 +294,7 @@ class SerialNumberGeneratorService {
       }
     }
 
-    // VALIDATION: Ensure serial number doesn't exceed 3-digit max (999)
+    // VALIDATION: Ensure serial number doesn't exceed max (9999 for 4 digits)
     if (serialToUse > SERIAL_MAX) {
       logger.warn(
         `⚠️ Serial number ${serialToUse} exceeds ${SERIAL_MAX}, rolling over to 1`
@@ -304,7 +303,7 @@ class SerialNumberGeneratorService {
       this.currentSerialNumber = 1;
     }
 
-    // Format the serial number - always 3 digits (001-999)
+    // Format the serial number - always 4 digits (0001-9999)
     const serialNumber = serialToUse.toString().padStart(SERIAL_DIGITS, "0");
 
     // Save the USED serial number to modelSerialConfig
@@ -330,16 +329,20 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Get today's start
-    const todayStart = new Date(
+    // Day boundary = today at configured reset time (e.g. 06:00), so reset happens only once per day at that time
+    const todayResetTime = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
-      0,
-      0,
+      this.resetHour,
+      this.resetMinute,
       0,
       0
     );
+    // If we're before today's reset time, "period start" is yesterday's reset time
+    const periodStart = now < todayResetTime
+      ? new Date(todayResetTime.getTime() - 24 * 60 * 60 * 1000)
+      : todayResetTime;
 
     let shouldReset = false;
     try {
@@ -358,11 +361,16 @@ class SerialNumberGeneratorService {
       if (lastRecord.length && lastRecord[0].Timestamp) {
         lastRecordDate = new Date(lastRecord[0].Timestamp);
       }
-      if (!lastRecordDate || lastRecordDate < todayStart) {
+      // Reset only once per period: last record is before this period start, and we haven't already reset this period
+      const alreadyResetThisPeriod = this.lastResetDate && this.lastResetDate >= periodStart;
+      if (
+        !alreadyResetThisPeriod &&
+        (!lastRecordDate || lastRecordDate < periodStart)
+      ) {
         shouldReset = true;
       }
       logger.info(
-        `🕐 Serial reset check: lastRecordDate=${lastRecordDate}, todayStart=${todayStart}, shouldReset=${shouldReset}`
+        `🕐 Serial reset check: lastRecordDate=${lastRecordDate}, periodStart=${periodStart}, alreadyResetThisPeriod=${alreadyResetThisPeriod}, shouldReset=${shouldReset}`
       );
     } catch (error) {
       logger.error("❌ Error checking last record for serial reset:", error);
@@ -396,28 +404,28 @@ class SerialNumberGeneratorService {
       if (modelNumber) {
         // Model-specific starting serial configurations for ALL models
         if (modelNumber === "CMB-877") {
-          logger.info(`✅ Model ${modelNumber} → starting serial: 701 (S701)`);
-          return 701; // Changed from 7001 to 701 (3 digits max)
+          logger.info(`✅ Model ${modelNumber} → starting serial: 701 (S0701)`);
+          return 701; // Displayed as 0701 (4 digits)
         } else if (modelNumber === "CMB-778") {
           // CMB-778 starts from 1
-          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S001)`);
+          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S0001)`);
           return 1;
         } else {
           // All other models start from 1
           logger.info(
-            `✅ Model ${modelNumber} → starting serial: 1 (S001) [default for this model]`
+            `✅ Model ${modelNumber} → starting serial: 1 (S0001) [default for this model]`
           );
           return 1;
         }
       } else {
         logger.warn(
-          "⚠️ No model number found, using default starting serial: 1 (S001)"
+          "⚠️ No model number found, using default starting serial: 1 (S0001)"
         );
         return this.modelStartingSerials["default"];
       }
     } catch (error) {
       logger.error("❌ Error fetching model starting serial:", error);
-      logger.warn("⚠️ Defaulting to serial number 1 (S001) due to error");
+      logger.warn("⚠️ Defaulting to serial number 1 (S0001) due to error");
       return this.modelStartingSerials["default"];
     }
   }
