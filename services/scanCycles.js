@@ -27,13 +27,24 @@ export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 
-// TCP Scanner configuration
+// TCP Scanner configuration (legacy / fallback)
 const TCP_SCANNER_CONFIG = {
-  host: process.env.SCANNER_HOST || "192.168.3.147", // Default TCP scanner IP
-  port: parseInt(process.env.SCANNER_PORT, 10) || 502, // Default TCP scanner port
+  host: process.env.SCANNER_HOST || "192.168.3.147",
+  port: parseInt(process.env.SCANNER_PORT, 10) || 502,
   timeout: 5000,
   reconnectInterval: 3000,
-  keepAlive: true, // Enable keep-alive to prevent idle timeouts
+  keepAlive: true,
+  keepAliveInitialDelay: 1000,
+  logDir: "scanner_logs",
+};
+
+// Scannew scanner (primary) - 192.168.3.146:23
+const SCANNEW_CONFIG = {
+  host: process.env.SCANNEW_HOST || "192.168.3.146",
+  port: parseInt(process.env.SCANNEW_PORT, 10) || 23,
+  timeout: 5000,
+  reconnectInterval: 3000,
+  keepAlive: true,
   keepAliveInitialDelay: 1000,
   logDir: "scanner_logs",
 };
@@ -83,11 +94,11 @@ class ScannerController {
       await mongoDbService.connect("main-data", "records");
       logger.success("MongoDB connected successfully");
 
-      // Initialize TCP scanner connection with better error handling
-      logger.info("🔌 Setting up TCP scanner connection...");
+      // Initialize TCP scanner connection (scannew: 192.168.3.146:23)
+      logger.info("🔌 Setting up TCP scanner connection (scannew)...");
       try {
-        logger.info("🔍 Creating TcpScannerService instance...");
-        this.tcpScannerService = new TcpScannerService(TCP_SCANNER_CONFIG);
+        logger.info("🔍 Creating TcpScannerService instance (scannew)...");
+        this.tcpScannerService = new TcpScannerService(SCANNEW_CONFIG);
         logger.info(
           `🔍 tcpScannerService created: ${this.tcpScannerService ? "exists" : "null"}`
         );
@@ -98,7 +109,7 @@ class ScannerController {
           `🔍 After initTcpConnection - tcpScannerService: ${this.tcpScannerService ? "exists" : "null"}`
         );
         logger.success(
-          `TCP scanner connected successfully at ${TCP_SCANNER_CONFIG.host}:${TCP_SCANNER_CONFIG.port}`
+          `TCP scanner (scannew) connected successfully at ${SCANNEW_CONFIG.host}:${SCANNEW_CONFIG.port}`
         );
       } catch (tcpError) {
         logger.error(
@@ -119,7 +130,7 @@ class ScannerController {
           logger.error("   4. Ensure no firewall is blocking the connection");
           logger.error("   5. Try pinging the scanner IP address");
           logger.error(
-            `   6. Verify scanner is listening on port ${TCP_SCANNER_CONFIG.port}`
+            `   6. Verify scanner is listening on port ${SCANNEW_CONFIG.port}`
           );
         } else if (tcpError.message.includes("EHOSTUNREACH")) {
           logger.error("❌ TCP Scanner Host Unreachable");
@@ -134,9 +145,9 @@ class ScannerController {
         }
 
         logger.info(`💡 Current TCP Scanner Configuration:`);
-        logger.info(`   - Host: ${TCP_SCANNER_CONFIG.host}`);
-        logger.info(`   - Port: ${TCP_SCANNER_CONFIG.port}`);
-        logger.info(`   - Timeout: ${TCP_SCANNER_CONFIG.timeout}ms`);
+        logger.info(`   - Host (scannew): ${SCANNEW_CONFIG.host}`);
+        logger.info(`   - Port: ${SCANNEW_CONFIG.port}`);
+        logger.info(`   - Timeout: ${SCANNEW_CONFIG.timeout}ms`);
 
         throw new Error(`TCP Scanner Error: ${tcpError.message}`);
       }
