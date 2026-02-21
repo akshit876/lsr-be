@@ -49,18 +49,19 @@ class BarcodeGenerator {
   // Generate text file content with the specified format: 1=julian date, 2=year code, 3=company code, 4=DMCcode
   generateTextFileContent() {
     const now = new Date();
-    // 1 = Julian date (day of year)
+    // 1 = Julian date (day of year) - always 3 digits (001-365)
     const start = new Date(now.getFullYear(), 0, 0);
     const diff = now - start;
     const oneDay = 1000 * 60 * 60 * 24;
-    const julianDate = Math.floor(diff / oneDay);
+    const dayOfYear = Math.floor(diff / oneDay);
+    const julianDate = String(dayOfYear).padStart(3, "0");
     // 2 = Single digit year code (last digit of year)
     const yearCode = now.getFullYear() % 10;
     // 3 = Company code (fixed as 'R')
     // const companyCode = "R";
     // // 4 = DMC code (you can customize this)
     // const dmcCode = "DMC001";
-    // Format: concatenated string (e.g., 243RDMC001)
+    // Format: concatenated string (e.g., 2436 for day 243, year 6)
     const content = `${julianDate}${yearCode}`;
     return content;
   }
