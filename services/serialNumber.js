@@ -329,7 +329,7 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Day boundary = today at configured reset time (e.g. 06:00), so reset happens only once per day at that time
+    // Day boundary = today at configured reset time (e.g. 06:00). Reset happens only once per day at that time.
     const todayResetTime = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -339,44 +339,37 @@ class SerialNumberGeneratorService {
       0,
       0
     );
-    // If we're before today's reset time, "period start" is yesterday's reset time
     const periodStart = now < todayResetTime
       ? new Date(todayResetTime.getTime() - 24 * 60 * 60 * 1000)
       : todayResetTime;
 
-    let shouldReset = false;
+    // Use persisted lastReset from DB so logout/login or server restart does NOT cause a reset
+    let persistedLastReset = null;
     try {
-      // Connect to records collection
-      await MongoDBService.connect(
-        this.originalDbName,
-        this.originalCollectionName
-      );
-      // Find the last record for the current model
-      const lastRecord = await MongoDBService.collection
-        .find(currentModel ? { ModelNumber: currentModel } : {})
-        .sort({ Timestamp: -1 })
-        .limit(1)
-        .toArray();
-      let lastRecordDate = null;
-      if (lastRecord.length && lastRecord[0].Timestamp) {
-        lastRecordDate = new Date(lastRecord[0].Timestamp);
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      const modelConfig = await MongoDBService.collection.findOne({
+        modelNumber: currentModel || "default",
+      });
+      if (modelConfig && modelConfig.lastReset) {
+        persistedLastReset = new Date(modelConfig.lastReset);
+        this.lastResetDate = persistedLastReset;
       }
-      // Reset only once per period: last record is before this period start, and we haven't already reset this period
-      const alreadyResetThisPeriod = this.lastResetDate && this.lastResetDate >= periodStart;
-      if (
-        !alreadyResetThisPeriod &&
-        (!lastRecordDate || lastRecordDate < periodStart)
-      ) {
-        shouldReset = true;
-      }
-      logger.info(
-        `🕐 Serial reset check: lastRecordDate=${lastRecordDate}, periodStart=${periodStart}, alreadyResetThisPeriod=${alreadyResetThisPeriod}, shouldReset=${shouldReset}`
-      );
     } catch (error) {
-      logger.error("❌ Error checking last record for serial reset:", error);
-      // On error, do not reset
-      shouldReset = false;
+      logger.error("❌ Error loading lastReset from modelSerialConfig:", error);
     }
+
+    // Reset only when: we're past today's reset time AND we have a current model AND we haven't already reset this period (from DB).
+    // Do NOT reset when model is unknown (e.g. config not loaded after login) or just because there are no records.
+    const alreadyResetThisPeriod =
+      persistedLastReset && persistedLastReset >= periodStart;
+    const shouldReset =
+      currentModel &&
+      now >= todayResetTime &&
+      !alreadyResetThisPeriod;
+
+    logger.info(
+      `🕐 Serial reset check: periodStart=${periodStart}, persistedLastReset=${persistedLastReset}, alreadyResetThisPeriod=${alreadyResetThisPeriod}, shouldReset=${shouldReset}`
+    );
 
     if (shouldReset) {
       const modelStartingSerial = await this.getModelStartingSerial();
