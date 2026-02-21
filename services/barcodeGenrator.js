@@ -44,15 +44,9 @@ class BarcodeGenerator {
       const fullYear = now.getFullYear().toString();
       // Use the last two digits of the year (e.g., "25" for 2025)
       const year = fullYear.slice(-2);
-      // Convert month: 1-9 use digits 1-9, 10=X, 11=Y, 12=Z
-      const monthNumber = now.getMonth() + 1; // getMonth() returns 0-11, so +1 gives 1-12
-      let month;
-      if (monthNumber <= 9) {
-        month = String(monthNumber); // Use digits 1-9
-      } else {
-        // Months 10, 11, 12 map to X, Y, Z
-        month = ["X", "Y", "Z"][monthNumber - 10];
-      }
+      // Month always two digits: 01, 02, … 12
+      const monthNumber = now.getMonth() + 1; // getMonth() is 0-11 → 1-12
+      const month = String(monthNumber).padStart(2, "0");
       const day = format(now, "dd");
       const shift = this.shiftUtility.getCurrentShift(now);
 
