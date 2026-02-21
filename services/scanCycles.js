@@ -357,6 +357,7 @@ class ScannerController {
         safetyCurtain: false,
         slideFwdReedMissing: false,
         slideHomeReedMissing: false,
+        laserSourceNotReady: false,
       };
       const safetyCheckInterval = setInterval(async () => {
         try {
@@ -368,6 +369,7 @@ class ScannerController {
           const safetyCurtain = await readBit(1490, 4, false); // Safety curtain
           const slideFwdReedMissing = await readBit(1490, 5, false); // SLIDE FWD REED-SWITCH MISSING
           const slideHomeReedMissing = await readBit(1490, 6, false); // SLIDE HOME REED-SWITCH MISSING
+          const laserSourceNotReady = await readBit(1490, 7, false); // LASER SOURCE NOT READY
 
           const emitCleared = (violation) => {
             if (this.io) {
@@ -401,6 +403,9 @@ class ScannerController {
           if (prevSafety.slideHomeReedMissing && !slideHomeReedMissing) {
             emitCleared("SLIDE HOME REED-SWITCH MISSING");
           }
+          if (prevSafety.laserSourceNotReady && !laserSourceNotReady) {
+            emitCleared("LASER SOURCE NOT READY");
+          }
 
           prevSafety.partPresent = partPresent;
           prevSafety.emergencyStop = emergencyStop;
@@ -409,6 +414,7 @@ class ScannerController {
           prevSafety.safetyCurtain = safetyCurtain;
           prevSafety.slideFwdReedMissing = slideFwdReedMissing;
           prevSafety.slideHomeReedMissing = slideHomeReedMissing;
+          prevSafety.laserSourceNotReady = laserSourceNotReady;
 
           // Emit safety violations to UI (but continue waiting for start bit)
           if (partPresent && this.io) {
@@ -482,6 +488,15 @@ class ScannerController {
             this.io.emit("safety_violation", {
               timestamp: new Date().toISOString(),
               violation: "SLIDE HOME REED-SWITCH MISSING",
+              cycleNumber: this.cycleCount,
+            });
+          }
+
+          if (laserSourceNotReady && this.io) {
+            logger.error("🚨 ALARM: LASER SOURCE NOT READY (1490.7 = 1)");
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "LASER SOURCE NOT READY",
               cycleNumber: this.cycleCount,
             });
           }
