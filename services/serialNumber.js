@@ -429,40 +429,23 @@ class SerialNumberGeneratorService {
       await MongoDBService.connect("main-data", "serialNoconfig");
       const serialConfig = await MongoDBService.collection.findOne({});
 
-      if (serialConfig && serialConfig.resetTime) {
-        // Parse the resetTime format "06:00" into hour and minute
-        const [hour, minute] = serialConfig.resetTime.split(":").map(Number);
+      // Requirement: reset must happen ONLY at 12am (00:00) daily.
+      // Keep reading DB config for lastReset (history), but force reset time to midnight.
+      if (serialConfig) {
         logger.info(
-          `Found serial number reset configuration: ${serialConfig.resetTime}, interval: ${serialConfig.resetInterval}`
+          `Found serial number reset configuration: ${serialConfig.resetTime || "n/a"}, interval: ${serialConfig.resetInterval || "n/a"}`
         );
-
-        // Only apply if reset is enabled (daily interval)
-        if (serialConfig.resetInterval === "daily") {
-          this.resetHour = hour || 0;
-          this.resetMinute = minute || 0;
-          logger.info(
-            `Reset time updated from serialNoconfig: ${this.resetHour}:${this.resetMinute}`
-          );
-        } else {
-          logger.info(
-            `Reset interval is '${serialConfig.resetInterval}', using default reset time`
-          );
-          this.resetHour = 0;
-          this.resetMinute = 0;
-        }
-
-        // Update lastResetDate if available
         if (serialConfig.lastReset) {
           this.lastResetDate = new Date(serialConfig.lastReset);
           logger.info(`Last reset date loaded: ${this.lastResetDate}`);
         }
       } else {
-        logger.warn(
-          "No serial number reset configuration found, using defaults (0:00)"
-        );
-        this.resetHour = 0;
-        this.resetMinute = 0;
+        logger.warn("No serial number reset configuration found.");
       }
+
+      this.resetHour = 0;
+      this.resetMinute = 0;
+      logger.info("Reset time forced to 00:00 (12am) daily");
     } catch (error) {
       logger.error("Error fetching serial number reset configuration:", error);
       logger.warn("Using default reset time (0:00) due to error");
