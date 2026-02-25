@@ -36,6 +36,25 @@ export function getTodayMidnightInTimezone(now, timezone = RESET_TIMEZONE) {
   return new Date(`${ymd}T00:00:00Z`);
 }
 
+/**
+ * Returns calendar date string (YYYY-MM-DD) in the given timezone for a Date.
+ * Used to detect date change: reset only when this string changes to a new day.
+ */
+export function getCalendarDateInTimezone(date, timezone = RESET_TIMEZONE) {
+  const formatter = new globalThis.Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(date);
+  const get = (type) => parseInt(parts.find((p) => p.type === type).value, 10);
+  const y = get("year");
+  const m = get("month");
+  const d = get("day");
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 class SerialNumberGeneratorService {
   constructor() {
     this.currentSerialNumber = 1;
@@ -367,14 +386,9 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // 12am in reset timezone (e.g. Asia/Kolkata) so reset is at midnight local, not server UTC
-    const todayResetTime = getTodayMidnightInTimezone(now, this.resetTimezone);
-    const periodStart =
-      now < todayResetTime
-        ? new Date(todayResetTime.getTime() - 24 * 60 * 60 * 1000)
-        : todayResetTime;
+    // Reset only on date change: compare calendar date (in reset TZ) of today vs last reset.
+    const todayCalendarDate = getCalendarDateInTimezone(now, this.resetTimezone);
 
-    // Use persisted lastReset from DB so logout/login or server restart does NOT cause a reset
     let persistedLastReset = null;
     try {
       await MongoDBService.connect("main-data", "modelSerialConfig");
@@ -389,17 +403,19 @@ class SerialNumberGeneratorService {
       logger.error("❌ Error loading lastReset from modelSerialConfig:", error);
     }
 
-    // Reset only when: we're past today's reset time AND we have a current model AND we haven't already reset this period (from DB).
-    // Do NOT reset when model is unknown (e.g. config not loaded after login) or just because there are no records.
-    const alreadyResetThisPeriod =
-      persistedLastReset && persistedLastReset >= periodStart;
+    const lastResetCalendarDate = persistedLastReset
+      ? getCalendarDateInTimezone(persistedLastReset, this.resetTimezone)
+      : null;
+
+    // Reset only when the calendar date has changed: today (in reset TZ) is after the date of last reset.
+    // No reset on first run (no lastReset), no reset multiple times same day, no reset on app start.
     const shouldReset =
       currentModel &&
-      now >= todayResetTime &&
-      !alreadyResetThisPeriod;
+      lastResetCalendarDate !== null &&
+      todayCalendarDate > lastResetCalendarDate;
 
     logger.info(
-      `🕐 Serial reset check: periodStart=${periodStart}, persistedLastReset=${persistedLastReset}, alreadyResetThisPeriod=${alreadyResetThisPeriod}, shouldReset=${shouldReset}`
+      `🕐 Serial reset check (date change only): today=${todayCalendarDate}, lastResetDate=${lastResetCalendarDate}, shouldReset=${shouldReset}`
     );
 
     if (shouldReset) {
