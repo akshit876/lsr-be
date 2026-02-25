@@ -17,6 +17,10 @@ import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
 import TcpScannerService from "./TcpScannerService.js";
+import {
+  getTodayMidnightInTimezone,
+  RESET_TIMEZONE,
+} from "./serialNumber.js";
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -1246,31 +1250,31 @@ class ScannerController {
 
   getLastResetTime() {
     const now = new Date();
-    const resetTime = new Date(now);
-
-    // Use the reset time from SerialNumberGeneratorService if available
-    const resetHour =
-      this.barcodeGenerator?.serialNumberService?.resetHour || 0;
-    const resetMinute =
-      this.barcodeGenerator?.serialNumberService?.resetMinute || 0;
-
-    resetTime.setHours(resetHour, resetMinute, 0, 0);
-
-    // If current time is before reset time, set reset time to previous day
-    if (now < resetTime) {
-      resetTime.setDate(resetTime.getDate() - 1);
+    // Reset only at 12am midnight on date change (never 12pm noon). Use reset timezone (e.g. Asia/Kolkata).
+    const tz =
+      this.barcodeGenerator?.serialNumberService?.resetTimezone ||
+      RESET_TIMEZONE;
+    const todayMidnight = getTodayMidnightInTimezone(now, tz);
+    // Start of current period: today 00:00 if we're past it, else yesterday 00:00
+    if (now >= todayMidnight) {
+      return todayMidnight;
     }
-
-    return resetTime;
+    return new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
   }
 
   async getCurrentDayId() {
     const now = new Date();
-    const nextResetTime = new Date(this.lastResetDate);
-    nextResetTime.setDate(nextResetTime.getDate() + 1);
+    // Next boundary is midnight (12am) in reset timezone, not noon. Date change only.
+    const tz =
+      this.barcodeGenerator?.serialNumberService?.resetTimezone ||
+      RESET_TIMEZONE;
+    const todayMidnight = getTodayMidnightInTimezone(now, tz);
+    const nextMidnight =
+      now >= todayMidnight
+        ? new Date(todayMidnight.getTime() + 24 * 60 * 60 * 1000)
+        : todayMidnight;
 
-    // Check if we need to reset the counter
-    if (now >= nextResetTime) {
+    if (now >= nextMidnight) {
       this.currentDayId = 1;
       this.lastResetDate = this.getLastResetTime();
     }

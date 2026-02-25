@@ -12,10 +12,10 @@ const RESET_TIMEZONE = process.env?.RESET_TIMEZONE || "Asia/Kolkata";
 /* eslint-enable no-undef */
 
 /**
- * Returns the Date (UTC) for "today at 00:00" (12am) in the reset timezone.
- * So reset happens at 12am local (e.g. India), not 12am server (e.g. UTC → 6am in India).
+ * Returns the Date (UTC) for "today at 00:00" (12am midnight) in the reset timezone.
+ * Reset must happen ONLY at 12am midnight on date change, never at 12pm noon.
  */
-function getTodayMidnightInTimezone(now, timezone = RESET_TIMEZONE) {
+export function getTodayMidnightInTimezone(now, timezone = RESET_TIMEZONE) {
   const formatter = new globalThis.Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
     year: "numeric",
@@ -105,9 +105,16 @@ class SerialNumberGeneratorService {
   }
 
   setResetTime(hour, minute) {
-    this.resetHour = hour;
-    this.resetMinute = minute;
-    logger.info(`Reset time set to ${hour}:${minute}`);
+    // Reset only at 12am midnight on date change; never 12pm noon.
+    if (hour === 12 && minute === 0) {
+      this.resetHour = 0;
+      this.resetMinute = 0;
+      logger.info("Reset time: 12:00 interpreted as midnight (00:00), not noon");
+    } else {
+      this.resetHour = hour;
+      this.resetMinute = minute;
+    }
+    logger.info(`Reset time set to ${this.resetHour}:${String(this.resetMinute).padStart(2, "0")}`);
   }
 
   //   getNextSerialNumber() {
@@ -453,7 +460,7 @@ class SerialNumberGeneratorService {
       await MongoDBService.connect("main-data", "serialNoconfig");
       const serialConfig = await MongoDBService.collection.findOne({});
 
-      // Requirement: reset must happen ONLY at 12am (00:00) daily.
+      // Requirement: reset must happen ONLY at 12am (00:00) midnight daily on date change, never at 12pm noon.
       // Keep reading DB config for lastReset (history), but force reset time to midnight.
       if (serialConfig) {
         logger.info(
@@ -1027,4 +1034,5 @@ class SerialNumberGeneratorService {
   }
 }
 
+export { RESET_TIMEZONE };
 export default new SerialNumberGeneratorService();
