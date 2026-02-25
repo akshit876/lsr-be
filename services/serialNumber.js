@@ -6,12 +6,43 @@ import logger from "../logger.js";
 const SERIAL_DIGITS = 4;
 const SERIAL_MAX = 9999;
 
+// 12am reset is in this timezone so reset is at midnight local, not server (e.g. UTC → 6am in India). Set RESET_TIMEZONE env to override.
+/* eslint-disable no-undef */
+const RESET_TIMEZONE = process.env?.RESET_TIMEZONE || "Asia/Kolkata";
+/* eslint-enable no-undef */
+
+/**
+ * Returns the Date (UTC) for "today at 00:00" (12am) in the reset timezone.
+ * So reset happens at 12am local (e.g. India), not 12am server (e.g. UTC → 6am in India).
+ */
+function getTodayMidnightInTimezone(now, timezone = RESET_TIMEZONE) {
+  const formatter = new globalThis.Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(now);
+  const get = (type) => parseInt(parts.find((p) => p.type === type).value, 10);
+  const y = get("year");
+  const m = get("month");
+  const d = get("day");
+  const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  // Asia/Kolkata = IST = +05:30; 12am IST is this instant in UTC
+  if (timezone === "Asia/Kolkata" || timezone.includes("Kolkata")) {
+    return new Date(`${ymd}T00:00:00+05:30`);
+  }
+  // Other TZ: assume +00:00 for safety (midnight UTC)
+  return new Date(`${ymd}T00:00:00Z`);
+}
+
 class SerialNumberGeneratorService {
   constructor() {
     this.currentSerialNumber = 1;
     this.lastResetDate = new Date();
     this.resetHour = 0;
     this.resetMinute = 0;
+    this.resetTimezone = RESET_TIMEZONE;
     this.isInitialized = false;
     this.currentModelNumber = null; // Track current model for separate sequences
     this.modelStartingSerials = {
@@ -329,19 +360,12 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Day boundary = today at configured reset time (e.g. 06:00). Reset happens only once per day at that time.
-    const todayResetTime = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      this.resetHour,
-      this.resetMinute,
-      0,
-      0
-    );
-    const periodStart = now < todayResetTime
-      ? new Date(todayResetTime.getTime() - 24 * 60 * 60 * 1000)
-      : todayResetTime;
+    // 12am in reset timezone (e.g. Asia/Kolkata) so reset is at midnight local, not server UTC
+    const todayResetTime = getTodayMidnightInTimezone(now, this.resetTimezone);
+    const periodStart =
+      now < todayResetTime
+        ? new Date(todayResetTime.getTime() - 24 * 60 * 60 * 1000)
+        : todayResetTime;
 
     // Use persisted lastReset from DB so logout/login or server restart does NOT cause a reset
     let persistedLastReset = null;
