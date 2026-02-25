@@ -378,6 +378,8 @@ class ScannerController {
               this.io.emit("safety_cleared", {
                 timestamp: new Date().toISOString(),
                 violation,
+                message: violation,
+                type: violation,
                 cycleNumber: this.cycleCount,
               });
             }
@@ -423,97 +425,74 @@ class ScannerController {
           prevSafety.putPartInRejectionBin = putPartInRejectionBin;
 
           // Emit safety violations to UI (but continue waiting for start bit)
-          if (partPresent && this.io) {
+          // Emit with violation, message, and type so UI's data.violation || data.message || data.type always gets text
+          const emitViolation = (violation) => {
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation,
+                message: violation,
+                type: violation,
+                cycleNumber: this.cycleCount,
+              });
+            }
+          };
+
+          if (partPresent) {
             logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "Part not present",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("Part not present");
           }
 
-          if (emergencyStop && this.io) {
+          if (emergencyStop) {
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
             );
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "Emergency stop activated",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("Emergency stop activated");
           }
 
-          if (safetySensor && this.io) {
+          if (safetySensor) {
             logger.error(
               "🚨 SAFETY VIOLATION: Safety sensor triggered (1490.2 = 1)"
             );
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "Safety sensor triggered",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("Safety sensor triggered");
           }
 
-          if (emergencyPushButton && this.io) {
+          if (emergencyPushButton) {
             logger.error(
               "🚨 SAFETY VIOLATION: Emergency push button pressed (1490.3 = 1)"
             );
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "Emergency push button pressed",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("Emergency push button pressed");
           }
 
-          if (safetyCurtain && this.io) {
+          if (safetyCurtain) {
             logger.error(
               "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 1)"
             );
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "Safety curtain interrupted",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("Safety curtain interrupted");
           }
 
-          if (slideFwdReedMissing && this.io) {
+          if (slideFwdReedMissing) {
             logger.error(
               "🚨 ALARM: SLIDE FWD REED-SWITCH MISSING (1490.5 = 1)"
             );
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "SLIDE FWD REED-SWITCH MISSING",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("SLIDE FWD REED-SWITCH MISSING");
           }
 
-          if (slideHomeReedMissing && this.io) {
+          if (slideHomeReedMissing) {
             logger.error(
               "🚨 ALARM: SLIDE HOME REED-SWITCH MISSING (1490.6 = 1)"
             );
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "SLIDE HOME REED-SWITCH MISSING",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("SLIDE HOME REED-SWITCH MISSING");
           }
 
-          if (laserSourceNotReady && this.io) {
+          if (laserSourceNotReady) {
             logger.error("🚨 ALARM: LASER SOURCE NOT READY (1490.7 = 1)");
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "LASER SOURCE NOT READY",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("LASER SOURCE NOT READY");
           }
 
-          if (putPartInRejectionBin && this.io) {
+          if (putPartInRejectionBin) {
             logger.error("🚨 ALARM: Put part in rejection bin (1490.8 = 1)");
-            this.io.emit("safety_violation", {
-              timestamp: new Date().toISOString(),
-              violation: "Put part in rejection bin",
-              cycleNumber: this.cycleCount,
-            });
+            emitViolation("Put part in rejection bin");
           }
         } catch (error) {
           logger.error(`Error checking safety conditions: ${error.message}`);
