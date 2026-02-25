@@ -31,6 +31,7 @@ The backend emits **safety/alarm** events over Socket.IO. Your frontend can list
 | **SLIDE FWD REED-SWITCH MISSING** | 1490.5 |
 | **SLIDE HOME REED-SWITCH MISSING** | 1490.6 |
 | **LASER SOURCE NOT READY** | 1490.7 |
+| **Put part in rejection bin** | 1490.8 |
 
 ---
 
@@ -247,6 +248,6 @@ Backend allows origin **http://localhost:3000**. If your UI runs on another port
 | Clear event | `safety_cleared` (bit 1 → 0) — **listen and remove toasts** |
 | Backend URL (dev) | `http://localhost:3002` |
 | Payload | `{ timestamp, violation, cycleNumber }` |
-| New alarms | `SLIDE FWD REED-SWITCH MISSING`, `SLIDE HOME REED-SWITCH MISSING`, `LASER SOURCE NOT READY` |
+| New alarms | `SLIDE FWD REED-SWITCH MISSING`, `SLIDE HOME REED-SWITCH MISSING`, `LASER SOURCE NOT READY`, `Put part in rejection bin` |
 
 **UI checklist:** Use one alarm/toast area; position toasts on the **right**; on `safety_cleared` remove or dismiss the matching toast so alarms don’t stay after the PLC clears them.

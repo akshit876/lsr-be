@@ -358,6 +358,7 @@ class ScannerController {
         slideFwdReedMissing: false,
         slideHomeReedMissing: false,
         laserSourceNotReady: false,
+        putPartInRejectionBin: false,
       };
       const safetyCheckInterval = setInterval(async () => {
         try {
@@ -370,6 +371,7 @@ class ScannerController {
           const slideFwdReedMissing = await readBit(1490, 5, false); // SLIDE FWD REED-SWITCH MISSING
           const slideHomeReedMissing = await readBit(1490, 6, false); // SLIDE HOME REED-SWITCH MISSING
           const laserSourceNotReady = await readBit(1490, 7, false); // LASER SOURCE NOT READY
+          const putPartInRejectionBin = await readBit(1490, 8, false); // Put part in rejection bin
 
           const emitCleared = (violation) => {
             if (this.io) {
@@ -406,6 +408,9 @@ class ScannerController {
           if (prevSafety.laserSourceNotReady && !laserSourceNotReady) {
             emitCleared("LASER SOURCE NOT READY");
           }
+          if (prevSafety.putPartInRejectionBin && !putPartInRejectionBin) {
+            emitCleared("Put part in rejection bin");
+          }
 
           prevSafety.partPresent = partPresent;
           prevSafety.emergencyStop = emergencyStop;
@@ -415,6 +420,7 @@ class ScannerController {
           prevSafety.slideFwdReedMissing = slideFwdReedMissing;
           prevSafety.slideHomeReedMissing = slideHomeReedMissing;
           prevSafety.laserSourceNotReady = laserSourceNotReady;
+          prevSafety.putPartInRejectionBin = putPartInRejectionBin;
 
           // Emit safety violations to UI (but continue waiting for start bit)
           if (partPresent && this.io) {
@@ -497,6 +503,15 @@ class ScannerController {
             this.io.emit("safety_violation", {
               timestamp: new Date().toISOString(),
               violation: "LASER SOURCE NOT READY",
+              cycleNumber: this.cycleCount,
+            });
+          }
+
+          if (putPartInRejectionBin && this.io) {
+            logger.error("🚨 ALARM: Put part in rejection bin (1490.8 = 1)");
+            this.io.emit("safety_violation", {
+              timestamp: new Date().toISOString(),
+              violation: "Put part in rejection bin",
               cycleNumber: this.cycleCount,
             });
           }
@@ -949,12 +964,32 @@ class ScannerController {
     this.isScanning = true;
 
     try {
+      const register = this.getScanRegister(scanType);
+      const bit = this.getScanBit(scanType);
+
+      // CRITICAL: Trigger the PLC first (and await it) so the scanner is always
+      // turned on before we listen for data. Previously the trigger was inside a
+      // 200ms setTimeout after the listener; if "dataGot" fired before 200ms
+      // (e.g. stale data), the promise resolved and the trigger never ran.
+      logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
+      logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
+      await sleep(200);
+      logger.info(`⏳ 200ms delay completed, now triggering scanner...`);
+      await writeBit(register, bit, 1);
+      logger.success(`${scannerLabel} scanner triggered successfully`);
+      logger.info(
+        `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
+      );
+
       logger.info(
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      const scannerData = await new Promise((resolve, reject) => {
+      const scannerData = await new Promise((resolve) => {
         const dataHandler = (data) => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
@@ -962,7 +997,7 @@ class ScannerController {
           this.tcpScannerService.off("dataGot", dataHandler);
         };
 
-        // Set up event listener
+        // Set up event listener only after trigger was sent
         logger.info("👂 Adding event listener for scanner data");
         this.tcpScannerService.on("dataGot", dataHandler);
 
@@ -990,34 +1025,6 @@ class ScannerController {
           );
           resolve("NG");
         }, timeout);
-
-        // Trigger scanner based on scan type
-        const register = this.getScanRegister(scanType);
-        const bit = this.getScanBit(scanType);
-
-        logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
-
-        // Add 200ms delay before triggering scanner ON
-        setTimeout(() => {
-          logger.info(`⏳ 200ms delay completed, now triggering scanner...`);
-
-          writeBit(register, bit, 1)
-            .then(() => {
-              logger.success(`${scannerLabel} scanner triggered successfully`);
-              logger.info(
-                `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
-              );
-            })
-            .catch((err) => {
-              logger.error(
-                `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-                err
-              );
-              clearTimeout(timeoutId);
-              reject(err);
-            });
-        }, 200);
       });
 
       logger.success(
