@@ -2,8 +2,8 @@ import ModbusRTU from "modbus-serial";
 import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
 
-// PLC (Modbus) default: 192.168.3.147:502
-const DEFAULT_MODBUS_IP = "192.168.3.147";
+// PLC (Modbus) default: 192.168.3.146:502. Scanner: 192.168.3.147:502.
+const DEFAULT_MODBUS_IP = "192.168.3.146";
 const DEFAULT_MODBUS_PORT = 502;
 
 const MODBUS_IP =
