@@ -31,9 +31,9 @@ export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 
-// TCP Scanner configuration (legacy / fallback) - 192.168.3.147:502
+// TCP Scanner configuration (legacy / fallback) - 192.168.3.146:502
 const TCP_SCANNER_CONFIG = {
-  host: process.env.SCANNER_HOST || "192.168.3.147",
+  host: process.env.SCANNER_HOST || "192.168.3.146",
   port: parseInt(process.env.SCANNER_PORT, 10) || 502,
   timeout: 5000,
   reconnectInterval: 3000,
@@ -42,9 +42,9 @@ const TCP_SCANNER_CONFIG = {
   logDir: "scanner_logs",
 };
 
-// Scannew scanner (primary) - 192.168.3.147:502
+// Scannew scanner (primary) - 192.168.3.146:502
 const SCANNEW_CONFIG = {
-  host: process.env.SCANNEW_HOST || "192.168.3.147",
+  host: process.env.SCANNEW_HOST || "192.168.3.146",
   port: parseInt(process.env.SCANNEW_PORT, 10) || 502,
   timeout: 5000,
   reconnectInterval: 3000,
