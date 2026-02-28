@@ -2,9 +2,9 @@ import { format, isAfter, isBefore } from "date-fns";
 import MongoDBService from "./mongoDbService.js";
 import logger from "../logger.js";
 
-// Serial number format: always 4 digits (0001-9999)
-const SERIAL_DIGITS = 4;
-const SERIAL_MAX = 9999;
+// Serial number format: always 3 digits (001-999)
+const SERIAL_DIGITS = 3;
+const SERIAL_MAX = 999;
 
 // 12am reset is in this timezone so reset is at midnight local, not server (e.g. UTC → 6am in India). Set RESET_TIMEZONE env to override.
 /* eslint-disable no-undef */
@@ -351,7 +351,7 @@ class SerialNumberGeneratorService {
       }
     }
 
-    // VALIDATION: Ensure serial number doesn't exceed max (9999 for 4 digits)
+    // VALIDATION: Ensure serial number doesn't exceed max (999 for 3 digits)
     if (serialToUse > SERIAL_MAX) {
       logger.warn(
         `⚠️ Serial number ${serialToUse} exceeds ${SERIAL_MAX}, rolling over to 1`
@@ -360,7 +360,7 @@ class SerialNumberGeneratorService {
       this.currentSerialNumber = 1;
     }
 
-    // Format the serial number - always 4 digits (0001-9999)
+    // Format the serial number - always 3 digits (001-999)
     const serialNumber = serialToUse.toString().padStart(SERIAL_DIGITS, "0");
 
     // Save the USED serial number to modelSerialConfig
@@ -445,7 +445,7 @@ class SerialNumberGeneratorService {
         // Model-specific starting serial configurations for ALL models
         if (modelNumber === "CMB-877") {
           logger.info(`✅ Model ${modelNumber} → starting serial: 701 (S0701)`);
-          return 701; // Displayed as 0701 (4 digits)
+          return 701; // Displayed as 701 (3 digits)
         } else if (modelNumber === "CMB-778") {
           // CMB-778 starts from 1
           logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S0001)`);
