@@ -326,8 +326,8 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Get today's start
-    const todayStart = new Date(
+    // Today's date only (calendar day) for comparison
+    const todayDateOnly = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
@@ -339,29 +339,43 @@ class SerialNumberGeneratorService {
 
     let shouldReset = false;
     try {
-      // Connect to records collection
-      await MongoDBService.connect(
-        this.originalDbName,
-        this.originalCollectionName
-      );
-      // Find the last record for the current model
-      const lastRecord = await MongoDBService.collection
-        .find(currentModel ? { ModelNumber: currentModel } : {})
-        .sort({ Timestamp: -1 })
-        .limit(1)
-        .toArray();
-      let lastRecordDate = null;
-      if (lastRecord.length && lastRecord[0].Timestamp) {
-        lastRecordDate = new Date(lastRecord[0].Timestamp);
+      // Base reset ONLY on date change using persisted modelSerialConfig,
+      // so server restarts do not reset the serial (only a new calendar day does).
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      const modelConfig = await MongoDBService.collection.findOne({
+        modelNumber: currentModel || "default",
+      });
+
+      let lastActivityDate = null;
+      if (modelConfig) {
+        // Use lastUpdated (last serial use) or lastReset to get the last calendar day we used a serial
+        const dateSource = modelConfig.lastUpdated || modelConfig.lastReset;
+        if (dateSource) {
+          lastActivityDate = new Date(dateSource);
+        }
       }
-      if (!lastRecordDate || lastRecordDate < todayStart) {
-        shouldReset = true;
+
+      // Reset only when the calendar date has changed: last activity was on a previous day
+      if (lastActivityDate) {
+        const lastActivityDateOnly = new Date(
+          lastActivityDate.getFullYear(),
+          lastActivityDate.getMonth(),
+          lastActivityDate.getDate(),
+          0,
+          0,
+          0,
+          0
+        );
+        if (lastActivityDateOnly.getTime() < todayDateOnly.getTime()) {
+          shouldReset = true;
+        }
       }
+      // If no config or no date (e.g. first run or server just started with no state), do NOT reset
       logger.info(
-        `🕐 Serial reset check: lastRecordDate=${lastRecordDate}, todayStart=${todayStart}, shouldReset=${shouldReset}`
+        `🕐 Serial reset check: lastActivityDate=${lastActivityDate ? lastActivityDate.toISOString() : "none"}, todayDateOnly=${todayDateOnly.toISOString()}, shouldReset=${shouldReset} (reset only on date change)`
       );
     } catch (error) {
-      logger.error("❌ Error checking last record for serial reset:", error);
+      logger.error("❌ Error checking serial reset (date change):", error);
       // On error, do not reset
       shouldReset = false;
     }
