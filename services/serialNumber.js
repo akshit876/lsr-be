@@ -2,6 +2,16 @@ import { format, isAfter, isBefore } from "date-fns";
 import MongoDBService from "./mongoDbService.js";
 import logger from "../logger.js";
 
+// IST = UTC+5:30. Returns start of that day at 12:00 AM IST as a Date (for comparison).
+const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+function getStartOfDayIST(d) {
+  const dIst = new Date(d.getTime() + IST_OFFSET_MS);
+  const y = dIst.getUTCFullYear();
+  const m = dIst.getUTCMonth();
+  const day = dIst.getUTCDate();
+  return new Date(Date.UTC(y, m, day, 0, 0, 0, 0) - IST_OFFSET_MS);
+}
+
 class SerialNumberGeneratorService {
   constructor() {
     this.currentSerialNumber = 1;
@@ -130,13 +140,17 @@ class SerialNumberGeneratorService {
       } else {
         // No model config exists yet - start with model's starting serial
         logger.info(
-          `🆕 No modelSerialConfig found for current model, creating new entry with starting serial: ${modelStartingSerial}`
+          `🆕 No modelSerialConfig found for current model, starting serial: ${modelStartingSerial}`
         );
         this.currentSerialNumber = modelStartingSerial;
         this.lastResetDate = new Date();
 
-        // Save this initial configuration to modelSerialConfig
-        await this.saveUsedSerialNumber(this.currentSerialNumber - 1); // Save starting serial - 1 so next call returns starting serial
+        // Only save when we have a known model; otherwise first getNextDecSerialNumber2()
+        // will use last-active config (avoids creating "default" doc and reset on restart)
+        const knownModel = await this.getCurrentModelNumber();
+        if (knownModel) {
+          await this.saveUsedSerialNumber(this.currentSerialNumber - 1);
+        }
       }
 
       // Check if a reset is needed when initializing
@@ -326,57 +340,48 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Today's date only (calendar day) for comparison
-    const todayDateOnly = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-      0
-    );
+    // Reset boundary: 12:00 AM IST (midnight Indian Standard Time)
+    const todayStartIST = getStartOfDayIST(now);
 
     let shouldReset = false;
     try {
-      // Base reset ONLY on date change using persisted modelSerialConfig,
-      // so server restarts do not reset the serial (only a new calendar day does).
+      // Base reset ONLY on date change using persisted modelSerialConfig.
+      // If current model is null (e.g. config not ready on server start), use the
+      // most recently updated config so we never reset just because model was unknown.
       await MongoDBService.connect("main-data", "modelSerialConfig");
-      const modelConfig = await MongoDBService.collection.findOne({
+      let modelConfig = await MongoDBService.collection.findOne({
         modelNumber: currentModel || "default",
       });
+      if (!modelConfig && !currentModel) {
+        // Fallback: use last-active model config so restart does not cause reset
+        modelConfig = await MongoDBService.collection
+          .find({})
+          .sort({ lastUpdated: -1 })
+          .limit(1)
+          .next();
+      }
 
       let lastActivityDate = null;
       if (modelConfig) {
-        // Use lastUpdated (last serial use) or lastReset to get the last calendar day we used a serial
         const dateSource = modelConfig.lastUpdated || modelConfig.lastReset;
         if (dateSource) {
           lastActivityDate = new Date(dateSource);
         }
       }
 
-      // Reset only when the calendar date has changed: last activity was on a previous day
-      if (lastActivityDate) {
-        const lastActivityDateOnly = new Date(
-          lastActivityDate.getFullYear(),
-          lastActivityDate.getMonth(),
-          lastActivityDate.getDate(),
-          0,
-          0,
-          0,
-          0
-        );
-        if (lastActivityDateOnly.getTime() < todayDateOnly.getTime()) {
+      // Reset only when the IST calendar date has changed: last activity was on a previous day (IST)
+      if (lastActivityDate && !isNaN(lastActivityDate.getTime())) {
+        const lastActivityStartIST = getStartOfDayIST(lastActivityDate);
+        if (lastActivityStartIST.getTime() < todayStartIST.getTime()) {
           shouldReset = true;
         }
       }
-      // If no config or no date (e.g. first run or server just started with no state), do NOT reset
+      // No config or no date → do NOT reset (avoids reset on server start)
       logger.info(
-        `🕐 Serial reset check: lastActivityDate=${lastActivityDate ? lastActivityDate.toISOString() : "none"}, todayDateOnly=${todayDateOnly.toISOString()}, shouldReset=${shouldReset} (reset only on date change)`
+        `🕐 Serial reset check (12:00 AM IST): lastActivity=${lastActivityDate ? lastActivityDate.toISOString() : "none"}, todayStartIST=${todayStartIST.toISOString()}, shouldReset=${shouldReset}`
       );
     } catch (error) {
       logger.error("❌ Error checking serial reset (date change):", error);
-      // On error, do not reset
       shouldReset = false;
     }
 
@@ -604,9 +609,24 @@ class SerialNumberGeneratorService {
       const totalDocs = await MongoDBService.collection.countDocuments({});
       logger.info(`📊 Total documents in modelSerialConfig: ${totalDocs}`);
 
-      const modelConfig = await MongoDBService.collection.findOne({
+      let modelConfig = await MongoDBService.collection.findOne({
         modelNumber: modelNumber || "default",
       });
+      // When current model is unknown (e.g. config not ready on server start), use
+      // the most recently updated config so we continue from last serial instead of resetting
+      if (!modelConfig && !modelNumber) {
+        modelConfig = await MongoDBService.collection
+          .find({})
+          .sort({ lastUpdated: -1 })
+          .limit(1)
+          .next();
+        if (modelConfig) {
+          this.currentModelNumber = modelConfig.modelNumber;
+          logger.info(
+            `🔄 No current model in config; using last-active model: ${modelConfig.modelNumber} (avoids reset on restart)`
+          );
+        }
+      }
 
       if (modelConfig) {
         logger.info(
