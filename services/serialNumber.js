@@ -411,10 +411,12 @@ class SerialNumberGeneratorService {
     if (shouldReset) {
       const modelStartingSerial = await this.getModelStartingSerial();
       const oldSerial = this.currentSerialNumber;
-      this.currentSerialNumber = modelStartingSerial;
+      // Set to (startingSerial - 1) so the DB stores "nothing used yet";
+      // the normal flow (lastUsed + 1) will then produce the correct first serial.
+      this.currentSerialNumber = modelStartingSerial - 1;
       this.lastResetDate = now;
       logger.info(
-        `🔄 SERIAL RESET: Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) at ${now.toISOString()}`
+        `🔄 SERIAL RESET: Serial will start from ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) [was ${oldSerial}] at ${now.toISOString()}`
       );
       await this.updateSerialConfigOnReset();
       return true;
