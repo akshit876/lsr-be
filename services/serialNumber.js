@@ -369,7 +369,7 @@ class SerialNumberGeneratorService {
         }
       }
 
-      // Reset only when the IST calendar date has changed: last activity was on a previous day (IST)
+      // Reset only when the IST calendar date has changed: last activity was on a previous day (IST).
       if (lastActivityDate && !isNaN(lastActivityDate.getTime())) {
         const lastActivityStartIST = getStartOfDayIST(lastActivityDate);
         if (lastActivityStartIST.getTime() < todayStartIST.getTime()) {
@@ -378,7 +378,7 @@ class SerialNumberGeneratorService {
       }
       // No config or no date → do NOT reset (avoids reset on server start)
       logger.info(
-        `🕐 Serial reset check (12:00 AM IST): lastActivity=${lastActivityDate ? lastActivityDate.toISOString() : "none"}, todayStartIST=${todayStartIST.toISOString()}, shouldReset=${shouldReset}`
+        `🕐 Serial reset check (date change only): lastActivity=${lastActivityDate ? lastActivityDate.toISOString() : "none"}, todayStartIST=${todayStartIST.toISOString()}, shouldReset=${shouldReset}`
       );
     } catch (error) {
       logger.error("❌ Error checking serial reset (date change):", error);

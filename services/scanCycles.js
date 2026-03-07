@@ -410,7 +410,7 @@ class ScannerController {
             cleanup();
             logger.info("Reset signal (1600.0) detected");
 
-            // Emit event to force close all validation toasts on UI
+            // Emit event to force close all validation toasts and refresh UI
             if (this.io) {
               this.io.emit("reset_detected", {
                 timestamp: new Date().toISOString(),
@@ -418,9 +418,11 @@ class ScannerController {
                   "Reset signal detected - clearing all validation messages",
                 cycleNumber: this.cycleCount,
                 action: "clear_toasts",
+                refresh_records: true,
+                reset_occurred: true,
               });
               logger.info(
-                "📡 Emitted reset_detected event to clear UI validation toasts"
+                "📡 Emitted reset_detected event to clear UI validation toasts and refresh records"
               );
             }
 
@@ -492,7 +494,7 @@ class ScannerController {
             cleanup();
             logger.info("Reset signal detected on initial check");
 
-            // Emit event to force close all validation toasts on UI
+            // Emit event to force close all validation toasts and refresh UI
             if (this.io) {
               this.io.emit("reset_detected", {
                 timestamp: new Date().toISOString(),
@@ -500,9 +502,11 @@ class ScannerController {
                   "Reset signal detected on initial check - clearing all validation messages",
                 cycleNumber: this.cycleCount,
                 action: "clear_toasts",
+                refresh_records: true,
+                reset_occurred: true,
               });
               logger.info(
-                "📡 Emitted reset_detected event to clear UI validation toasts"
+                "📡 Emitted reset_detected event to clear UI validation toasts and refresh records"
               );
             }
 
@@ -1349,10 +1353,10 @@ class ScannerController {
 
   async handleReset() {
     try {
-      logger.info("🔄 Handling reset signal");
+      logger.info("🔄 Handling reset signal (PLC bits only; serial number unchanged)");
       await writeBit(1500, 3, 1);
       await this.resetBits();
-      this.barcodeGenerator.decSerialNo();
+      // Do NOT change serial number on PLC reset - daily serial reset only at configured time (e.g. 6 AM)
       throw new Error("RESET_DETECTED");
     } catch (error) {
       logger.error("❌ Error handling reset:", error);
