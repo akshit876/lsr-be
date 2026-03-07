@@ -106,15 +106,12 @@ class BarcodeGenerator {
           !serialString ||
           serialString === "undefined" ||
           serialString === "null" ||
-          isNaN(serialString)
+          isNaN(parseInt(serialString, 10))
         ) {
           logger.error("❌ Invalid serial number generated:", serialString);
           logger.error("❌ Serial number type:", typeof serialString);
-
-          // Try to get a fallback serial number
-          logger.info("🔄 Attempting to get fallback serial number...");
-          serialString = "0001"; // Use a default serial number (4 digits)
-          logger.info("✅ Using fallback serial number:", serialString);
+          serialString = await this.serialNumberService.getFallbackSerialNumber();
+          logger.info("✅ Using safe fallback serial (from last used + 1 or model start):", serialString);
         } else {
           // Ensure serial number is always 4 digits
           const serialNumber = parseInt(serialString, 10);
@@ -125,9 +122,9 @@ class BarcodeGenerator {
             );
           } else {
             logger.warn(
-              "⚠️ Serial number is not a valid number, using fallback"
+              "⚠️ Serial number is not a valid number, using safe fallback"
             );
-            serialString = "0001";
+            serialString = await this.serialNumberService.getFallbackSerialNumber();
           }
           logger.info(
             `🔢 Serial number generated successfully: ${serialString}`
@@ -135,8 +132,14 @@ class BarcodeGenerator {
         }
       } catch (serialError) {
         logger.error("❌ Error generating serial number:", serialError);
-        logger.info("🔄 Using fallback serial number: 0001");
-        serialString = "0001";
+        try {
+          serialString = await this.serialNumberService.getFallbackSerialNumber();
+          logger.info("✅ Recovered with safe fallback serial (from last used + 1 or model start):", serialString);
+        } catch (fallbackError) {
+          logger.error("❌ Fallback serial also failed:", fallbackError);
+          serialString = "0001";
+          logger.warn("⚠️ Last-resort fallback 0001 used; check DB and serial service.");
+        }
       }
 
       // Check if configData has the expected structure

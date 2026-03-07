@@ -336,6 +336,31 @@ class SerialNumberGeneratorService {
     return this.currentSerialNumber;
   }
 
+  /**
+   * Safe fallback when getNextDecSerialNumber2() fails: use last used serial from DB + 1
+   * (or model starting serial if no config). Avoids wrongly using 0001 and creating duplicates.
+   */
+  async getFallbackSerialNumber() {
+    const modelConfig = await this.loadModelSerialConfig();
+    if (modelConfig && modelConfig.currentValue !== null && modelConfig.currentValue !== undefined) {
+      const lastUsed = parseInt(modelConfig.currentValue, 10);
+      if (!isNaN(lastUsed) && lastUsed >= 0) {
+        const next = Math.min(lastUsed + 1, 9999);
+        const padded = next.toString().padStart(4, "0");
+        logger.warn(
+          `⚠️ Using fallback serial from last used (${lastUsed}) → ${padded}`
+        );
+        return padded;
+      }
+    }
+    const start = await this.getModelStartingSerial();
+    const padded = start.toString().padStart(4, "0");
+    logger.warn(
+      `⚠️ No valid last-used serial in config; using model starting serial: ${padded}`
+    );
+    return padded;
+  }
+
   async checkAndResetSerialNumber() {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
