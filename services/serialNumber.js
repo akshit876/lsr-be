@@ -2,14 +2,12 @@ import { format, isAfter, isBefore } from "date-fns";
 import MongoDBService from "./mongoDbService.js";
 import logger from "../logger.js";
 
-// IST = UTC+5:30. Returns start of that day at 12:00 AM IST as a Date (for comparison).
-const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
-function getStartOfDayIST(d) {
-  const dIst = new Date(d.getTime() + IST_OFFSET_MS);
-  const y = dIst.getUTCFullYear();
-  const m = dIst.getUTCMonth();
-  const day = dIst.getUTCDate();
-  return new Date(Date.UTC(y, m, day, 0, 0, 0, 0) - IST_OFFSET_MS);
+// Returns start of the LOCAL calendar day (midnight) for a given Date.
+// Uses the server's system timezone so the day boundary matches the actual wall clock.
+function getStartOfDayLocal(d) {
+  const local = new Date(d);
+  local.setHours(0, 0, 0, 0);
+  return local;
 }
 
 class SerialNumberGeneratorService {
@@ -365,8 +363,8 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Reset boundary: 12:00 AM IST (midnight Indian Standard Time)
-    const todayStartIST = getStartOfDayIST(now);
+    // Reset boundary: local midnight (server's system timezone)
+    const todayStart = getStartOfDayLocal(now);
 
     let shouldReset = false;
     try {
@@ -394,16 +392,16 @@ class SerialNumberGeneratorService {
         }
       }
 
-      // Reset only when the IST calendar date has changed: last activity was on a previous day (IST).
+      // Reset only when the local calendar date has changed: last activity was on a previous day.
       if (lastActivityDate && !isNaN(lastActivityDate.getTime())) {
-        const lastActivityStartIST = getStartOfDayIST(lastActivityDate);
-        if (lastActivityStartIST.getTime() < todayStartIST.getTime()) {
+        const lastActivityStart = getStartOfDayLocal(lastActivityDate);
+        if (lastActivityStart.getTime() < todayStart.getTime()) {
           shouldReset = true;
         }
       }
       // No config or no date → do NOT reset (avoids reset on server start)
       logger.info(
-        `🕐 Serial reset check (date change only): lastActivity=${lastActivityDate ? lastActivityDate.toISOString() : "none"}, todayStartIST=${todayStartIST.toISOString()}, shouldReset=${shouldReset}`
+        `🕐 Serial reset check (date change, local midnight): lastActivity=${lastActivityDate ? lastActivityDate.toISOString() : "none"}, todayStart=${todayStart.toISOString()}, shouldReset=${shouldReset}`
       );
     } catch (error) {
       logger.error("❌ Error checking serial reset (date change):", error);
