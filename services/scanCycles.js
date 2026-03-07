@@ -42,10 +42,10 @@ const TCP_SCANNER_CONFIG = {
   logDir: "scanner_logs",
 };
 
-// Scannew scanner (primary) - 192.168.3.146:23
+// Scannew scanner (primary) - 192.168.3.146:502
 const SCANNEW_CONFIG = {
   host: process.env.SCANNEW_HOST || "192.168.3.146",
-  port: parseInt(process.env.SCANNEW_PORT, 10) || 23,
+  port: parseInt(process.env.SCANNEW_PORT, 10) || 502,
   timeout: 5000,
   reconnectInterval: 3000,
   keepAlive: true,
@@ -98,7 +98,7 @@ class ScannerController {
       await mongoDbService.connect("main-data", "records");
       logger.success("MongoDB connected successfully");
 
-      // Initialize TCP scanner connection (scannew: 192.168.3.146:23)
+      // Initialize TCP scanner connection (scannew: 192.168.3.146:502)
       logger.info("🔌 Setting up TCP scanner connection (scannew)...");
       try {
         logger.info("🔍 Creating TcpScannerService instance (scannew)...");
