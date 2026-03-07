@@ -892,7 +892,7 @@ class ScannerController {
   async fetchScannerData(tcpScannerService, options = {}) {
     const {
       scanType = options.scanType || "first",
-      timeout = 30 * 1000, // Reduced timeout for faster debugging
+      timeout = 15 * 1000, // 15 seconds wait for scanner data
       scannerLabel = this.getScanLabel(scanType),
     } = options;
 
