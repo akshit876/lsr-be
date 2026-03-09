@@ -8,21 +8,39 @@ class MongoDBService {
     this.client = null;
     this.db = null;
     this.collection = null;
+    this._uri = null;
+  }
+
+  async _ensureClient() {
+    if (!this.client) {
+      this._uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+      this.client = new MongoClient(this._uri);
+      await this.client.connect();
+      logger.info("MongoDB client connected (persistent)");
+    }
   }
 
   async connect(dbName, collectionName) {
     try {
-      const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
-      this.client = new MongoClient(uri);
-      await this.client.connect();
+      await this._ensureClient();
       this.db = this.client.db(dbName);
       this.collection = this.db.collection(collectionName);
-      logger.info(`Connected successfully to MongoDB database: ${dbName}`);
+      logger.info(`Connected successfully to MongoDB database: ${dbName}.${collectionName}`);
     } catch (error) {
       console.error({ error });
       logger.error("MongoDB connection error:", error);
       throw error;
     }
+  }
+
+  /**
+   * Returns an isolated collection reference WITHOUT modifying the shared
+   * this.db / this.collection state. Use this from any code that runs
+   * concurrently with other DB callers (e.g. serial number logic).
+   */
+  async getCollection(dbName, collectionName) {
+    await this._ensureClient();
+    return this.client.db(dbName).collection(collectionName);
   }
 
   async disconnect() {
