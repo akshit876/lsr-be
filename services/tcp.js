@@ -82,8 +82,11 @@ class TCPClient {
       }
 
       if (isThird) {
-        // Remove first 3 zeros and check remaining data
-        const dataWithoutLeadingZeros = cleanData.slice(3);
+        // Some scanners prefix the payload with "000". Only strip it when present.
+        // Never blindly slice(3) because it will remove valid leading characters.
+        const dataWithoutLeadingZeros = cleanData.startsWith("000")
+          ? cleanData.slice(3)
+          : cleanData;
         // If all remaining characters are zeros, return "NG"
         const isAllZeros = dataWithoutLeadingZeros
           .split("")
