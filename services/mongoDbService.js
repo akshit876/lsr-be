@@ -3,6 +3,9 @@ import logger from "../logger.js";
 import config from "../config/config.js";
 // import logger from "./logger.js";
 
+const inFlightCsvBySocket = new WeakMap();
+let isBroadcastCsvInFlight = false;
+
 class MongoDBService {
   constructor() {
     this.client = null;
@@ -125,8 +128,28 @@ class MongoDBService {
     }
   }
 
-  async sendMongoDbDataToClient(socket) {
+  async sendMongoDbDataToClient(target) {
     try {
+      const hasEmitTarget = target && typeof target.emit === "function";
+      const isSocketLike = hasEmitTarget && Object.prototype.hasOwnProperty.call(target, "id");
+      const targetId = isSocketLike ? target.id : "broadcast";
+
+      if (isSocketLike) {
+        if (inFlightCsvBySocket.get(target)) {
+          logger.info(
+            `Skipping csv-data request; previous run still in-flight for socket: ${target.id}`
+          );
+          return;
+        }
+        inFlightCsvBySocket.set(target, true);
+      } else {
+        if (isBroadcastCsvInFlight) {
+          logger.info("Skipping csv-data request; previous broadcast run still in-flight");
+          return;
+        }
+        isBroadcastCsvInFlight = true;
+      }
+
       // Always use main-data and records
       const DB_NAME = "main-data";
       const COLLECTION_NAME = "records";
@@ -144,17 +167,7 @@ class MongoDBService {
         logger.info("Ensuring connection to main-data.records collection");
       }
 
-      // Get current time and today's 6 AM
-      const now = new Date();
-      const todaySixAM = new Date(now);
-      todaySixAM.setHours(6, 0, 0, 0);
-
-      // If current time is before 6 AM, use previous day's 6 AM
-      if (now < todaySixAM) {
-        todaySixAM.setDate(todaySixAM.getDate() - 1);
-      }
-
-      // First, get the total counts for each day window
+      // First, get the total counts for each 6AM day window
       const dayWindowCounts = await this.collection
         .aggregate([
           {
@@ -162,7 +175,6 @@ class MongoDBService {
               dayWindow: {
                 $let: {
                   vars: {
-                    timestamp: "$Timestamp",
                     sixAM: {
                       $dateFromParts: {
                         year: { $year: "$Timestamp" },
@@ -209,46 +221,58 @@ class MongoDBService {
         .limit(700)
         .toArray();
 
-      // Transform the data with correct IDs
-      const transformedData = await Promise.all(
-        data.map(async (item) => {
-          const itemTimestamp = new Date(item?.Timestamp);
-          let windowStart = new Date(itemTimestamp);
-          windowStart.setHours(6, 0, 0, 0);
-          if (itemTimestamp < windowStart) {
-            windowStart.setDate(windowStart.getDate() - 1);
-          }
+      // Transform the data with IDs without per-row DB calls.
+      // We keep a per-window "seen so far" counter while iterating in Timestamp-desc order.
+      // If totalCount is known, Id = totalCount - seenSoFar, so that earlier records in time get smaller IDs.
+      const seenByWindow = new Map(); // key: windowStart.getTime(), val: number seen in this response
 
-          const totalCount =
-            dayWindowTotalCounts.get(windowStart.getTime()) || 0;
-          const position = await this.collection.countDocuments({
-            Timestamp: {
-              $gte: windowStart,
-              $lt: itemTimestamp,
-            },
-          });
+      const transformedData = data.map((item) => {
+        const itemTimestamp = new Date(item?.Timestamp);
+        const windowStart = new Date(itemTimestamp);
+        windowStart.setHours(6, 0, 0, 0);
+        if (itemTimestamp < windowStart) {
+          windowStart.setDate(windowStart.getDate() - 1);
+        }
 
-          return {
-            Id: position + 1,
-            Timestamp: item?.Timestamp,
-            SerialNumber: item?.SerialNumber,
-            MarkingData: item?.MarkingData,
-            ScannerData: item?.ScannerData,
-            Shift: item?.Shift,
-            Result: item?.Result,
-            User: item?.User,
-            Grade: item?.Grade,
-            Date: item?.Date,
-          };
-        })
-      );
+        const windowKey = windowStart.getTime();
+        const seen = seenByWindow.get(windowKey) || 0;
+        const totalCount = dayWindowTotalCounts.get(windowKey);
+        const id =
+          typeof totalCount === "number" ? Math.max(totalCount - seen, 1) : data.length - seen;
+        seenByWindow.set(windowKey, seen + 1);
+
+        return {
+          Id: id,
+          Timestamp: item?.Timestamp,
+          SerialNumber: item?.SerialNumber,
+          MarkingData: item?.MarkingData,
+          ScannerData: item?.ScannerData,
+          Shift: item?.Shift,
+          Result: item?.Result,
+          User: item?.User,
+          Grade: item?.Grade,
+          Date: item?.Date,
+        };
+      });
 
       // Send the data to the client
-      socket.emit("csv-data", { data: transformedData });
-      logger.info(`Emitted MongoDB data to client: ${socket.id}`);
+      if (hasEmitTarget) {
+        target.emit("csv-data", { data: transformedData });
+        logger.info(`Emitted MongoDB data to client: ${targetId}`);
+      } else {
+        logger.warn("CSV data prepared but no socket/io target was provided");
+      }
     } catch (error) {
       logger.error("Error in sendMongoDbDataToClient: ", error.message);
-      socket.emit("error", { message: "Error fetching data from database" });
+      if (target && typeof target.emit === "function") {
+        target.emit("error", { message: "Error fetching data from database" });
+      }
+    } finally {
+      if (target && Object.prototype.hasOwnProperty.call(target, "id")) {
+        inFlightCsvBySocket.delete(target);
+      } else {
+        isBroadcastCsvInFlight = false;
+      }
     }
   }
 

@@ -261,7 +261,7 @@ io.on("connection", (socket) => {
 
   socket.on("request-csv-data", () => {
     mongoDbService
-      .sendMongoDbDataToClient(socket, "main-data", "records")
+      .sendMongoDbDataToClient(socket)
       .catch((error) => {
         console.error("Error in sendMongoDbDataToClient:", error);
       });
