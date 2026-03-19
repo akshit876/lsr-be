@@ -20,6 +20,7 @@ const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
 export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
+const TCP_SCANNER_ENABLED = process.env.TCP_SCANNER_ENABLED !== "false";
 
 // TCP Scanner configuration
 const TCP_SCANNER_CONFIG = {
@@ -78,61 +79,68 @@ class ScannerController {
       logger.success("MongoDB connected successfully");
 
       // Initialize TCP scanner connection with better error handling
-      logger.info("🔌 Setting up TCP scanner connection...");
-      try {
-        logger.info("🔍 Creating TcpScannerService instance...");
-        this.tcpScannerService = new TcpScannerService(TCP_SCANNER_CONFIG);
-        logger.info(
-          `🔍 tcpScannerService created: ${this.tcpScannerService ? "exists" : "null"}`
-        );
+      if (TCP_SCANNER_ENABLED) {
+        logger.info("🔌 Setting up TCP scanner connection...");
+        try {
+          logger.info("🔍 Creating TcpScannerService instance...");
+          this.tcpScannerService = new TcpScannerService(TCP_SCANNER_CONFIG);
+          logger.info(
+            `🔍 tcpScannerService created: ${this.tcpScannerService ? "exists" : "null"}`
+          );
 
-        logger.info("🔍 Calling initTcpConnection...");
-        await this.tcpScannerService.initTcpConnection();
-        logger.info(
-          `🔍 After initTcpConnection - tcpScannerService: ${this.tcpScannerService ? "exists" : "null"}`
-        );
-        logger.success(
-          `TCP scanner connected successfully at ${TCP_SCANNER_CONFIG.host}:${TCP_SCANNER_CONFIG.port}`
-        );
-      } catch (tcpError) {
-        logger.error(
-          `🔍 TCP scanner initialization failed: ${tcpError.message}`
-        );
-        // Set tcpScannerService to null on error to make debugging easier
-        this.tcpScannerService = null;
+          logger.info("🔍 Calling initTcpConnection...");
+          await this.tcpScannerService.initTcpConnection();
+          logger.info(
+            `🔍 After initTcpConnection - tcpScannerService: ${this.tcpScannerService ? "exists" : "null"}`
+          );
+          logger.success(
+            `TCP scanner connected successfully at ${TCP_SCANNER_CONFIG.host}:${TCP_SCANNER_CONFIG.port}`
+          );
+        } catch (tcpError) {
+          logger.error(
+            `🔍 TCP scanner initialization failed: ${tcpError.message}`
+          );
+          // Set tcpScannerService to null on error to make debugging easier
+          this.tcpScannerService = null;
 
-        if (tcpError.message.includes("ECONNREFUSED")) {
-          logger.error(
-            "❌ TCP Scanner Connection Refused - Troubleshooting suggestions:"
-          );
-          logger.error("   1. Check if the TCP scanner is powered on");
-          logger.error(
-            "   2. Verify the scanner's IP address and port settings"
-          );
-          logger.error("   3. Check network connectivity to the scanner");
-          logger.error("   4. Ensure no firewall is blocking the connection");
-          logger.error("   5. Try pinging the scanner IP address");
-          logger.error(
-            `   6. Verify scanner is listening on port ${TCP_SCANNER_CONFIG.port}`
-          );
-        } else if (tcpError.message.includes("EHOSTUNREACH")) {
-          logger.error("❌ TCP Scanner Host Unreachable");
-          logger.error("   1. Check if the scanner IP address is correct");
-          logger.error("   2. Verify network connectivity");
-          logger.error("   3. Check if scanner is on the same network segment");
-        } else if (tcpError.message.includes("ETIMEDOUT")) {
-          logger.error("❌ TCP Scanner Connection Timeout");
-          logger.error("   1. Check if the scanner is responding");
-          logger.error("   2. Verify network latency is acceptable");
-          logger.error("   3. Try increasing the connection timeout");
+          if (tcpError.message.includes("ECONNREFUSED")) {
+            logger.error(
+              "❌ TCP Scanner Connection Refused - Troubleshooting suggestions:"
+            );
+            logger.error("   1. Check if the TCP scanner is powered on");
+            logger.error(
+              "   2. Verify the scanner's IP address and port settings"
+            );
+            logger.error("   3. Check network connectivity to the scanner");
+            logger.error("   4. Ensure no firewall is blocking the connection");
+            logger.error("   5. Try pinging the scanner IP address");
+            logger.error(
+              `   6. Verify scanner is listening on port ${TCP_SCANNER_CONFIG.port}`
+            );
+          } else if (tcpError.message.includes("EHOSTUNREACH")) {
+            logger.error("❌ TCP Scanner Host Unreachable");
+            logger.error("   1. Check if the scanner IP address is correct");
+            logger.error("   2. Verify network connectivity");
+            logger.error("   3. Check if scanner is on the same network segment");
+          } else if (tcpError.message.includes("ETIMEDOUT")) {
+            logger.error("❌ TCP Scanner Connection Timeout");
+            logger.error("   1. Check if the scanner is responding");
+            logger.error("   2. Verify network latency is acceptable");
+            logger.error("   3. Try increasing the connection timeout");
+          }
+
+          logger.info(`💡 Current TCP Scanner Configuration:`);
+          logger.info(`   - Host: ${TCP_SCANNER_CONFIG.host}`);
+          logger.info(`   - Port: ${TCP_SCANNER_CONFIG.port}`);
+          logger.info(`   - Timeout: ${TCP_SCANNER_CONFIG.timeout}ms`);
+
+          throw new Error(`TCP Scanner Error: ${tcpError.message}`);
         }
-
-        logger.info(`💡 Current TCP Scanner Configuration:`);
-        logger.info(`   - Host: ${TCP_SCANNER_CONFIG.host}`);
-        logger.info(`   - Port: ${TCP_SCANNER_CONFIG.port}`);
-        logger.info(`   - Timeout: ${TCP_SCANNER_CONFIG.timeout}ms`);
-
-        throw new Error(`TCP Scanner Error: ${tcpError.message}`);
+      } else {
+        this.tcpScannerService = null;
+        logger.warn(
+          "⚠️ TCP scanner is disabled (TCP_SCANNER_ENABLED=false). Running in scanner-bypass mode."
+        );
       }
 
       // Initialize barcode generator
@@ -835,6 +843,13 @@ class ScannerController {
   }
 
   async fetchScannerData(tcpScannerService, options = {}) {
+    if (!TCP_SCANNER_ENABLED || !tcpScannerService) {
+      logger.warn(
+        "⚠️ TCP scanner disabled/unavailable. Returning NG in scanner-bypass mode."
+      );
+      return "NG";
+    }
+
     const {
       scanType = options.scanType || "first",
       timeout = 30 * 1000, // Reduced timeout for faster debugging
