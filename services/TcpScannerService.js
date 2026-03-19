@@ -1,3 +1,4 @@
+import "../config/config.js";
 import net from "net";
 import winston from "winston";
 import "winston-daily-rotate-file";
@@ -24,10 +25,20 @@ class TcpScannerService extends EventEmitter {
     this.bufferTimeout = null; // Timeout to emit buffered data
     this.reconnectTimer = null;
     this.setupLogger();
+
+    // If TCP_SCANNER_ENABLED isn't explicitly set, default to disabled to avoid
+    // reconnect spam on machines without scanner hardware.
+    const envEnabled = process.env.TCP_SCANNER_ENABLED;
+    this._explicitlyEnabled = envEnabled === "true";
+    this._explicitlyDisabled = envEnabled === "false";
+    this._disabledByAutoDetect = !this._explicitlyEnabled && !this._explicitlyDisabled;
   }
 
   isEnabled() {
-    return process.env.TCP_SCANNER_ENABLED !== "false";
+    if (this._explicitlyEnabled) return true;
+    if (this._explicitlyDisabled) return false;
+    // env not explicitly set -> auto-detected disabled by default
+    return !this._disabledByAutoDetect ? true : false;
   }
 
   setupLogger() {
@@ -61,7 +72,7 @@ class TcpScannerService extends EventEmitter {
   async initTcpConnection() {
     if (!this.isEnabled()) {
       this.log(
-        "TCP scanner disabled (TCP_SCANNER_ENABLED=false); skipping connection",
+        "TCP scanner disabled; skipping connection",
         "warn"
       );
       return;
@@ -114,6 +125,13 @@ class TcpScannerService extends EventEmitter {
       this.client.on("error", (err) => {
         this.log(`Error connecting to TCP scanner: ${err.message}`, "error");
         this.isConnected = false;
+        if (!this._explicitlyEnabled) {
+          this._disabledByAutoDetect = true;
+          this.log(
+            "Auto-disabling TCP scanner after connection error (set TCP_SCANNER_ENABLED=true to force enable)",
+            "warn"
+          );
+        }
         reject(err);
       });
     });
@@ -196,7 +214,7 @@ class TcpScannerService extends EventEmitter {
   scheduleReconnect() {
     if (!this.isEnabled()) {
       this.log(
-        "TCP scanner disabled (TCP_SCANNER_ENABLED=false); skipping reconnect scheduling",
+        "TCP scanner disabled; skipping reconnect scheduling",
         "warn"
       );
       return;

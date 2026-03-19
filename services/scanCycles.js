@@ -1,3 +1,4 @@
+import "../config/config.js";
 import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
@@ -22,7 +23,18 @@ export const sleep = promisify(setTimeout);
 const TIMEOUT = 100 * 1000;
 
 function isTcpScannerEnabled() {
-  return process.env.TCP_SCANNER_ENABLED !== "false";
+  // Safe defaults:
+  // - If explicitly set to "true", enable.
+  // - If explicitly set to "false", disable.
+  // - If unset/unknown, default to disabled (scanner-less machine friendly).
+  const v = process.env.TCP_SCANNER_ENABLED;
+  if (v === "true") {
+    return true;
+  }
+  if (v === "false") {
+    return false;
+  }
+  return false;
 }
 
 // TCP Scanner configuration
@@ -142,7 +154,7 @@ class ScannerController {
       } else {
         this.tcpScannerService = null;
         logger.warn(
-          "⚠️ TCP scanner is disabled (TCP_SCANNER_ENABLED=false). Running in scanner-bypass mode."
+          "⚠️ TCP scanner is disabled (set TCP_SCANNER_ENABLED=true to enable). Running in scanner-bypass mode."
         );
       }
 

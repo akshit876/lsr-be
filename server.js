@@ -3,6 +3,7 @@ import fs from "fs";
 import morgan from "morgan";
 import { Server } from "socket.io";
 import logger from "./logger.js";
+import config from "./config/config.js";
 import {
   handleFirstScan,
   handleSecondScan,
@@ -138,7 +139,6 @@ const BARCODE_RESET_MINUTE = 0;
 
 import { exec } from "child_process";
 import util from "util";
-import config from "./config/config.js";
 const execAsync = util.promisify(exec);
 
 // Function to kill process using port 3002
