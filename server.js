@@ -214,6 +214,14 @@ const server = createServer((req, res) => {
   });
 });
 
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled promise rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught exception:", error);
+});
+
 export async function fetchPartNumberAndData() {
   try {
     // Connect to the MongoDB if not already connected
@@ -636,7 +644,11 @@ const startServer = async () => {
         // Run everything in parallel
         Promise.all([
           ...monitoringTasks,
-          scannerController.runContinuousScan(io, null, { partNumber }),
+          scannerController
+            .runContinuousScan(io, null, { partNumber })
+            .catch((e) =>
+              logger.error("scannerController.runContinuousScan failed:", e)
+            ),
         ]).catch((error) => {
           logger.error("Error in monitoring processes:", error);
         });

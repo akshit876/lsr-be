@@ -26,6 +26,10 @@ class TcpScannerService extends EventEmitter {
     this.setupLogger();
   }
 
+  isEnabled() {
+    return process.env.TCP_SCANNER_ENABLED !== "false";
+  }
+
   setupLogger() {
     const logFormat = winston.format.combine(
       winston.format.timestamp(),
@@ -55,6 +59,14 @@ class TcpScannerService extends EventEmitter {
   }
 
   async initTcpConnection() {
+    if (!this.isEnabled()) {
+      this.log(
+        "TCP scanner disabled (TCP_SCANNER_ENABLED=false); skipping connection",
+        "warn"
+      );
+      return;
+    }
+
     if (this.isInitialized) {
       this.log("TCP scanner connection is already initialized");
       return;
@@ -182,6 +194,14 @@ class TcpScannerService extends EventEmitter {
   }
 
   scheduleReconnect() {
+    if (!this.isEnabled()) {
+      this.log(
+        "TCP scanner disabled (TCP_SCANNER_ENABLED=false); skipping reconnect scheduling",
+        "warn"
+      );
+      return;
+    }
+
     if (this.reconnectTimer) {
       return; // Already scheduled
     }

@@ -20,7 +20,10 @@ const TEXT_FILE_PATH = path.join(__dirname, "../data/text.txt");
 export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
-const TCP_SCANNER_ENABLED = process.env.TCP_SCANNER_ENABLED !== "false";
+
+function isTcpScannerEnabled() {
+  return process.env.TCP_SCANNER_ENABLED !== "false";
+}
 
 // TCP Scanner configuration
 const TCP_SCANNER_CONFIG = {
@@ -79,7 +82,7 @@ class ScannerController {
       logger.success("MongoDB connected successfully");
 
       // Initialize TCP scanner connection with better error handling
-      if (TCP_SCANNER_ENABLED) {
+      if (isTcpScannerEnabled()) {
         logger.info("🔌 Setting up TCP scanner connection...");
         try {
           logger.info("🔍 Creating TcpScannerService instance...");
@@ -651,6 +654,7 @@ class ScannerController {
 
     try {
       await this.initializeScannerAndMonitor(io, this.tcpScannerService);
+      logger.info("✅ Continuous scan loop entered; waiting for PLC start signal");
 
       while (this.isRunning) {
         try {
@@ -843,7 +847,7 @@ class ScannerController {
   }
 
   async fetchScannerData(tcpScannerService, options = {}) {
-    if (!TCP_SCANNER_ENABLED || !tcpScannerService) {
+    if (!isTcpScannerEnabled() || !tcpScannerService) {
       logger.warn(
         "⚠️ TCP scanner disabled/unavailable. Returning NG in scanner-bypass mode."
       );
