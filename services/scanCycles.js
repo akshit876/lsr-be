@@ -779,6 +779,31 @@ class ScannerController {
     );
 
     if (finalChecksResult) {
+      // In scanner-less mode, the initial record was inserted with Result="N/A".
+      // Once PLC confirms transfer and final checks pass, mark the record as OK and refresh UI data.
+      if (!isScannerStepEnabled()) {
+        try {
+          logger.info(
+            "✅ Scanner step disabled; finalizing record as OK after successful marking"
+          );
+          await this.saveToMongoDB({
+            io: this.io,
+            serialNumber: barcodeData.serialNo,
+            markingData: barcodeData.text,
+            scannerData: "N/A",
+            grading: "N/A",
+            result: "OK",
+            isUpdate: true,
+          });
+
+          if (this.io) {
+            await mongoDbService.sendMongoDbDataToClient(this.io);
+          }
+        } catch (e) {
+          logger.error("Failed to finalize scanner-less record as OK:", e);
+        }
+      }
+
       this.cycleCount++;
       logger.section(`✅ Completed Scan Cycle ${this.cycleCount}`);
       logger.info(`🎯 Cycle count incremented to: ${this.cycleCount}`);
