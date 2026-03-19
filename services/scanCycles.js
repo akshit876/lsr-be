@@ -783,6 +783,13 @@ class ScannerController {
       // Once PLC confirms transfer and final checks pass, mark the record as OK and refresh UI data.
       if (!isScannerStepEnabled()) {
         try {
+          // Signal result to PLC (OK) in scanner-less mode.
+          // We use 1414.3 as the "OK/data match" result bit (same as verification success path).
+          logger.info("✍️ Signaling OK result to PLC (1414.3)");
+          await writeBit(1414, 3, 1);
+          await sleep(200);
+          await writeBit(1414, 3, 0);
+
           logger.info(
             "✅ Scanner step disabled; finalizing record as OK after successful marking"
           );
@@ -838,6 +845,18 @@ class ScannerController {
         `   - Verification success: ${verificationScanResult.success}`
       );
       logger.warn(`   - Current cycle count remains: ${this.cycleCount}`);
+
+      // In scanner-less mode, if cycle fails after barcode generation, signal NG to PLC.
+      if (!isScannerStepEnabled()) {
+        try {
+          logger.info("✍️ Signaling NG result to PLC (1414.4)");
+          await writeBit(1414, 4, 1);
+          await sleep(200);
+          await writeBit(1414, 4, 0);
+        } catch (e) {
+          logger.error("Failed to signal NG result to PLC:", e);
+        }
+      }
 
       // Trigger UI refresh even for failed cycles
       if (this.io) {
