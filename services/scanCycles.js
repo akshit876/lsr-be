@@ -11,7 +11,6 @@ import fs from "fs";
 import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
-import TcpScannerService from "./TcpScannerService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -35,6 +34,12 @@ function isTcpScannerEnabled() {
     return false;
   }
   return false;
+}
+
+function isScannerStepEnabled() {
+  // Explicitly tie "scanner step" to TCP scanner enable for now.
+  // When disabled, we skip first scan + verification scan entirely.
+  return isTcpScannerEnabled();
 }
 
 // TCP Scanner configuration
@@ -98,6 +103,9 @@ class ScannerController {
         logger.info("🔌 Setting up TCP scanner connection...");
         try {
           logger.info("🔍 Creating TcpScannerService instance...");
+          const { default: TcpScannerService } = await import(
+            "./TcpScannerService.js"
+          );
           this.tcpScannerService = new TcpScannerService(TCP_SCANNER_CONFIG);
           logger.info(
             `🔍 tcpScannerService created: ${this.tcpScannerService ? "exists" : "null"}`
@@ -716,11 +724,17 @@ class ScannerController {
       return;
     }
 
-    // Step 1: First Scanner Check
-    const firstScanResult = await this.handleFirstScan(tcpScannerService);
-    if (!firstScanResult.shouldContinue) {
-      logger.info("Cycle stopped after first scan");
-      return;
+    // Step 1: First Scanner Check (optional)
+    if (isScannerStepEnabled()) {
+      const firstScanResult = await this.handleFirstScan(tcpScannerService);
+      if (!firstScanResult.shouldContinue) {
+        logger.info("Cycle stopped after first scan");
+        return;
+      }
+    } else {
+      logger.warn("⚠️ Scanner step disabled; skipping first scan");
+      // If PLC logic expects a scan result bit, we intentionally do not toggle any
+      // scanner-related bits in scanner-less mode.
     }
 
     // Step 2: Generate and Write Barcode (simplified, no OCR)
@@ -751,11 +765,10 @@ class ScannerController {
       return;
     }
 
-    // Step 4: Verification Scanner Check
-    const verificationScanResult = await this.handleVerificationScan(
-      tcpScannerService,
-      barcodeData
-    );
+    // Step 4: Verification Scanner Check (optional)
+    const verificationScanResult = isScannerStepEnabled()
+      ? await this.handleVerificationScan(tcpScannerService, barcodeData)
+      : { success: true, skipped: true };
 
     // Step 5: Final Checks and Cleanup
     logger.info("🔍 Starting final checks and cycle completion...");
@@ -1263,13 +1276,21 @@ class ScannerController {
       this.tcpScannerService = tcpScannerService;
       logger.info("🔗 Using provided COM service");
     } else {
-      // Use the COM port service created during initialization
+      // Use the service created during initialization, if any.
+      // If TCP scanner is disabled, it's expected to be null and we run in bypass mode.
       if (!this.tcpScannerService) {
-        throw new Error(
-          "COM port service not initialized. Make sure initialize() completed successfully."
-        );
+        if (!isTcpScannerEnabled()) {
+          logger.warn(
+            "⚠️ No TCP scanner service (bypass mode). Scanner reads will return NG."
+          );
+        } else {
+          throw new Error(
+            "TCP scanner service not initialized. Set TCP_SCANNER_ENABLED=true and ensure scanner is reachable."
+          );
+        }
+      } else {
+        logger.info("🔗 Using internal COM port service");
       }
-      logger.info("🔗 Using internal COM port service");
     }
 
     this.setupResetMonitor();
@@ -1347,10 +1368,16 @@ class ScannerController {
   async performFinalChecks() {
     try {
       logger.info("🔍 Performing final checks...");
-      if (await this.checkResetOrBit(1415, 7, 1)) {
-        logger.warn("⚠️ Reset detected at final step, restarting cycle");
-        await sleep(1000);
-        return false;
+      if (isScannerStepEnabled()) {
+        if (await this.checkResetOrBit(1415, 7, 1)) {
+          logger.warn("⚠️ Reset detected at final step, restarting cycle");
+          await sleep(1000);
+          return false;
+        }
+      } else {
+        logger.warn(
+          "⚠️ Scanner step disabled; skipping wait on PLC scanner-related bit 1415.7"
+        );
       }
 
       await sleep(3 * 1000);
