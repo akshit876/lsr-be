@@ -30,7 +30,7 @@ const TIMEOUT = 100 * 1000;
 // TCP Scanner configuration (second scan / verification reader)
 const TCP_SCANNER_CONFIG = {
   host: process.env.SCANNER_HOST || "192.168.119.176",
-  port: parseInt(process.env.SCANNER_PORT, 10) || 502,
+  port: parseInt(process.env.SCANNER_PORT, 10) || 9004,
   timeout: 5000,
   reconnectInterval: 3000,
   keepAlive: true, // Enable keep-alive to prevent idle timeouts
