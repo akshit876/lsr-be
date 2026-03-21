@@ -2,7 +2,13 @@ import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
 import mongoDbService from "./mongoDbService.js";
-import { readBit, readRegister, writeBit, writeRegister } from "./modbus.js";
+import {
+  readBit,
+  readRegister,
+  writeBit,
+  writeRegister,
+  writeRegisterFull,
+} from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
 import { promisify } from "util";
@@ -21,16 +27,34 @@ export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 
-// TCP Scanner configuration
+// TCP Scanner configuration (second scan / verification reader)
 const TCP_SCANNER_CONFIG = {
-  host: process.env.SCANNER_HOST || "192.168.3.147", // Default TCP scanner IP
-  port: parseInt(process.env.SCANNER_PORT, 10) || 5024, // Default TCP scanner port
+  host: process.env.SCANNER_HOST || "192.168.119.176",
+  port: parseInt(process.env.SCANNER_PORT, 10) || 502,
   timeout: 5000,
   reconnectInterval: 3000,
   keepAlive: true, // Enable keep-alive to prevent idle timeouts
   keepAliveInitialDelay: 1000,
   logDir: "scanner_logs",
 };
+
+/**
+ * Pack ASCII scanner string into 16-bit holding registers (matches modbus read:
+ * low byte = first character, high byte = second character per register).
+ */
+function asciiScannerStringToHoldingRegisters(str) {
+  const maxChars = parseInt(process.env.SCANNER_DATA_MAX_CHARS || "120", 10);
+  const cleaned = String(str ?? "").replace(/\r?\n/g, "").trim();
+  const truncated = cleaned.slice(0, maxChars);
+  const pad = truncated.length % 2 === 1 ? `${truncated} ` : truncated;
+  const regs = [];
+  for (let i = 0; i < pad.length; i += 2) {
+    const low = pad.charCodeAt(i) & 0xff;
+    const high = pad.charCodeAt(i + 1) & 0xff;
+    regs.push(low | (high << 8));
+  }
+  return regs.length ? regs : [0];
+}
 
 class ScannerController {
   static instance = null;
@@ -1692,6 +1716,27 @@ class ScannerController {
 
       // Handle timeout/null/undefined cases as NG
       const effectiveScannerData = mainData || "NG"; // Use main data for comparison
+
+      // Second scan: write scanner string to PLC holding registers (default from 3000)
+      try {
+        const startReg = parseInt(
+          process.env.SCANNER_DATA_REGISTER_START || "3000",
+          10
+        );
+        const plcString =
+          cleanedData !== null &&
+          cleanedData !== undefined &&
+          String(cleanedData).length > 0
+            ? String(cleanedData)
+            : String(scannerData ?? "");
+        const regs = asciiScannerStringToHoldingRegisters(plcString);
+        await writeRegisterFull(startReg, regs);
+        logger.info(
+          `📤 Wrote ${regs.length} holding register word(s) at ${startReg} (scanner data, ${plcString.length} chars)`
+        );
+      } catch (e) {
+        logger.error(`Failed writing scanner data to PLC registers: ${e.message}`);
+      }
 
       if (effectiveScannerData !== "NG") {
         logger.success("Verification scan OK");

@@ -2,13 +2,21 @@ import ModbusRTU from "modbus-serial";
 import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
 
-// Default values
-const DEFAULT_MODBUS_IP = "192.168.3.146";
+// Default values (PLC Modbus TCP)
+const DEFAULT_MODBUS_IP = "192.168.119.175";
 const DEFAULT_MODBUS_PORT = 502;
 
-const MODBUS_IP = process.env.NEXT_PUBLIC_MODBUS_IP || DEFAULT_MODBUS_IP;
+const MODBUS_IP =
+  process.env.MODBUS_HOST ||
+  process.env.MODBUS_IP ||
+  process.env.NEXT_PUBLIC_MODBUS_IP ||
+  DEFAULT_MODBUS_IP;
+const rawModbusPort =
+  process.env.MODBUS_PORT ||
+  process.env.NEXT_PUBLIC_MODBUS_PORT ||
+  String(DEFAULT_MODBUS_PORT);
 const MODBUS_PORT =
-  parseInt(process.env.NEXT_PUBLIC_MODBUS_PORT, 10) || DEFAULT_MODBUS_PORT;
+  parseInt(rawModbusPort, 10) || DEFAULT_MODBUS_PORT;
 
 class ModbusConnection {
   constructor() {
