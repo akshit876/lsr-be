@@ -234,168 +234,61 @@ class SerialNumberGeneratorService {
   }
 
   async getNextDecSerialNumber2() {
-    const reset = await this.checkAndResetSerialNumber();
+    // Robust fix:
+    // Use a single atomic increment in MongoDB per (modelNumber + dayKey).
+    // This prevents duplicate serials when multiple requests/cycles happen quickly.
+    const modelNumber = (await this.getCurrentModelNumber()) || "default";
+    this.currentModelNumber = modelNumber;
 
-    // CRITICAL: ALWAYS get fresh model from database on every call
-    const currentModelFromDB = await this.getCurrentModelNumber();
-
-    // IMPORTANT: Always reload model config on every call to ensure fresh data
-    // This ensures we never use stale model data when model changes during runtime
-    logger.info(`🔍 ALWAYS reloading model config for: ${currentModelFromDB}`);
-
-    // Set the current model (this will be the fresh one from DB)
-    this.currentModelNumber = currentModelFromDB;
-
-    // ALWAYS load fresh model-specific serial configuration from modelSerialConfig
-    const modelConfig = await this.loadModelSerialConfig();
-
-    // Get the correct starting serial for this model
     const modelStartingSerial = await this.getModelStartingSerial();
+    const now = new Date();
+    const dayKey = format(now, "yyyy-MM-dd");
 
-    // Determine the serial number to use
-    let serialToUse;
+    await MongoDBService.connect("main-data", "modelSerialConfig");
 
-    if (reset) {
-      // Reset case - use model starting serial (checkAndResetSerialNumber already confirmed this is the first reset today)
-      this.currentSerialNumber = modelStartingSerial;
-      serialToUse = this.currentSerialNumber;
+    const updateResult = await MongoDBService.collection.findOneAndUpdate(
+      { modelNumber, dayKey },
+      {
+        $setOnInsert: {
+          modelNumber,
+          dayKey,
+          startingSerial: modelStartingSerial,
+          currentValue: modelStartingSerial - 1,
+          createdAt: now,
+          lastReset: now,
+        },
+        $inc: { currentValue: 1 },
+        $set: {
+          lastUpdated: now,
+          updatedAt: now,
+        },
+      },
+      {
+        upsert: true,
+        returnDocument: "after",
+      }
+    );
 
-      logger.info(
-        `🔄 RESET: Using starting serial ${serialToUse} for model: ${this.currentModelNumber}`
-      );
-    } else if (!modelConfig || !modelConfig.currentValue) {
-      // ──────────────────────────────────────────────────────────────────────────
-      // CRITICAL FIX: No model config exists, but we're NOT supposed to reset today.
-      // Instead of using modelStartingSerial (which would cause same-day 0001),
-      // query the last record for this model and continue from there.
-      // ──────────────────────────────────────────────────────────────────────────
+    let serialToUse = parseInt(updateResult?.currentValue, 10);
+    if (Number.isNaN(serialToUse) || serialToUse <= 0) {
       logger.warn(
-        `🆕 MISSING CONFIG for model: ${this.currentModelNumber}. Attempting to recover last serial from records...`
+        `⚠️ Invalid atomic serial value "${updateResult?.currentValue}" for ${modelNumber}/${dayKey}; using model starting serial ${modelStartingSerial}`
       );
-
-      let recoveredSerial = null;
-      try {
-        await MongoDBService.connect(
-          this.originalDbName,
-          this.originalCollectionName
-        );
-        const filter = this.currentModelNumber
-          ? { ModelNumber: this.currentModelNumber }
-          : {};
-        const lastRecord = await MongoDBService.collection
-          .find(filter)
-          .sort({ Timestamp: -1 })
-          .limit(1)
-          .toArray();
-
-        if (lastRecord.length && lastRecord[0].SerialNumber) {
-          const lastSerial = parseInt(lastRecord[0].SerialNumber, 10);
-          if (!isNaN(lastSerial) && lastSerial > 0) {
-            recoveredSerial = lastSerial + 1;
-            logger.info(
-              `✅ RECOVERED: Found last serial ${lastSerial} from records, continuing with ${recoveredSerial}`
-            );
-          }
-        }
-      } catch (recoverError) {
-        logger.warn(
-          `⚠️ Could not recover serial from records: ${recoverError.message}`
-        );
-      }
-
-      if (recoveredSerial !== null) {
-        this.currentSerialNumber = recoveredSerial;
-        serialToUse = this.currentSerialNumber;
-      } else {
-        // Truly no records exist for this model - use starting serial
-        this.currentSerialNumber = modelStartingSerial;
-        serialToUse = this.currentSerialNumber;
-        logger.warn(
-          `🆕 No records found for model ${this.currentModelNumber}, using starting serial ${serialToUse}`
-        );
-      }
-    } else {
-      // Model config exists - continue from currentValue + 1
-      const existingValue = parseInt(modelConfig.currentValue, 10);
-      if (!isNaN(existingValue)) {
-        this.currentSerialNumber = existingValue + 1;
-        serialToUse = this.currentSerialNumber;
-
-        logger.info(
-          `✅ CONTINUING: Model ${this.currentModelNumber} from ${existingValue} to ${serialToUse}`
-        );
-      } else {
-        // ──────────────────────────────────────────────────────────────────────────
-        // CRITICAL FIX: Invalid currentValue but we're NOT supposed to reset today.
-        // Recover from records instead of using modelStartingSerial.
-        // ──────────────────────────────────────────────────────────────────────────
-        logger.warn(
-          `⚠️ INVALID DATA: currentValue="${modelConfig.currentValue}" is not a number. Attempting recovery...`
-        );
-
-        let recoveredSerial = null;
-        try {
-          await MongoDBService.connect(
-            this.originalDbName,
-            this.originalCollectionName
-          );
-          const filter = this.currentModelNumber
-            ? { ModelNumber: this.currentModelNumber }
-            : {};
-          const lastRecord = await MongoDBService.collection
-            .find(filter)
-            .sort({ Timestamp: -1 })
-            .limit(1)
-            .toArray();
-
-          if (lastRecord.length && lastRecord[0].SerialNumber) {
-            const lastSerial = parseInt(lastRecord[0].SerialNumber, 10);
-            if (!isNaN(lastSerial) && lastSerial > 0) {
-              recoveredSerial = lastSerial + 1;
-              logger.info(
-                `✅ RECOVERED: Found last serial ${lastSerial} from records, continuing with ${recoveredSerial}`
-              );
-            }
-          }
-        } catch (recoverError) {
-          logger.warn(
-            `⚠️ Could not recover serial from records: ${recoverError.message}`
-          );
-        }
-
-        if (recoveredSerial !== null) {
-          this.currentSerialNumber = recoveredSerial;
-          serialToUse = this.currentSerialNumber;
-        } else {
-          this.currentSerialNumber = modelStartingSerial;
-          serialToUse = this.currentSerialNumber;
-          logger.warn(
-            `⚠️ No records found for model ${this.currentModelNumber}, using starting serial ${serialToUse}`
-          );
-        }
-      }
+      serialToUse = modelStartingSerial;
     }
 
-    // VALIDATION: Ensure serial number doesn't exceed 9999 (4-digit max)
     if (serialToUse > 9999) {
       logger.warn(
-        `⚠️ Serial number ${serialToUse} exceeds 9999, rolling over to 1`
+        `⚠️ Serial ${serialToUse} exceeded 9999 for ${modelNumber}/${dayKey}; forcing 9999`
       );
-      serialToUse = 1;
-      this.currentSerialNumber = 1;
+      serialToUse = 9999;
     }
 
-    // Format the serial number - MAX 4 DIGITS (0001-9999)
+    this.currentSerialNumber = serialToUse + 1;
     const serialNumber = serialToUse.toString().padStart(4, "0");
 
-    // Save the USED serial number to modelSerialConfig
-    await this.saveUsedSerialNumber(serialToUse);
-
-    // Increment for next call
-    this.currentSerialNumber++;
-
     logger.info(
-      `🎯 FINAL: Using serial ${serialNumber} for model: ${this.currentModelNumber} (next will be: ${this.currentSerialNumber}) - saved to modelSerialConfig`
+      `🎯 ATOMIC SERIAL: model=${modelNumber}, day=${dayKey}, used=${serialNumber}, next=${this.currentSerialNumber}`
     );
     return serialNumber;
   }

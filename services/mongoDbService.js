@@ -8,19 +8,38 @@ class MongoDBService {
     this.client = null;
     this.db = null;
     this.collection = null;
+    this.connectPromise = null;
   }
 
   async connect(dbName, collectionName) {
     try {
       const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
-      this.client = new MongoClient(uri);
-      await this.client.connect();
+
+      // Reuse a single MongoClient and guard concurrent connect calls.
+      if (!this.client) {
+        this.client = new MongoClient(uri);
+      }
+
+      if (this.connectPromise) {
+        await this.connectPromise;
+      } else {
+        this.connectPromise = this.client.connect();
+        try {
+          await this.connectPromise;
+        } finally {
+          this.connectPromise = null;
+        }
+      }
+
       this.db = this.client.db(dbName);
       this.collection = this.db.collection(collectionName);
-      logger.info(`Connected successfully to MongoDB database: ${dbName}`);
+      logger.info(
+        `Connected successfully to MongoDB database: ${dbName}.${collectionName}`
+      );
     } catch (error) {
       console.error({ error });
       logger.error("MongoDB connection error:", error);
+      this.connectPromise = null;
       throw error;
     }
   }
@@ -29,6 +48,10 @@ class MongoDBService {
     if (this.client) {
       await this.client.close();
       logger.info("Disconnected from MongoDB");
+      this.client = null;
+      this.db = null;
+      this.collection = null;
+      this.connectPromise = null;
     }
   }
 
