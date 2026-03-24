@@ -246,6 +246,9 @@ class SerialNumberGeneratorService {
 
     await MongoDBService.connect("main-data", "modelSerialConfig");
 
+    // MongoDB forbids $setOnInsert and $inc on the same path (currentValue).
+    // New rows: store serialCounterMode "offset" and only $inc currentValue (1,2,3…).
+    // Legacy rows (no mode): currentValue is the absolute serial (previous behavior).
     const updateResult = await MongoDBService.collection.findOneAndUpdate(
       { modelNumber, dayKey },
       {
@@ -253,7 +256,7 @@ class SerialNumberGeneratorService {
           modelNumber,
           dayKey,
           startingSerial: modelStartingSerial,
-          currentValue: modelStartingSerial - 1,
+          serialCounterMode: "offset",
           createdAt: now,
           lastReset: now,
         },
@@ -269,7 +272,13 @@ class SerialNumberGeneratorService {
       }
     );
 
-    let serialToUse = parseInt(updateResult?.currentValue, 10);
+    const raw = parseInt(updateResult?.currentValue, 10);
+    let serialToUse;
+    if (updateResult?.serialCounterMode === "offset") {
+      serialToUse = modelStartingSerial + raw - 1;
+    } else {
+      serialToUse = raw;
+    }
     if (Number.isNaN(serialToUse) || serialToUse <= 0) {
       logger.warn(
         `⚠️ Invalid atomic serial value "${updateResult?.currentValue}" for ${modelNumber}/${dayKey}; using model starting serial ${modelStartingSerial}`
