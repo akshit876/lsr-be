@@ -1,4 +1,5 @@
 import winston from 'winston';
+import 'winston-daily-rotate-file';
 import fs from 'fs';
 import path from 'path';
 import { format } from 'date-fns';
@@ -70,16 +71,24 @@ const logger = winston.createLogger({
     new winston.transports.Console({
       format: customFormat
     }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'error.log'),
+    new winston.transports.DailyRotateFile({
+      filename: path.join(logDir, 'error-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '30d',
       level: 'error',
       format: winston.format.printf(({ level, message }) => {
         const timestamp = getISTTimestamp();
         return `${timestamp} [${level.toUpperCase()}] ${message}`;
       })
     }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'combined.log'),
+    new winston.transports.DailyRotateFile({
+      filename: path.join(logDir, 'combined-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '30d',
       format: winston.format.printf(({ level, message }) => {
         const timestamp = getISTTimestamp();
         return `${timestamp} [${level.toUpperCase()}] ${message}`;

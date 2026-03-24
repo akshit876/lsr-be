@@ -62,9 +62,30 @@ class ScannerController {
     this.isPulseOn = false;
     this.currentDayId = 1;
     this.lastResetDate = this.getLastResetTime();
+    this.lastGeneratedMarkingData = null;
+    this.repeatedMarkingCount = 0;
+    this.duplicateAlarmThreshold = parseInt(
+      process.env.DUPLICATE_MARKING_ALARM_THRESHOLD || "3",
+      10
+    );
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
+  }
+
+  raiseCriticalAlarm(message, details = {}) {
+    logger.error(`🚨 CRITICAL ALARM: ${message}`);
+    if (Object.keys(details).length > 0) {
+      logger.error(`🚨 ALARM DETAILS: ${JSON.stringify(details)}`);
+    }
+
+    if (this.io) {
+      this.io.emit("critical_alarm", {
+        timestamp: new Date().toISOString(),
+        message,
+        details,
+      });
+    }
   }
 
   async initialize() {
@@ -969,6 +990,28 @@ class ScannerController {
         });
       logger.info(`✅ Barcode generated: ${barcodeText}`);
       logger.info(`🔢 Serial Number: ${serialString}`);
+
+      // Safety guard: detect repeated marking payloads (e.g. same serial printed repeatedly).
+      // If repeated N times in a row, raise alarm and block this cycle before writing files.
+      if (this.lastGeneratedMarkingData === barcodeText) {
+        this.repeatedMarkingCount += 1;
+      } else {
+        this.lastGeneratedMarkingData = barcodeText;
+        this.repeatedMarkingCount = 1;
+      }
+
+      if (this.repeatedMarkingCount >= this.duplicateAlarmThreshold) {
+        const alarmMessage =
+          "Repeated marking data detected across consecutive cycles. Cycle blocked to prevent mass duplicate laser prints.";
+        this.raiseCriticalAlarm(alarmMessage, {
+          markingData: barcodeText,
+          serialNumber: serialString,
+          repeatedCount: this.repeatedMarkingCount,
+          threshold: this.duplicateAlarmThreshold,
+          model: await this.getCurrentModelNumber(),
+        });
+        throw new Error("DUPLICATE_MARKING_GUARD_TRIGGERED");
+      }
 
       // Write both files using the reusable function
       logger.info("📁 Writing barcode data to files...");
