@@ -11,26 +11,40 @@ class MongoDBService {
   }
 
   async connect(database, collection) {
-    const maxRetries = 5;
-    const retryDelay = 5000; // 5 seconds
+    const maxRetries = 15;
+    const baseDelayMs = 3000;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         logger.info(
           `Attempting to connect to MongoDB (attempt ${attempt}/${maxRetries})...`
         );
-        this.client = await MongoClient.connect(config.mongodb.url);
+        this.client = await MongoClient.connect(
+          config.mongodb.url,
+          config.mongodb.clientOptions
+        );
         this.db = this.client.db(database);
         this.collection = this.db.collection(collection);
         logger.success("MongoDB connected successfully");
         return;
       } catch (error) {
+        if (this.client) {
+          try {
+            await this.client.close();
+          } catch {
+            /* ignore */
+          }
+          this.client = null;
+          this.db = null;
+          this.collection = null;
+        }
         logger.error(`MongoDB connection error: ${error.message}`);
         if (attempt === maxRetries) {
           throw error;
         }
-        logger.info(`Retrying in ${retryDelay / 1000} seconds...`);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        const backoff = Math.min(30_000, baseDelayMs * Math.pow(1.35, attempt - 1));
+        logger.info(`Retrying in ${Math.round(backoff / 1000)} seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
       }
     }
   }

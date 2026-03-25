@@ -1,11 +1,13 @@
 import { MongoClient } from "mongodb";
 import bcrypt from "bcryptjs";
-
-const MONGODB_URI = "mongodb://localhost:27017";
+import config from "../config/config.js";
 
 async function initializeDatabase() {
   try {
-    const client = await MongoClient.connect(MONGODB_URI);
+    const client = await MongoClient.connect(
+      config.mongodb.url,
+      config.mongodb.clientOptions
+    );
     console.log("Connected to MongoDB");
 
     // Use only main-data database

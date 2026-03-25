@@ -1,7 +1,8 @@
 // import BufferedComPortService from "./ComPortService.js";
-import { MongoClient } from "mongodb";
 import { readBit, writeBitsWithRest } from "./modbus.js";
 import logger from "../logger.js";
+import config from "../config/config.js";
+import mongoDbService from "./mongoDbService.js";
 // import { sleep } from "./testCycle.js";
 
 // const comService = new BufferedComPortService({
@@ -11,12 +12,14 @@ import logger from "../logger.js";
 // });
 export async function fetchGradeConfig() {
   try {
-    // Connect to the MongoDB if not already connected
-    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
-    const client = new MongoClient(uri);
-    await client.connect();
-    const db = client.db("main-data");
-    logger.info("Connected successfully to MongoDB database: main-data");
+    await mongoDbService.connect(
+      config.mongodb.database,
+      config.mongodb.collection
+    );
+    const db = mongoDbService.client.db(config.mongodb.database);
+    logger.info(
+      `Connected successfully to MongoDB database: ${config.mongodb.database}`
+    );
 
     // Fetch grading configuration from the 'gradeConfig' collection
     const gradeConfigCollection = db.collection("gradeConfig");

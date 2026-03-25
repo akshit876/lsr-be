@@ -26,7 +26,6 @@ import cronService from "./services/cronService.js";
 import ShiftUtility from "./services/ShiftUtility.js";
 import BufferedComPortService from "./services/ComPortService.js";
 import BarcodeGenerator from "./services/barcodeGenrator.js";
-import { MongoClient } from "mongodb";
 import serialNumberService from "./services/serialNumber.js";
 import { scannerController } from "./services/scanCycles.js";
 
@@ -216,15 +215,16 @@ const server = createServer((req, res) => {
 
 export async function fetchPartNumberAndData() {
   try {
-    // Connect to the MongoDB if not already connected
-
-    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
-    const client = new MongoClient(uri);
-    await client.connect();
-    const db = client.db("main-data");
+    await mongoDbService.connect(
+      config.mongodb.database,
+      config.mongodb.collection
+    );
+    const db = mongoDbService.client.db(config.mongodb.database);
     // console.log({ db });
     const collection = db.collection("config");
-    logger.info("Connected successfully to MongoDB database: main-data");
+    logger.info(
+      `Connected successfully to MongoDB database: ${config.mongodb.database}`
+    );
 
     // Fetch part number from the 'configs' collection
     const configData = await collection.findOne({});

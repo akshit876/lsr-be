@@ -31,9 +31,9 @@ const TIMEOUT = 100 * 1000;
 const BARCODE_RESET_HOUR = 6;
 const BARCODE_RESET_MINUTE = 0;
 
-import { MongoClient } from "mongodb";
 import { tcpClient } from "./tcp.js";
 import { REGISTERS_TO_MONITOR } from "../server.js";
+import config from "../config/config.js";
 
 const TCP_CONFIG = {
   PORT: 5024,
@@ -44,12 +44,14 @@ const TCP_CONFIG = {
 
 export async function fetchGradeConfig() {
   try {
-    // Connect to the MongoDB if not already connected
-    const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
-    const client = new MongoClient(uri);
-    await client.connect();
-    const db = client.db("main-data");
-    logger.info("Connected successfully to MongoDB database: main-data");
+    await mongoDbService.connect(
+      config.mongodb.database,
+      config.mongodb.collection
+    );
+    const db = mongoDbService.client.db(config.mongodb.database);
+    logger.info(
+      `Connected successfully to MongoDB database: ${config.mongodb.database}`
+    );
 
     // Fetch grading configuration from the 'gradeConfig' collection
     const gradeConfigCollection = db.collection("gradeConfig");
