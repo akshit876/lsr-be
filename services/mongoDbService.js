@@ -10,7 +10,14 @@ class MongoDBService {
     this.collection = null;
   }
 
-  async connect(database, collection) {
+  /**
+   * One shared MongoClient per process (singleton). Retries only when no client yet.
+   * Switching DB/collection does not open new TCP pools.
+   */
+  async _ensureClient() {
+    if (this.client) {
+      return;
+    }
     const maxRetries = 15;
     const baseDelayMs = 3000;
 
@@ -23,8 +30,6 @@ class MongoDBService {
           config.mongodb.url,
           config.mongodb.clientOptions
         );
-        this.db = this.client.db(database);
-        this.collection = this.db.collection(collection);
         logger.success("MongoDB connected successfully");
         return;
       } catch (error) {
@@ -35,8 +40,6 @@ class MongoDBService {
             /* ignore */
           }
           this.client = null;
-          this.db = null;
-          this.collection = null;
         }
         logger.error(`MongoDB connection error: ${error.message}`);
         if (attempt === maxRetries) {
@@ -49,9 +52,33 @@ class MongoDBService {
     }
   }
 
+  /**
+   * Ensures the singleton client exists, then points `this.db` / `this.collection`
+   * at the given database and collection (no extra MongoClient per call).
+   */
+  async connect(database, collection) {
+    await this._ensureClient();
+    this.db = this.client.db(database);
+    this.collection = this.db.collection(collection);
+  }
+
+  /** Named DB handle without mutating `this.db` / `this.collection` (call after `connect`). */
+  getDb(name) {
+    if (!this.client) {
+      throw new Error("MongoDB client not connected");
+    }
+    return this.client.db(name);
+  }
+
   async disconnect() {
     if (this.client) {
-      await this.client.close();
+      try {
+        await this.client.close();
+      } finally {
+        this.client = null;
+        this.db = null;
+        this.collection = null;
+      }
       logger.info("Disconnected from MongoDB");
     }
   }
@@ -268,7 +295,7 @@ class MongoDBService {
 
   async getUserDetails(userId = null) {
     try {
-      // Connect to the laserU database
+      await this._ensureClient();
       const db = this.client.db("main-data");
       const collection = db.collection("usersessionlogs");
 
@@ -300,7 +327,8 @@ class MongoDBService {
 
   async updateLastRecord(query, update, dbName, collectionName) {
     try {
-      const collection = this.db.collection(collectionName);
+      await this._ensureClient();
+      const collection = this.client.db(dbName).collection(collectionName);
       const result = await collection.findOneAndUpdate(query, update, {
         sort: { Timestamp: -1 }, // Sort by timestamp to get most recent
         returnDocument: "after", // Return the updated document
