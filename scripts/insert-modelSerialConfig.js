@@ -49,7 +49,7 @@ async function run() {
     await MongoDBService.collection.insertOne(doc);
     console.log("✅ Inserted into modelSerialConfig:");
     console.log(JSON.stringify(doc, null, 2));
-    console.log(`\nNext serial for ${MODEL_NUMBER} will be: ${String(parseInt(CURRENT_VALUE, 10) + 1).padStart(4, "0")}`);
+    console.log(`\nNext serial for ${MODEL_NUMBER} will be: ${String(parseInt(CURRENT_VALUE, 10) + 1).padStart(5, "0")}`);
 
     await MongoDBService.disconnect();
     process.exit(0);

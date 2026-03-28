@@ -2,9 +2,9 @@ import { format, isAfter, isBefore } from "date-fns";
 import MongoDBService from "./mongoDbService.js";
 import logger from "../logger.js";
 
-// Serial number format: always 4 digits (0001-9999)
-const SERIAL_DIGITS = 4;
-const SERIAL_MAX = 9999;
+// Serial number format: always 5 digits (00001-99999)
+const SERIAL_DIGITS = 5;
+const SERIAL_MAX = 99999;
 
 // 12am reset is in this timezone so reset is at midnight local, not server (e.g. UTC → 6am in India). Set RESET_TIMEZONE env to override.
 /* eslint-disable no-undef */
@@ -118,8 +118,8 @@ class SerialNumberGeneratorService {
 
   // ... rest of the methods remain the same
   extractSerialNumberFromOCR(ocrData) {
-    // Assuming the serial number is a 3- or 4-digit number in the OCR data
-    const match = ocrData.match(/\d{3,4}/);
+    // OCR may return 3–5 digit serial fragments; prefer longest plausible match
+    const match = ocrData.match(/\d{3,5}/);
     return match ? parseInt(match[0], 10) + 1 : 1; // Start from next number, or 1 if not found
   }
 
@@ -351,7 +351,7 @@ class SerialNumberGeneratorService {
       }
     }
 
-    // VALIDATION: Ensure serial number doesn't exceed max (9999 for 4 digits)
+    // VALIDATION: Ensure serial number doesn't exceed max (99999 for 5 digits)
     if (serialToUse > SERIAL_MAX) {
       logger.warn(
         `⚠️ Serial number ${serialToUse} exceeds ${SERIAL_MAX}, rolling over to 1`
@@ -360,7 +360,7 @@ class SerialNumberGeneratorService {
       this.currentSerialNumber = 1;
     }
 
-    // Format the serial number - always 4 digits (0001-9999)
+    // Format the serial number - always 5 digits (00001-99999)
     const serialNumber = serialToUse.toString().padStart(SERIAL_DIGITS, "0");
 
     // Save the USED serial number to modelSerialConfig
@@ -444,28 +444,34 @@ class SerialNumberGeneratorService {
       if (modelNumber) {
         // Model-specific starting serial configurations for ALL models
         if (modelNumber === "CMB-877") {
-          logger.info(`✅ Model ${modelNumber} → starting serial: 701 (S0701)`);
-          return 701; // Displayed as 0701 (4 digits)
+          logger.info(
+            `✅ Model ${modelNumber} → starting serial: 701 (S${String(701).padStart(SERIAL_DIGITS, "0")})`
+          );
+          return 701;
         } else if (modelNumber === "CMB-778") {
           // CMB-778 starts from 1
-          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S0001)`);
+          logger.info(
+            `✅ Model ${modelNumber} → starting serial: 1 (S${String(1).padStart(SERIAL_DIGITS, "0")})`
+          );
           return 1;
         } else {
           // All other models start from 1
           logger.info(
-            `✅ Model ${modelNumber} → starting serial: 1 (S0001) [default for this model]`
+            `✅ Model ${modelNumber} → starting serial: 1 (S${String(1).padStart(SERIAL_DIGITS, "0")}) [default for this model]`
           );
           return 1;
         }
       } else {
         logger.warn(
-          "⚠️ No model number found, using default starting serial: 1 (S0001)"
+          `⚠️ No model number found, using default starting serial: 1 (S${String(1).padStart(SERIAL_DIGITS, "0")})`
         );
         return this.modelStartingSerials["default"];
       }
     } catch (error) {
       logger.error("❌ Error fetching model starting serial:", error);
-      logger.warn("⚠️ Defaulting to serial number 1 (S0001) due to error");
+      logger.warn(
+        `⚠️ Defaulting to serial number 1 (S${String(1).padStart(SERIAL_DIGITS, "0")}) due to error`
+      );
       return this.modelStartingSerials["default"];
     }
   }
