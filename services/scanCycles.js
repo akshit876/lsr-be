@@ -11,6 +11,7 @@ import {
 } from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
+import { buildDmcTextFileLines } from "./dmcTraceFormat.js";
 import { promisify } from "util";
 import fs from "fs";
 import { format } from "date-fns";
@@ -1110,43 +1111,42 @@ class ScannerController {
       const {
         text: barcodeText,
         serialNo: serialString,
-        fields,
+        fields: barcodeFields,
       } = await this.barcodeGenerator.generateBarcodeData({
         mongoDbService,
         partNumber,
       });
-      logger.info(`✅ Barcode generated: ${barcodeText}`);
+      logger.info(
+        `📋 Barcode built from ${barcodeFields.length} config field(s) (checked subset → code.txt)`
+      );
+
+      // DMC sidecar (text.txt) — separate from barcode / code.txt composition
+      const now = new Date();
+      const year = String(now.getFullYear()).slice(-2);
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = format(now, "dd");
+      const shift = this.shiftUtility.getCurrentShift(now);
+      const traceForTextFile = buildDmcTextFileLines({
+        year,
+        month,
+        day,
+        shift,
+        serialString,
+      });
+
+      logger.info(`✅ Barcode generated (code.txt): ${barcodeText}`);
+      logger.info(`📄 text.txt DMC trace:\n${traceForTextFile}`);
       logger.info(`🔢 Serial Number: ${serialString}`);
 
-      // Calculate split point at Shift field for text.txt
-      let shiftSplitPoint = null;
-      if (fields) {
-        const checkedFields = fields
-          .filter((field) => field.isChecked)
-          .sort((a, b) => a.order - b.order);
-
-        // Find the index of Shift field
-        const shiftIndex = checkedFields.findIndex(
-          (field) => field.fieldName === "Shift"
-        );
-
-        if (shiftIndex >= 0) {
-          // Calculate the length of all fields before Shift
-          shiftSplitPoint = checkedFields
-            .slice(0, shiftIndex)
-            .reduce((sum, field) => sum + (field.value || "").length, 0);
-        }
-      }
-
-      // Write both files using the reusable function
+      // code.txt = full laser string; text.txt = YYMMDD + newline + shift + 5-digit serial only
       logger.info("📁 Writing barcode data to files...");
       await Promise.all([
         this.writeToFile(CODE_FILE_PATH, barcodeText, "Barcode data"),
         this.writeToFile(
           TEXT_FILE_PATH,
-          barcodeText,
-          "Barcode text",
-          shiftSplitPoint
+          traceForTextFile,
+          "DMC trace (text.txt)",
+          false
         ),
       ]);
       logger.info("✅ Files written successfully");
@@ -1182,7 +1182,9 @@ class ScannerController {
       logger.info(
         `🎯 Barcode generation process completed. Returning ${isVerified ? "barcodeData" : "null"}`
       );
-      return isVerified ? { text: barcodeText, serialNo: serialString } : null;
+      return isVerified
+        ? { text: barcodeText, serialNo: serialString, fields: barcodeFields }
+        : null;
     } catch (error) {
       logger.error("❌ Error in file writing process:", error);
       // Save error state to MongoDB
@@ -1202,19 +1204,26 @@ class ScannerController {
   // Reusable file writing function
   async writeToFile(filePath, data, description = "Data", splitPoint = null) {
     try {
-      // Format barcode as 2 lines for TXT files
+      // Format barcode as 2 lines for TXT files (skip when splitPoint === false, e.g. text.txt with fixed DMC layout)
       let formattedData = data.toString();
       const isTxtFile = filePath.endsWith(".txt");
       const isTextFile = filePath === TEXT_FILE_PATH;
 
-      if (isTxtFile && formattedData.length > 0) {
-        if (isTextFile && splitPoint !== null && splitPoint >= 0) {
-          // For text.txt, split at Shift field position
+      if (
+        isTxtFile &&
+        formattedData.length > 0 &&
+        splitPoint !== false
+      ) {
+        if (
+          isTextFile &&
+          typeof splitPoint === "number" &&
+          splitPoint >= 0
+        ) {
           const line1 = formattedData.substring(0, splitPoint);
           const line2 = formattedData.substring(splitPoint);
           formattedData = `${line1}\n${line2}`;
-        } else {
-          // For other TXT files, split in the middle
+        } else if (!isTextFile) {
+          // code.txt: split in the middle for laser
           const midPoint = Math.ceil(formattedData.length / 2);
           const line1 = formattedData.substring(0, midPoint);
           const line2 = formattedData.substring(midPoint);
