@@ -80,7 +80,6 @@ class BarcodeGenerator {
         logger.warn(
           "⚠️ Config data structure not found, using fallback barcode generation"
         );
-        // Fallback to simple barcode generation
         const simpleBarcodeText = `${finalPartNumber}${julianDate}${serialString}`;
         logger.info("Generated fallback barcode text:", simpleBarcodeText);
 
