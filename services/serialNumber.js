@@ -70,6 +70,16 @@ class SerialNumberGeneratorService {
     };
   }
 
+  getStartingSerialForModel(modelNumber) {
+    if (modelNumber === "CMB-877") {
+      return 701;
+    }
+    if (modelNumber === "CMB-778") {
+      return 1;
+    }
+    return 1;
+  }
+
   //   async initialize(dbName, collectionName) {
   //     if (this.isInitialized) {
   //       logger.info("SerialNumberGeneratorService already initialized");
@@ -386,15 +396,14 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Reset only on date change: compare calendar date (in reset TZ) of today vs last reset.
-    const todayCalendarDate = getCalendarDateInTimezone(now, this.resetTimezone);
-
     let persistedLastReset = null;
+    let foundConfig = null;
     try {
       await MongoDBService.connect("main-data", "modelSerialConfig");
       const modelConfig = await MongoDBService.collection.findOne({
         modelNumber: currentModel || "default",
       });
+      foundConfig = modelConfig || null;
       if (modelConfig && modelConfig.lastReset) {
         persistedLastReset = new Date(modelConfig.lastReset);
         this.lastResetDate = persistedLastReset;
@@ -403,19 +412,43 @@ class SerialNumberGeneratorService {
       logger.error("❌ Error loading lastReset from modelSerialConfig:", error);
     }
 
-    const lastResetCalendarDate = persistedLastReset
-      ? getCalendarDateInTimezone(persistedLastReset, this.resetTimezone)
-      : null;
+    // Reactive reset behavior:
+    // - Do NOT reset exactly at 00:00 by a scheduled job.
+    // - Reset on the first machine operation AFTER local midnight when the calendar day has changed.
+    // To enable this, we ensure lastReset is initialized once for models that exist but are missing it.
+    const todayMidnight = getTodayMidnightInTimezone(now, this.resetTimezone);
+    if (currentModel && foundConfig && !foundConfig.lastReset) {
+      try {
+        await MongoDBService.connect("main-data", "modelSerialConfig");
+        await MongoDBService.collection.updateOne(
+          { modelNumber: currentModel },
+          {
+            $set: {
+              lastReset: todayMidnight,
+              updatedAt: now,
+            },
+          }
+        );
+        persistedLastReset = todayMidnight;
+        this.lastResetDate = todayMidnight;
+        logger.info(
+          `📅 Initialized missing lastReset for model ${currentModel} to ${todayMidnight.toISOString()}`
+        );
+      } catch (error) {
+        logger.error(
+          "❌ Error initializing missing lastReset in modelSerialConfig:",
+          error
+        );
+      }
+    }
 
-    // Reset only when the calendar date has changed: today (in reset TZ) is after the date of last reset.
-    // No reset on first run (no lastReset), no reset multiple times same day, no reset on app start.
+    // Reset when we've crossed midnight since the last reset.
+    // i.e. if lastReset is before today's midnight boundary (in reset TZ).
     const shouldReset =
-      currentModel &&
-      lastResetCalendarDate !== null &&
-      todayCalendarDate > lastResetCalendarDate;
+      currentModel && persistedLastReset && persistedLastReset < todayMidnight;
 
     logger.info(
-      `🕐 Serial reset check (date change only): today=${todayCalendarDate}, lastResetDate=${lastResetCalendarDate}, shouldReset=${shouldReset}`
+      `🕐 Serial reset check (reactive): model=${currentModel}, now=${now.toISOString()}, todayMidnight=${todayMidnight.toISOString()}, lastReset=${persistedLastReset ? persistedLastReset.toISOString() : "null"}, shouldReset=${shouldReset}`
     );
 
     if (shouldReset) {
@@ -433,6 +466,78 @@ class SerialNumberGeneratorService {
         `✅ NO SERIAL RESET: Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(SERIAL_DIGITS, "0")})`
       );
       return false;
+    }
+  }
+
+  async resetAllModelsAtMidnight() {
+    const now = new Date();
+    const timezone = this.resetTimezone;
+
+    try {
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      const models = await MongoDBService.collection
+        .find({}, { projection: { modelNumber: 1 } })
+        .toArray();
+
+      const modelNumbers = Array.from(
+        new Set(
+          models
+            .map((m) => m?.modelNumber)
+            .filter((m) => typeof m === "string" && m.length > 0)
+        )
+      );
+
+      if (modelNumbers.length === 0) {
+        logger.warn(
+          "⚠️ Daily serial reset: no modelSerialConfig entries found; nothing to reset"
+        );
+        return { resetCount: 0, models: [] };
+      }
+
+      const lastResetInstant = getTodayMidnightInTimezone(now, timezone);
+      let resetCount = 0;
+
+      for (const modelNumber of modelNumbers) {
+        const startingSerial = this.getStartingSerialForModel(modelNumber);
+        const lastUsedAfterReset = Math.max(0, startingSerial - 1);
+
+        await MongoDBService.collection.updateOne(
+          { modelNumber },
+          {
+            $set: {
+              modelNumber,
+              startingSerial,
+              currentValue: lastUsedAfterReset.toString(),
+              lastReset: lastResetInstant,
+              lastUpdated: now,
+              updatedAt: now,
+            },
+          },
+          { upsert: true }
+        );
+
+        resetCount += 1;
+      }
+
+      // Backward compatibility: update global serialNoconfig lastReset timestamp.
+      try {
+        await MongoDBService.connect("main-data", "serialNoconfig");
+        await MongoDBService.collection.updateOne(
+          {},
+          { $set: { lastReset: lastResetInstant } },
+          { upsert: true }
+        );
+      } catch (error) {
+        logger.error("❌ Error updating serialNoconfig lastReset:", error);
+      }
+
+      logger.info(
+        `✅ Daily serial reset completed at ${lastResetInstant.toISOString()} for ${resetCount} models`
+      );
+      return { resetCount, models: modelNumbers, lastResetInstant };
+    } catch (error) {
+      logger.error("❌ Daily serial reset failed:", error);
+      throw error;
     }
   }
 
@@ -726,16 +831,16 @@ class SerialNumberGeneratorService {
         updatedAt: now, // ← Should match lastUpdated for normal operations
       };
 
-      // CRITICAL FIX: Only add lastReset if it exists in the existing config
-      // This preserves reset history without overwriting it during normal operations
+      // Preserve existing lastReset if present; otherwise initialize to "today midnight" so reactive reset logic can work.
+      // This avoids the "lastReset missing forever" situation while still keeping reset reactive (it won't reset until next day change).
       if (existingConfig && existingConfig.lastReset) {
         updateData.lastReset = existingConfig.lastReset;
-        logger.info(
-          `📅 Preserving existing lastReset: ${existingConfig.lastReset}`
-        );
+        logger.info(`📅 Preserving existing lastReset: ${existingConfig.lastReset}`);
       } else {
+        const initLastReset = getTodayMidnightInTimezone(now, this.resetTimezone);
+        updateData.lastReset = initLastReset;
         logger.info(
-          `📅 No existing lastReset found for model ${modelNumber} - will be set on first reset`
+          `📅 Initializing missing lastReset for model ${modelNumber} to ${initLastReset.toISOString()}`
         );
       }
 
