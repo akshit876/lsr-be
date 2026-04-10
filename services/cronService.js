@@ -70,6 +70,11 @@ class CronService {
     logger.info(`Scheduled job: ${name}`);
   }
 
+  scheduleJobWithOptions(name, cronExpression, jobFunction, options) {
+    this.jobs[name] = cron.schedule(cronExpression, jobFunction, options);
+    logger.info(`Scheduled job: ${name}`);
+  }
+
   startAllJobs() {
     Object.values(this.jobs).forEach((job) => job.start());
     logger.info("All cron jobs started");
