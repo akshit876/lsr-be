@@ -1,6 +1,9 @@
 import { format, isAfter, isBefore } from "date-fns";
 import MongoDBService from "./mongoDbService.js";
 import logger from "../logger.js";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import process from "node:process";
 
 class SerialNumberGeneratorService {
   constructor() {
@@ -14,6 +17,75 @@ class SerialNumberGeneratorService {
       "CMB-877": 701,
       default: 1,
     };
+
+    // Local durable fallback (single-server) for when MongoDB is temporarily unavailable.
+    // This prevents "midnight reset" and increment state from being lost during outages.
+    this.localSerialCachePath = path.join(process.cwd(), ".serial-cache.json");
+    this._localCacheLoaded = false;
+    this._localCache = { models: {} };
+  }
+
+  async _loadLocalCache() {
+    if (this._localCacheLoaded) {
+      return;
+    }
+    try {
+      const raw = await fs.readFile(this.localSerialCachePath, "utf8");
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        this._localCache = {
+          models: parsed.models && typeof parsed.models === "object" ? parsed.models : {},
+        };
+      }
+    } catch (e) {
+      // File missing/invalid is fine — we'll create it on first write.
+      this._localCache = { models: {} };
+    } finally {
+      this._localCacheLoaded = true;
+    }
+  }
+
+  async _writeLocalCache() {
+    await fs.mkdir(path.dirname(this.localSerialCachePath), { recursive: true });
+    const tmp = `${this.localSerialCachePath}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(this._localCache, null, 2), "utf8");
+    await fs.rename(tmp, this.localSerialCachePath);
+  }
+
+  async _getLocalModelState(modelNumber) {
+    await this._loadLocalCache();
+    const key = modelNumber || "default";
+    const s = this._localCache.models[key];
+    if (!s || typeof s !== "object") {
+      return null;
+    }
+    return {
+      currentValue: typeof s.currentValue === "string" ? s.currentValue : `${s.currentValue ?? ""}`,
+      lastUpdated: s.lastUpdated ? new Date(s.lastUpdated) : null,
+      lastReset: s.lastReset ? new Date(s.lastReset) : null,
+      startingSerial: typeof s.startingSerial === "number" ? s.startingSerial : null,
+    };
+  }
+
+  async _setLocalModelState(modelNumber, patch) {
+    await this._loadLocalCache();
+    const key = modelNumber || "default";
+    const prev = this._localCache.models[key] && typeof this._localCache.models[key] === "object"
+      ? this._localCache.models[key]
+      : {};
+    const next = {
+      ...prev,
+      ...patch,
+    };
+    // Normalize dates to ISO strings for durability.
+    if (next.lastUpdated instanceof Date) {
+      next.lastUpdated = next.lastUpdated.toISOString();
+    }
+    if (next.lastReset instanceof Date) {
+      next.lastReset = next.lastReset.toISOString();
+    }
+    this._localCache.models[key] = next;
+    await this._writeLocalCache();
   }
 
   //   async initialize(dbName, collectionName) {
@@ -326,7 +398,9 @@ class SerialNumberGeneratorService {
     const now = new Date();
     const currentModel = await this.getCurrentModelNumber();
 
-    // Get today's start
+    // Strict "midnight boundary" reset in SERVER LOCAL TIME.
+    // Reset triggers exactly once per day on the first serial generation after midnight,
+    // and it is driven by modelSerialConfig (not records), avoiding timezone/UI/query issues.
     const todayStart = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -337,50 +411,153 @@ class SerialNumberGeneratorService {
       0
     );
 
-    let shouldReset = false;
+    // "Non-failable" (single-server) approach:
+    // - Decide reset based on modelSerialConfig only (no records dependency)
+    // - Persist reset with a conditional update, so we don't reset twice if anything changes
+    // - If DB is down, fall back to local durable cache so midnight reset still works
     try {
-      // Connect to records collection
-      await MongoDBService.connect(
-        this.originalDbName,
-        this.originalCollectionName
-      );
-      // Find the last record for the current model
-      const lastRecord = await MongoDBService.collection
-        .find(currentModel ? { ModelNumber: currentModel } : {})
-        .sort({ Timestamp: -1 })
-        .limit(1)
-        .toArray();
-      let lastRecordDate = null;
-      if (lastRecord.length && lastRecord[0].Timestamp) {
-        lastRecordDate = new Date(lastRecord[0].Timestamp);
-      }
-      if (!lastRecordDate || lastRecordDate < todayStart) {
-        shouldReset = true;
-      }
-      logger.info(
-        `🕐 Serial reset check: lastRecordDate=${lastRecordDate}, todayStart=${todayStart}, shouldReset=${shouldReset}`
-      );
-    } catch (error) {
-      logger.error("❌ Error checking last record for serial reset:", error);
-      // On error, do not reset
-      shouldReset = false;
-    }
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      const modelNumber = currentModel || "default";
 
-    if (shouldReset) {
+      const modelConfig = await MongoDBService.collection.findOne({
+        modelNumber,
+      });
+
+      const referenceDateRaw =
+        modelConfig?.lastReset || modelConfig?.lastUpdated || null;
+      const referenceDate = referenceDateRaw ? new Date(referenceDateRaw) : null;
+
+      const shouldReset = !!referenceDate && referenceDate < todayStart;
+
+      logger.info(
+        `🕛 Serial reset check (midnight-only): model=${modelNumber}, referenceDate=${referenceDate}, todayStart=${todayStart}, shouldReset=${shouldReset}`
+      );
+
+      if (!shouldReset) {
+        logger.info(
+          `✅ NO SERIAL RESET: Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+        );
+        return false;
+      }
+
       const modelStartingSerial = await this.getModelStartingSerial();
       const oldSerial = this.currentSerialNumber;
+
+      // Persist the reset *first* with a conditional update.
+      // Invariants:
+      // - currentValue stores the LAST USED serial
+      // - after reset, last used is (startingSerial - 1) so next generated is startingSerial
+      const lastUsedAfterReset = Math.max(0, modelStartingSerial - 1);
+
+      await MongoDBService.connect("main-data", "modelSerialConfig");
+      const resetWrite = await MongoDBService.collection.updateOne(
+        {
+          modelNumber,
+          $or: [
+            { lastReset: { $lt: todayStart } },
+            { lastReset: { $exists: false }, lastUpdated: { $lt: todayStart } },
+          ],
+        },
+        {
+          $set: {
+            modelNumber,
+            currentValue: lastUsedAfterReset.toString(),
+            startingSerial: modelStartingSerial,
+            lastReset: now,
+            lastUpdated: now,
+            updatedAt: now,
+          },
+        }
+      );
+
+      if (resetWrite.matchedCount === 0) {
+        // Someone/something already performed the reset write (or config changed).
+        // In a single-server setup, this mainly protects against unexpected DB edits.
+        logger.warn(
+          `⚠️ Reset condition not matched during update; skipping in-memory reset for model ${modelNumber}`
+        );
+        return false;
+      }
+
+      // Update in-memory state only after DB write succeeds.
       this.currentSerialNumber = modelStartingSerial;
       this.lastResetDate = now;
+
       logger.info(
         `🔄 SERIAL RESET: Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) at ${now.toISOString()}`
       );
-      await this.updateSerialConfigOnReset();
+
+      // Keep global serialNoconfig updated for compatibility, but do not block serial generation if it fails.
+      try {
+        await MongoDBService.connect("main-data", "serialNoconfig");
+        const serialConfig = await MongoDBService.collection.findOne({});
+        if (serialConfig && serialConfig.resetInterval === "daily") {
+          await MongoDBService.collection.updateOne(
+            {},
+            {
+              $set: {
+                currentValue: lastUsedAfterReset.toString(),
+                lastReset: now,
+              },
+            }
+          );
+        }
+      } catch (compatError) {
+        logger.warn(
+          "⚠️ Failed to update serialNoconfig during reset (compat only):",
+          compatError
+        );
+      }
+
       return true;
-    } else {
-      logger.info(
-        `✅ NO SERIAL RESET: Serial continues from ${this.currentSerialNumber} (S${this.currentSerialNumber.toString().padStart(4, "0")})`
+    } catch (error) {
+      logger.error(
+        "❌ Error checking/writing modelSerialConfig for serial reset:",
+        error
       );
-      return false;
+
+      // Fallback: local durable cache (single server).
+      // This keeps behavior correct during temporary Mongo outages.
+      const modelNumber = currentModel || "default";
+      try {
+        const local = await this._getLocalModelState(modelNumber);
+        const referenceDate =
+          local?.lastReset || local?.lastUpdated || this.lastResetDate || null;
+        const shouldReset = !!referenceDate && referenceDate < todayStart;
+
+        logger.warn(
+          `⚠️ MongoDB unavailable; using local cache for reset decision: model=${modelNumber}, referenceDate=${referenceDate}, todayStart=${todayStart}, shouldReset=${shouldReset}`
+        );
+
+        if (!shouldReset) {
+          return false;
+        }
+
+        const modelStartingSerial = await this.getModelStartingSerial();
+        const oldSerial = this.currentSerialNumber;
+        const lastUsedAfterReset = Math.max(0, modelStartingSerial - 1);
+
+        // Update in-memory
+        this.currentSerialNumber = modelStartingSerial;
+        this.lastResetDate = now;
+
+        // Persist locally
+        await this._setLocalModelState(modelNumber, {
+          currentValue: lastUsedAfterReset.toString(),
+          startingSerial: modelStartingSerial,
+          lastReset: now,
+          lastUpdated: now,
+          updatedAt: now.toISOString(),
+        });
+
+        logger.info(
+          `🔄 SERIAL RESET (LOCAL): Serial number reset from ${oldSerial} to ${modelStartingSerial} (S${modelStartingSerial.toString().padStart(4, "0")}) at ${now.toISOString()}`
+        );
+        return true;
+      } catch (localErr) {
+        logger.error("❌ Local cache fallback failed; skipping reset:", localErr);
+        return false;
+      }
     }
   }
 
@@ -488,10 +665,18 @@ class SerialNumberGeneratorService {
 
       const now = new Date();
 
+      // Invariant: modelSerialConfig.currentValue stores the LAST USED serial.
+      // After a reset, last used should be (startingSerial - 1), so the next generated
+      // serial is exactly startingSerial.
+      const lastUsedAfterReset = Math.max(
+        0,
+        (dynamicStartingSerial || 1) - 1
+      );
+
       // Update or create model-specific serial configuration
       const updateData = {
         modelNumber: modelNumber,
-        currentValue: this.currentSerialNumber.toString(),
+        currentValue: lastUsedAfterReset.toString(),
         lastUpdated: now, // ← Latest activity timestamp
         startingSerial: dynamicStartingSerial, // Use dynamic calculation
         lastReset: now, // ← When reset happened
@@ -518,7 +703,7 @@ class SerialNumberGeneratorService {
           {},
           {
             $set: {
-              currentValue: this.currentSerialNumber.toString(),
+              currentValue: lastUsedAfterReset.toString(),
               lastReset: now,
             },
           }
@@ -724,9 +909,44 @@ class SerialNumberGeneratorService {
       logger.info(
         `Model-wise serial number saved to modelSerialConfig: Model=${modelNumber}, lastUsed=${updateData.currentValue}, startingSerial=${updateData.startingSerial}, lastReset=${updateData.lastReset ? new Date(updateData.lastReset).toISOString() : "Not set yet"}, lastUpdated=${updateData.lastUpdated.toISOString()}, updatedAt=${updateData.updatedAt.toISOString()}`
       );
+
+      // Keep local cache in sync as well (helps during DB outages).
+      try {
+        await this._setLocalModelState(modelNumber, {
+          currentValue: updateData.currentValue,
+          startingSerial: updateData.startingSerial,
+          lastReset: updateData.lastReset ? new Date(updateData.lastReset) : undefined,
+          lastUpdated: updateData.lastUpdated,
+          updatedAt: updateData.updatedAt.toISOString(),
+        });
+      } catch (localSyncErr) {
+        logger.warn("⚠️ Failed to sync local serial cache:", localSyncErr);
+      }
     } catch (error) {
-      logger.error("❌ Error saving used serial number:", error);
-      throw error;
+      // If Mongo is down, do not crash serial generation — persist to local cache.
+      logger.error("❌ Error saving used serial number to MongoDB:", error);
+      try {
+        const modelNumber =
+          this.currentModelNumber ||
+          (await this.getCurrentModelNumber()) ||
+          "default";
+        const now = new Date();
+        const local = await this._getLocalModelState(modelNumber);
+        await this._setLocalModelState(modelNumber, {
+          currentValue: usedSerialNumber.toString(),
+          startingSerial: local?.startingSerial ?? (await this.getModelStartingSerial()),
+          lastReset: local?.lastReset ?? undefined,
+          lastUpdated: now,
+          updatedAt: now.toISOString(),
+        });
+        logger.warn(
+          `⚠️ MongoDB unavailable; saved used serial to local cache: model=${modelNumber}, lastUsed=${usedSerialNumber}`
+        );
+        return;
+      } catch (localErr) {
+        logger.error("❌ Failed to save used serial to local cache:", localErr);
+        throw error; // bubble original error if even local fallback failed
+      }
     }
   }
 

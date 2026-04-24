@@ -532,7 +532,6 @@ class ScannerController {
         mongoDbService.broadcastDataToAllClients(io, "main-data", "records");
       }
     } catch (error) {
-      console.error({ error });
       logger.error("Error saving data:", error);
       throw error;
     }
@@ -1041,13 +1040,8 @@ class ScannerController {
     const now = new Date();
     const resetTime = new Date(now);
 
-    // Use the reset time from SerialNumberGeneratorService if available
-    const resetHour =
-      this.barcodeGenerator?.serialNumberService?.resetHour || 0;
-    const resetMinute =
-      this.barcodeGenerator?.serialNumberService?.resetMinute || 0;
-
-    resetTime.setHours(resetHour, resetMinute, 0, 0);
+    // Hard requirement: day boundary is local midnight (00:00) only.
+    resetTime.setHours(0, 0, 0, 0);
 
     // If current time is before reset time, set reset time to previous day
     if (now < resetTime) {
