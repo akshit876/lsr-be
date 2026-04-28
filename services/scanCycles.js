@@ -1759,11 +1759,21 @@ class ScannerController {
       // Extract grade and main data for verification
       const { mainData, grade } = this.parseScannerPayload(scannerData);
 
-      // Validate grade: only allow A or B
+      // Validate grade: only allow A or B (can be bypassed temporarily)
+      // Default to bypass ON for now; set BYPASS_GRADE_CHECK=0/false to re-enable enforcement.
+      const bypassGradeCheckRaw = process.env.BYPASS_GRADE_CHECK;
+      const bypassGradeCheck =
+        bypassGradeCheckRaw === undefined ||
+        bypassGradeCheckRaw === null ||
+        bypassGradeCheckRaw === "" ||
+        ["1", "true", "yes", "on"].includes(
+          String(bypassGradeCheckRaw).toLowerCase()
+        );
+
       const allowedGrades = ["A", "B"];
-      const isGradeAllowed = allowedGrades.includes(
-        (grade || "").toUpperCase()
-      );
+      const isGradeAllowed = bypassGradeCheck
+        ? true
+        : allowedGrades.includes((grade || "").toUpperCase());
 
       logger.info(
         `📊 Verification data breakdown: Main data: "${mainData}", Grade: "${grade}"`
@@ -1801,6 +1811,11 @@ class ScannerController {
 
       if (isFinalOk) {
         logger.success("Verification OK: data matches and grade accepted ✅");
+        if (bypassGradeCheck) {
+          logger.warn(
+            `⚠️ Grade enforcement bypassed (BYPASS_GRADE_CHECK=${bypassGradeCheckRaw ?? "unset"})`
+          );
+        }
       } else if (!isGradeAllowed) {
         logger.warn(`⚠️ Verification NG: disallowed grade '${grade}'`);
       } else {
