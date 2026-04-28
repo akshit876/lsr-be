@@ -11,8 +11,7 @@ class SerialNumberGeneratorService {
     this.isInitialized = false;
     this.currentModelNumber = null; // Track current model for separate sequences
     this.modelStartingSerials = {
-      "CMB-877": 7001,
-      default: 1,
+      default: 1001,
     };
   }
 
@@ -270,8 +269,18 @@ class SerialNumberGeneratorService {
       // Model config exists - continue from currentValue + 1
       const existingValue = parseInt(modelConfig.currentValue, 10);
       if (!isNaN(existingValue)) {
-        this.currentSerialNumber = existingValue + 1;
-        serialToUse = this.currentSerialNumber;
+        const nextCandidate = existingValue + 1;
+        // If the 5-digit serial range is full, restart from starting serial (1001)
+        if (nextCandidate > 99999) {
+          this.currentSerialNumber = modelStartingSerial;
+          serialToUse = this.currentSerialNumber;
+          logger.warn(
+            `♻️ FULL RANGE: Model ${this.currentModelNumber} exceeded 99999 (last used: ${existingValue}). Restarting from starting serial ${serialToUse}`
+          );
+        } else {
+          this.currentSerialNumber = nextCandidate;
+          serialToUse = this.currentSerialNumber;
+        }
 
         logger.info(
           `✅ CONTINUING: Model ${this.currentModelNumber} from ${existingValue} to ${serialToUse}`
@@ -378,9 +387,7 @@ class SerialNumberGeneratorService {
     // - CMB-778 can still reset at 8:00 AM on the same day → independent of CMB-877's reset
     //
     // Each model will reset to its specific starting serial:
-    // - CMB-877 → resets to 7001 (S7001)
-    // - CMB-778 → resets to 1 (S0001)
-    // - Other models → reset to 1 (S0001)
+    // - All models → reset to 1001 (S01001)
     //
     // This ensures reset happens exactly once per day per model on the first machine operation after 6:00 AM
     const isFirstRunAfter6AMForThisModel =
@@ -434,32 +441,20 @@ class SerialNumberGeneratorService {
       const modelNumber = await this.getCurrentModelNumber();
 
       if (modelNumber) {
-        // Model-specific starting serial configurations for ALL models
-        if (modelNumber === "CMB-877") {
-          logger.info(
-            `✅ Model ${modelNumber} → starting serial: 7001 (S07001)`
-          );
-          return 7001;
-        } else if (modelNumber === "CMB-778") {
-          // CMB-778 starts from 1
-          logger.info(`✅ Model ${modelNumber} → starting serial: 1 (S00001)`);
-          return 1;
-        } else {
-          // All other models start from 1
-          logger.info(
-            `✅ Model ${modelNumber} → starting serial: 1 (S00001) [default for this model]`
-          );
-          return 1;
-        }
+        // Requirement: starting serial should always be 1001
+        logger.info(
+          `✅ Model ${modelNumber} → starting serial: 1001 (S01001)`
+        );
+        return 1001;
       } else {
         logger.warn(
-          "⚠️ No model number found, using default starting serial: 1 (S00001)"
+          "⚠️ No model number found, using default starting serial: 1001 (S01001)"
         );
         return this.modelStartingSerials["default"];
       }
     } catch (error) {
       logger.error("❌ Error fetching model starting serial:", error);
-      logger.warn("⚠️ Defaulting to serial number 1 (S00001) due to error");
+      logger.warn("⚠️ Defaulting to serial number 1001 (S01001) due to error");
       return this.modelStartingSerials["default"];
     }
   }

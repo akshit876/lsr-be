@@ -21,6 +21,14 @@ async function fetchPartNumberAndData(mongoDbService) {
     throw error;
   }
 }
+
+function stripLeadingDoubleZero(partNo) {
+  if (typeof partNo !== "string") return partNo;
+  const trimmed = partNo.trim();
+  if (!trimmed.startsWith("00")) return partNo;
+  const stripped = trimmed.replace(/^0+/, "");
+  return stripped.length > 0 ? stripped : "0";
+}
 class BarcodeGenerator {
   constructor(shiftUtility) {
     this.shiftUtility = shiftUtility;
@@ -231,6 +239,8 @@ class BarcodeGenerator {
         logger.warn("⚠️ PART NO not found in config, using finalPartNumber");
         partNo = finalPartNumber;
       }
+      // Requirement: remove starting "00" from PART NO in text file output
+      partNo = stripLeadingDoubleZero(partNo);
 
       // Extract last two digits from PART NO and remove them from the main part
       let partNoWithoutLastTwo = partNo;
