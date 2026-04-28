@@ -269,7 +269,8 @@ class SerialNumberGeneratorService {
       // Model config exists - continue from currentValue + 1
       const existingValue = parseInt(modelConfig.currentValue, 10);
       if (!isNaN(existingValue)) {
-        const nextCandidate = existingValue + 1;
+        // Enforce floor at starting serial (1001), even if DB has older/smaller values
+        const nextCandidate = Math.max(existingValue + 1, modelStartingSerial);
         // If the 5-digit serial range is full, restart from starting serial (1001)
         if (nextCandidate > 99999) {
           this.currentSerialNumber = modelStartingSerial;
@@ -646,7 +647,8 @@ class SerialNumberGeneratorService {
         // Set the NEXT serial number (current + 1) since currentValue is the last used
         const lastUsedSerial = parseInt(modelConfig.currentValue, 10);
         if (!isNaN(lastUsedSerial)) {
-          this.currentSerialNumber = lastUsedSerial + 1;
+          const startingSerial = await this.getModelStartingSerial();
+          this.currentSerialNumber = Math.max(lastUsedSerial + 1, startingSerial);
           logger.info(
             `🎯 Setting next serial number to: ${this.currentSerialNumber} (last used: ${lastUsedSerial})`
           );
