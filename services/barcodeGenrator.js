@@ -106,12 +106,17 @@ class BarcodeGenerator {
       const fields = configData.currentModelConfig.fields.map((field) => {
         let mappedValue;
         const fieldNameLower = field.fieldName.toLowerCase().trim();
+        const isYearLikeField =
+          (fieldNameLower.includes("production year") ||
+            fieldNameLower.includes("year code") ||
+            fieldNameLower === "yy" ||
+            fieldNameLower.endsWith(" yy") ||
+            fieldNameLower === "year") &&
+          !fieldNameLower.includes("day") &&
+          fieldNameLower !== "julian date";
 
         // Match field names more flexibly
-        if (
-          fieldNameLower.includes("production year") &&
-          !fieldNameLower.includes("day")
-        ) {
+        if (isYearLikeField) {
           mappedValue = year;
         } else if (
           fieldNameLower.includes("day of production year") ||
