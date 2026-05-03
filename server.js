@@ -146,6 +146,76 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("dashboard-metadata-update", async (payload = {}) => {
+    try {
+      const partNo = String(payload.partNo || payload.PartNo || payload.PartNumber || "")
+        .trim()
+        .toUpperCase();
+      const cavityNo = String(
+        payload.cavityNo || payload.CavityNo || payload.CavityNumber || ""
+      )
+        .trim()
+        .toUpperCase();
+      const heatCode = String(payload.heatCode || payload.HeatCode || "").trim();
+      const sentAt = payload.sentAt || new Date().toISOString();
+
+      if (!partNo || !cavityNo || !heatCode) {
+        socket.emit("error", {
+          message: "Invalid dashboard metadata payload",
+          details: "partNo, cavityNo and heatCode are required",
+        });
+        return;
+      }
+
+      const metadata = scannerController.setDashboardMetadata({
+        partNo,
+        cavityNo,
+        heatCode,
+        sentAt,
+      });
+
+      // Final trigger to start cycle once metadata is accepted.
+      if (!(await ensureCycleIdleOrWarn("Dashboard metadata cycle start"))) {
+        socket.emit("dashboard-metadata-updated", {
+          success: false,
+          metadata,
+          cycleStartTriggered: false,
+          reason: "Cycle already running",
+        });
+        return;
+      }
+
+      await writeBit(1480, 0, 1);
+      setTimeout(async () => {
+        try {
+          await writeBit(1480, 0, 0);
+        } catch (resetError) {
+          logger.warn(
+            `Failed to reset dashboard cycle start bit 1480.0: ${
+              resetError?.message || resetError
+            }`
+          );
+        }
+      }, 300);
+
+      socket.emit("dashboard-metadata-updated", {
+        success: true,
+        metadata,
+        cycleStartTriggered: true,
+        trigger: { register: 1480, bit: 0, value: 1 },
+      });
+    } catch (error) {
+      logger.error(
+        `Error handling dashboard metadata update for client ${socket.id}:`,
+        error
+      );
+      socket.emit("error", {
+        message: "Failed to process dashboard metadata update",
+        details: error.message,
+      });
+    }
+  });
+
   socket.on("disconnect", () => {
     if (intervalId) {
       clearInterval(intervalId);
@@ -696,6 +766,15 @@ io.on("connection", (socket) => {
           SerialNumber: item?.SerialNumber,
           MarkingData: item?.MarkingData,
           ScannerData: item?.ScannerData,
+          PartNo: item?.PartNo,
+          partNo: item?.PartNo,
+          PartNumber: item?.PartNo,
+          CavityNo: item?.CavityNo,
+          cavityNo: item?.CavityNo,
+          CavityNumber: item?.CavityNo,
+          HeatCode: item?.HeatCode,
+          heatCode: item?.HeatCode,
+          MetadataSentAt: item?.MetadataSentAt,
           ModelNumber: item?.ModelNumber,
           User: item?.User,
           Grade: item?.Grade,

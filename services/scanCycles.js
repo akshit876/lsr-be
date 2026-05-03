@@ -56,6 +56,7 @@ class ScannerController {
     this.isPulseOn = false;
     this.currentDayId = 1;
     this.lastResetDate = this.getLastResetTime();
+    this.dashboardMetadata = null;
 
     ScannerController.instance = this;
     logger.success("Scanner controller instance created");
@@ -688,6 +689,7 @@ class ScannerController {
   }) {
     const now = new Date();
     const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
+    const dashboardMetadata = this.dashboardMetadata || {};
 
     try {
       const userDetails = (await mongoDbService.getUserDetails?.()) || {
@@ -701,6 +703,10 @@ class ScannerController {
         SerialNumber: serialNumber,
         MarkingData: markingData,
         ScannerData: scannerData,
+        PartNo: dashboardMetadata.partNo || "N/A",
+        CavityNo: dashboardMetadata.cavityNo || "N/A",
+        HeatCode: dashboardMetadata.heatCode || "N/A",
+        MetadataSentAt: dashboardMetadata.sentAt || null,
         ModelNumber: modelNumber,
         Result: result
           ? result === "N/A"
@@ -812,6 +818,19 @@ class ScannerController {
       logger.error("Error saving data:", error);
       throw error;
     }
+  }
+
+  setDashboardMetadata(metadata = {}) {
+    this.dashboardMetadata = {
+      partNo: metadata.partNo || "N/A",
+      cavityNo: metadata.cavityNo || "N/A",
+      heatCode: metadata.heatCode || "N/A",
+      sentAt: metadata.sentAt || new Date().toISOString(),
+    };
+    logger.info(
+      `🧾 Dashboard metadata updated: partNo=${this.dashboardMetadata.partNo}, cavityNo=${this.dashboardMetadata.cavityNo}, heatCode=${this.dashboardMetadata.heatCode}`
+    );
+    return this.dashboardMetadata;
   }
 
   async verifyAndRetryWrite(expectedData, retriesLeft) {
