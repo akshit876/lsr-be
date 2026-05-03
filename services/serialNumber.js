@@ -9,6 +9,16 @@ const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
 const INITIAL_SERIAL_NUMBER = 1; // Default value
 
+/** Parse serial stored in Mongo/UI; null if unusable (empty, NaN string, non-numeric). */
+function parseStoredSerial(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  if (s === "") return null;
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
 class SerialNumberGeneratorService {
   constructor() {
     this.currentSerialNumber = INITIAL_SERIAL_NUMBER;
@@ -52,6 +62,25 @@ class SerialNumberGeneratorService {
     logger.info(`Reset time set to ${hour}:${minute}`);
   }
 
+  /** Coerce in-memory counter to a valid integer (recovers after bad DB reads or NaN poisoning). */
+  normalizeCounter() {
+    const safeInitial = parseStoredSerial(this.initialSerialNumber);
+    if (safeInitial === null) {
+      this.initialSerialNumber = INITIAL_SERIAL_NUMBER;
+    } else {
+      this.initialSerialNumber = safeInitial;
+    }
+    const safeCurrent = parseStoredSerial(this.currentSerialNumber);
+    if (safeCurrent === null) {
+      logger.warn(
+        `Invalid currentSerialNumber; resetting to initial ${this.initialSerialNumber}`
+      );
+      this.currentSerialNumber = this.initialSerialNumber;
+    } else {
+      this.currentSerialNumber = safeCurrent;
+    }
+  }
+
   async initialize(dbName, collectionName) {
     if (this.isInitialized) {
       logger.info("SerialNumberGeneratorService already initialized");
@@ -64,10 +93,24 @@ class SerialNumberGeneratorService {
       const config = await MongoDBService.collection.findOne({});
 
       if (config) {
-        this.initialSerialNumber = parseInt(config.initialValue, 10);
-        this.currentSerialNumber = parseInt(config.initialValue, 10);
-        this.resetHour = parseInt(config.resetTime.split(":")[0], 10);
-        this.resetMinute = parseInt(config.resetTime.split(":")[1], 10);
+        const fromConfig = parseStoredSerial(config.initialValue);
+        this.initialSerialNumber =
+          fromConfig !== null ? fromConfig : INITIAL_SERIAL_NUMBER;
+        this.currentSerialNumber = this.initialSerialNumber;
+        if (
+          config.resetTime &&
+          typeof config.resetTime === "string" &&
+          config.resetTime.includes(":")
+        ) {
+          const [h, m] = config.resetTime.split(":");
+          this.resetHour = parseInt(h, 10);
+          this.resetMinute = parseInt(m, 10);
+          if (!Number.isFinite(this.resetHour)) this.resetHour = 0;
+          if (!Number.isFinite(this.resetMinute)) this.resetMinute = 0;
+        } else {
+          this.resetHour = 0;
+          this.resetMinute = 0;
+        }
         logger.info(
           `Initialized with config - Initial: ${this.initialSerialNumber}, Reset time: ${this.resetHour}:${this.resetMinute}`
         );
@@ -104,13 +147,20 @@ class SerialNumberGeneratorService {
             `Reset serial number to ${this.initialSerialNumber} - system started after midnight reset time`
           );
         } else {
-          // Continue from last number
-          this.currentSerialNumber =
-            parseInt(lastDocument.SerialNumber, 10) + 1;
-          this.lastResetDate = lastDocumentTime;
-          logger.info(
-            `Continuing serial number from ${this.currentSerialNumber} based on last MongoDB document`
-          );
+          const lastSerial = parseStoredSerial(lastDocument.SerialNumber);
+          if (lastSerial !== null) {
+            this.currentSerialNumber = lastSerial + 1;
+            this.lastResetDate = lastDocumentTime;
+            logger.info(
+              `Continuing serial number from ${this.currentSerialNumber} based on last MongoDB document`
+            );
+          } else {
+            logger.warn(
+              "Latest MongoDB record has missing or non-numeric SerialNumber; starting from configured initial"
+            );
+            this.currentSerialNumber = this.initialSerialNumber;
+            this.lastResetDate = lastDocumentTime;
+          }
         }
       } else {
         // No previous records, start with initial value
@@ -124,6 +174,7 @@ class SerialNumberGeneratorService {
 
       // Final check for any needed reset
       this.checkAndResetSerialNumber();
+      this.normalizeCounter();
 
       this.isInitialized = true;
     } catch (error) {
@@ -134,12 +185,15 @@ class SerialNumberGeneratorService {
 
   async getLastDocumentFromMongoDB() {
     try {
-      const latestRecord = await MongoDBService.collection
+      const batch = await MongoDBService.collection
         .find()
         .sort({ Timestamp: -1 })
-        .limit(1)
+        .limit(50)
         .toArray();
-      return latestRecord[0] || null;
+      for (const doc of batch) {
+        if (parseStoredSerial(doc?.SerialNumber) !== null) return doc;
+      }
+      return null;
     } catch (error) {
       logger.error("Error fetching last document from MongoDB:", error);
       throw error;
@@ -148,6 +202,7 @@ class SerialNumberGeneratorService {
 
   getNextSerialNumber() {
     this.checkAndResetSerialNumber();
+    this.normalizeCounter();
     const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
     this.currentSerialNumber++;
     return serialNumber;
@@ -155,6 +210,7 @@ class SerialNumberGeneratorService {
 
   async getNextDecSerialNumber2() {
     const reset = this.checkAndResetSerialNumber();
+    this.normalizeCounter();
     const now = new Date();
     const resetTime = new Date(
       now.getFullYear(),
@@ -181,11 +237,18 @@ class SerialNumberGeneratorService {
       lastDocument &&
       isAfter(new Date(lastDocument.Timestamp), resetTime)
     ) {
-      this.currentSerialNumber = parseInt(lastDocument.SerialNumber, 10) + 1;
-      this.lastResetDate = new Date(lastDocument.Timestamp);
-      logger.info(
-        `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
-      );
+      const lastSerial = parseStoredSerial(lastDocument.SerialNumber);
+      if (lastSerial !== null) {
+        this.currentSerialNumber = lastSerial + 1;
+        this.lastResetDate = new Date(lastDocument.Timestamp);
+        logger.info(
+          `Initialized serial number to ${this.currentSerialNumber} from last MongoDB document`
+        );
+      } else {
+        logger.warn(
+          "Latest MongoDB document has invalid SerialNumber; not advancing counter from DB (using in-memory value)"
+        );
+      }
     }
 
     const serialNumber = this.currentSerialNumber.toString().padStart(3, "0");
@@ -194,15 +257,15 @@ class SerialNumberGeneratorService {
   }
 
   incrementSerialNumber() {
+    this.normalizeCounter();
     this.currentSerialNumber++;
     return this.currentSerialNumber.toString().padStart(3, "0"); // Format the return value with leading zeros
   }
 
   decSerialNumber() {
-    // this.checkAndResetSerialNumber();
-    // const serialNumber = this.currentSerialNumber.toString().padStart(4, "0");r
+    this.normalizeCounter();
     this.currentSerialNumber--;
-    return this.currentSerialNumber.toString().padStart(3, "0"); // Format the return value with leading zeros
+    return this.currentSerialNumber.toString().padStart(3, "0");
   }
 
   checkAndResetSerialNumber() {
@@ -294,8 +357,11 @@ class SerialNumberGeneratorService {
 
   async manualSerialNumberReset(resetValue) {
     try {
-      // Use the resetValue passed from frontend instead of fetching from DB
-      this.currentSerialNumber = parseInt(resetValue, 10);
+      const parsed = parseStoredSerial(resetValue);
+      if (parsed === null) {
+        throw new Error("Invalid reset value: must be a non-negative integer");
+      }
+      this.currentSerialNumber = parsed;
       this.lastResetDate = new Date();
       this.isManualReset = true;
       this.hasResetEventOccurred = true;
@@ -328,9 +394,13 @@ class SerialNumberGeneratorService {
         { upsert: true }
       );
 
-      // Update local values
-      this.initialSerialNumber = parseInt(config.initialValue, 10);
-      this.currentSerialNumber = parseInt(config.currentValue, 10);
+      const nextInitial = parseStoredSerial(config.initialValue);
+      const nextCurrent = parseStoredSerial(config.currentValue);
+      this.initialSerialNumber =
+        nextInitial !== null ? nextInitial : INITIAL_SERIAL_NUMBER;
+      this.currentSerialNumber =
+        nextCurrent !== null ? nextCurrent : this.initialSerialNumber;
+      this.normalizeCounter();
 
       logger.info("Serial number configuration updated successfully");
       return true;

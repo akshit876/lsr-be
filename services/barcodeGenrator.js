@@ -66,6 +66,15 @@ class BarcodeGenerator {
         partNumber,
       });
  */
+  /**
+   * Allocate the next serial number string up-front, independent of barcode text generation.
+   * Use this when you want the serial to be reserved before any work that may fail/reset,
+   * so that every audit record (success, reset, error) carries a real numeric serial.
+   */
+  async allocateNextSerial() {
+    return this.serialNumberService.getNextDecSerialNumber2();
+  }
+
   async generateBarcodeData({
     ocrDate,
     ocrShift,
@@ -74,6 +83,7 @@ class BarcodeGenerator {
     ocrDieNumber,
     mongoDbService,
     partNumber,
+    serialString: preAllocatedSerial,
   }) {
     try {
       // Use current date for all timestamp-based fields
@@ -109,9 +119,11 @@ class BarcodeGenerator {
       // Use provided part number or fetched one
       const finalPartNumber = partNumber || fetchedPartNumber;
 
-      // Get next serial number
+      // Use a pre-allocated serial when provided so callers can reserve the number
+      // before any failure-prone work; otherwise fall back to allocating one here.
       const serialString =
-        await this.serialNumberService.getNextDecSerialNumber2();
+        preAllocatedSerial ??
+        (await this.serialNumberService.getNextDecSerialNumber2());
 
       // Map values to fields from config with comprehensive field handling
       const fields = configData.currentModelConfig.fields.map((field) => {
@@ -219,8 +231,18 @@ class BarcodeGenerator {
     }
   }
 
+  /**
+   * Intentionally a no-op.
+   *
+   * The system is designed so that the serial number ALWAYS increments per cycle.
+   * Resets and errors "burn" the allocated serial (producing a gap in history)
+   * rather than returning it, which would risk duplicate serials on the next cycle.
+   * Kept as a no-op for backwards compatibility with older callers.
+   */
   decSerialNo() {
-    this.serialNumberService.decSerialNumber();
+    logger.warn(
+      "decSerialNo() called but ignored: serials are strictly increment-only; gaps are intentional."
+    );
   }
 
   setResetTime(hour, minute) {

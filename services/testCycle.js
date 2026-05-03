@@ -42,6 +42,17 @@ async function saveToMongoDB({
   scannerData,
   result,
 }) {
+  // Final safety net: never persist an empty / NaN / non-numeric SerialNumber.
+  const serialStr = String(serialNumber ?? "").trim();
+  if (serialStr === "" || !/^\d+$/.test(serialStr)) {
+    logger.error(
+      `⛔ Refusing to save record with invalid SerialNumber: ${JSON.stringify(
+        serialNumber
+      )}. Serials are strictly increment-only; the caller must allocate one.`
+    );
+    return;
+  }
+
   const now = new Date();
   const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
 
@@ -423,7 +434,8 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
         logger.info(
           "Reset detected while waiting for 1410.2, restarting cycle"
         );
-        barcodeGenerator.decSerialNo();
+        // Serial is intentionally NOT decremented: serials are strictly
+        // increment-only. Resets produce a gap in history, never a duplicate.
         continue;
       }
       logger.info("Clearing buffer before second scan...");
@@ -505,7 +517,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       logger.info("Checking for reset after second scan");
       if (await checkReset()) {
         logger.info("Reset detected after second scan, restarting cycle");
-        barcodeGenerator.decSerialNo();
+        // Serial is intentionally NOT decremented: strict increment-only.
         continue;
       }
 
@@ -530,7 +542,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       logger.info("Checking for reset after data comparison");
       if (await checkReset()) {
         logger.info("Reset detected after data comparison, restarting cycle");
-        barcodeGenerator.decSerialNo();
+        // Serial is intentionally NOT decremented: strict increment-only.
         continue;
       }
 
@@ -553,7 +565,7 @@ export async function runContinuousScan(io = null, comService, { partNumber }) {
       logger.info("Checking for reset or waiting for bit 1410.12");
       if (await checkResetOrBit(1410, 12, 1)) {
         logger.info("Reset detected at final step, restarting cycle");
-        barcodeGenerator.decSerialNo();
+        // Serial is intentionally NOT decremented: strict increment-only.
         continue;
       }
       logger.info("Clear Code file before next cyce");

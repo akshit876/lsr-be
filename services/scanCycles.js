@@ -21,6 +21,12 @@ export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 
+/** Non-numeric serials for system events — never used as the next part counter. */
+const SYSTEM_EVENT_SERIAL = Object.freeze({
+  resetBeforeBarcode: "SYS-RESET",
+  fileWriteFailed: "SYS-FILEERR",
+});
+
 function isTcpScannerEnabled() {
   // Safe defaults:
   // - If explicitly set to "true", enable.
@@ -565,6 +571,22 @@ class ScannerController {
     result,
     isUpdate = false,
   }) {
+    // Final safety net: refuse to persist any record without a real numeric serial.
+    // Serials are strictly increment-only; if a caller still tries to save with
+    // an empty / NaN / non-numeric value we log loudly and drop the write so we
+    // never poison the audit trail again.
+    const serialStr = String(serialNumber ?? "").trim();
+    if (serialStr === "" || !/^\d+$/.test(serialStr)) {
+      logger.error(
+        `⛔ Refusing to save record with invalid SerialNumber: ${JSON.stringify(
+          serialNumber
+        )} (markingData=${JSON.stringify(markingData)}, result=${JSON.stringify(
+          result
+        )}). This is a bug — every cycle must allocate a serial up-front.`
+      );
+      return;
+    }
+
     const now = new Date();
     const timestamp = format(now, "yyyy-MM-dd HH:mm:ss");
 
@@ -575,9 +597,11 @@ class ScannerController {
       const currentId = await this.getCurrentDayId();
       const modelNumber = await this.getCurrentModelNumber();
 
+      // serialStr was already validated at the top of this function as a
+      // non-empty numeric string; persist it as the SerialNumber.
       const data = {
         Timestamp: new Date(timestamp),
-        SerialNumber: serialNumber,
+        SerialNumber: serialStr,
         MarkingData: markingData,
         ScannerData: scannerData,
         ModelNumber: modelNumber,
@@ -596,14 +620,14 @@ class ScannerController {
       if (isUpdate) {
         // Find and update the most recent record for this serial number AND model
         logger.info(
-          `🔄 Attempting to update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+          `🔄 Attempting to update record for SerialNumber: ${serialStr}, Model: ${modelNumber}`
         );
         logger.info(
           `📊 Update data: ScannerData=${scannerData}, Result=${result}`
         );
 
         const updateResult = await mongoDbService.updateLastRecord(
-          { SerialNumber: serialNumber, ModelNumber: modelNumber },
+          { SerialNumber: serialStr, ModelNumber: modelNumber },
           { $set: data },
           "main-data",
           "records"
@@ -611,12 +635,12 @@ class ScannerController {
 
         if (updateResult) {
           logger.info(
-            `✅ Successfully updated MongoDB record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+            `✅ Successfully updated MongoDB record for SerialNumber: ${serialStr}, Model: ${modelNumber}`
           );
           logger.info(`📋 Updated fields: ${JSON.stringify(data)}`);
         } else {
           logger.warn(
-            `⚠️ Failed to find/update record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+            `⚠️ Failed to find/update record for SerialNumber: ${serialStr}, Model: ${modelNumber}`
           );
           logger.warn(`🔍 Trying to insert as new record instead`);
           await mongoDbService.insertRecord(data, "main-data", "records");
@@ -624,7 +648,7 @@ class ScannerController {
       } else {
         // Insert new record
         logger.info(
-          `📝 Inserting new record for SerialNumber: ${serialNumber}, Model: ${modelNumber}`
+          `📝 Inserting new record for SerialNumber: ${serialStr}, Model: ${modelNumber}`
         );
         await mongoDbService.insertRecord(data, "main-data", "records");
         logger.info(
@@ -1071,6 +1095,12 @@ class ScannerController {
   }
 
   async generateAndWriteBarcode(partNumber) {
+    // Reserve the serial up-front so every audit record (reset / error / success)
+    // carries a real numeric serial. Failures will "burn" this number (produce a gap)
+    // instead of leaving an empty serial or duplicating a previous one.
+    const reservedSerial = await this.barcodeGenerator.allocateNextSerial();
+    logger.info(`🔒 Reserved serial up-front for this cycle: ${reservedSerial}`);
+
     // Check for reset signal before generating barcode
     if (await this.checkReset()) {
       logger.warn(
@@ -1079,7 +1109,7 @@ class ScannerController {
       await sleep(1000);
       await this.saveToMongoDB({
         io: this.io,
-        serialNumber: "",
+        serialNumber: reservedSerial,
         markingData: "",
         scannerData: "N/A",
         result: "NG",
@@ -1093,12 +1123,13 @@ class ScannerController {
       logger.info("🏷️ Starting barcode generation process...");
       logger.info(`📦 Part Number: ${partNumber}`);
 
-      // Generate barcode data using simplified method
+      // Generate barcode data using the pre-allocated serial.
       logger.info("🔄 Calling barcodeGenerator.generateBarcodeData...");
       const { text: barcodeText, serialNo: serialString } =
         await this.barcodeGenerator.generateBarcodeData({
           mongoDbService,
           partNumber,
+          serialString: reservedSerial,
         });
       logger.info(`✅ Barcode generated: ${barcodeText}`);
       logger.info(`🔢 Serial Number: ${serialString}`);
@@ -1153,10 +1184,11 @@ class ScannerController {
       return isVerified ? { text: barcodeText, serialNo: serialString } : null;
     } catch (error) {
       logger.error("❌ Error in file writing process:", error);
-      // Save error state to MongoDB
+      // Save error state to MongoDB using the pre-allocated serial so the row
+      // is always traceable (no empty serials, ever).
       await this.saveToMongoDB({
         io: this.io,
-        serialNumber: "",
+        serialNumber: reservedSerial,
         markingData: "",
         scannerData: "N/A",
         result: "NG",
@@ -1401,7 +1433,10 @@ class ScannerController {
       logger.info("🔄 Handling reset signal");
       await writeBit(1500, 3, 1);
       await this.resetBits();
-      this.barcodeGenerator.decSerialNo();
+      // Serial is intentionally NOT decremented on reset.
+      // Serials are strictly increment-only: a reset "burns" the allocated
+      // serial (creating a gap) instead of returning it for re-use, which
+      // would risk duplicate serials on the next cycle.
       throw new Error("RESET_DETECTED");
     } catch (error) {
       logger.error("❌ Error handling reset:", error);

@@ -67,13 +67,18 @@ class MongoDBService {
 
   async getLatestSerialNumber() {
     try {
-      const latestRecord = await this.collection
+      const batch = await this.collection
         .find()
         .sort({ Timestamp: -1 })
-        .limit(1)
+        .limit(50)
         .toArray();
-      if (latestRecord.length > 0) {
-        return parseInt(latestRecord[0].SerialNumber, 10);
+      for (const row of batch) {
+        const raw = row?.SerialNumber;
+        if (raw === null || raw === undefined) continue;
+        const s = String(raw).trim();
+        if (s === "") continue;
+        const n = parseInt(s, 10);
+        if (Number.isFinite(n) && n >= 0) return n;
       }
       return 0;
     } catch (error) {
@@ -315,7 +320,8 @@ class MongoDBService {
         sort: { Timestamp: -1 }, // Sort by timestamp to get most recent
         returnDocument: "after", // Return the updated document
       });
-      return result;
+      // Driver returns { value: document | null }; only treat as success if a doc matched.
+      return result?.value ?? null;
     } catch (error) {
       logger.error("Error updating record:", error);
       throw error;
