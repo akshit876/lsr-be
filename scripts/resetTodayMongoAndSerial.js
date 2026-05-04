@@ -82,12 +82,14 @@ async function main() {
       const anchor = {
         Timestamp: new Date(),
         SerialNumber: String(anchorSerial),
-        MarkingData: {},
+        // Must match real scan rows: MarkingData is a string (barcode text) or "" — never {}
+        // or the frontend can throw when it treats this field as text.
+        MarkingData: "",
         ScannerData: "__script_reset_today__",
         ModelNumber: "__system__",
         Result: "N/A",
         User: "script/resetTodayMongoAndSerial.js",
-        Grade: undefined,
+        Grade: "N/A",
         CurrentId: null,
       };
       const ins = await coll.insertOne(anchor);

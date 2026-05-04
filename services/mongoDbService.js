@@ -246,12 +246,20 @@ class MongoDBService {
           typeof totalCount === "number" ? Math.max(totalCount - seen, 1) : data.length - seen;
         seenByWindow.set(windowKey, seen + 1);
 
+        const rawMarking = item?.MarkingData;
+        const markingDataForClient =
+          typeof rawMarking === "string"
+            ? rawMarking
+            : Array.isArray(rawMarking)
+              ? rawMarking
+              : "";
+
         return {
           Id: id,
           Timestamp: item?.Timestamp,
           SerialNumber: item?.SerialNumber,
-          MarkingData: item?.MarkingData,
-          ScannerData: item?.ScannerData,
+          MarkingData: markingDataForClient,
+          ScannerData: item?.ScannerData ?? "",
           Shift: item?.Shift,
           Result: item?.Result,
           User: item?.User,
@@ -315,13 +323,27 @@ class MongoDBService {
 
   async updateLastRecord(query, update, dbName, collectionName) {
     try {
-      const collection = this.db.collection(collectionName);
-      const result = await collection.findOneAndUpdate(query, update, {
+      const database =
+        dbName && this.client ? this.client.db(dbName) : this.db;
+      const collection = database.collection(collectionName);
+      const raw = await collection.findOneAndUpdate(query, update, {
         sort: { Timestamp: -1 }, // Sort by timestamp to get most recent
         returnDocument: "after", // Return the updated document
       });
-      // Driver returns { value: document | null }; only treat as success if a doc matched.
-      return result?.value ?? null;
+      if (raw == null) {
+        return null;
+      }
+      // Driver 6+ returns the updated document by default. Older drivers (and
+      // includeResultMetadata: true) return { value: document | null, ok, ... }.
+      // Treating v6 docs as "failed update" caused saveToMongoDB to always insert
+      // a second row for the same SerialNumber.
+      if (raw._id != null) {
+        return raw;
+      }
+      if (Object.prototype.hasOwnProperty.call(raw, "value")) {
+        return raw.value ?? null;
+      }
+      return null;
     } catch (error) {
       logger.error("Error updating record:", error);
       throw error;
