@@ -1,4 +1,5 @@
 import winston from 'winston';
+import 'winston-daily-rotate-file';
 import fs from 'fs';
 import path from 'path';
 import { format } from 'date-fns';
@@ -36,7 +37,7 @@ const separatorLength = 100;
 const separator = {
   line: () => console.log(`${colors.cyan}${'-'.repeat(separatorLength)}${colors.reset}`),
   double: () => console.log(`${colors.cyan}${'='.repeat(separatorLength)}${colors.reset}`),
-  single: () => console.log(`${colors.cyan}${'-'.repeat(separatorLength)}${colors.reset}`), // Added single separator
+  single: () => console.log(`${colors.cyan}${'-'.repeat(separatorLength)}${colors.reset}`),
   star: () => console.log(`${colors.cyan}${'*'.repeat(separatorLength)}${colors.reset}`),
   hash: () => console.log(`${colors.cyan}${'#'.repeat(separatorLength)}${colors.reset}`),
   arrow: () => console.log(`${colors.cyan}${'→'.repeat(separatorLength)}${colors.reset}`),
@@ -46,8 +47,7 @@ const separator = {
 // Custom format for console
 const customFormat = winston.format.printf(({ level, message }) => {
   const timestamp = getISTTimestamp();
-  
-  // Color mapping for different levels
+
   const levelColors = {
     error: colors.red,
     warn: colors.yellow,
@@ -60,6 +60,23 @@ const customFormat = winston.format.printf(({ level, message }) => {
   return `${timestamp} ${color}[${level.toUpperCase()}] ${message}${colors.reset}`;
 });
 
+const fileFormat = winston.format.printf(({ level, message }) => {
+  const timestamp = getISTTimestamp();
+  return `${timestamp} [${level.toUpperCase()}] ${message}`;
+});
+
+// Daily rotation config shared across transports
+// Files: error-2026-05-08.log, combined-2026-05-08.log
+// Keeps 30 days, max 20MB per file, old logs auto-deleted
+const rotateDefaults = {
+  dirname: logDir,
+  datePattern: 'YYYY-MM-DD',
+  maxSize: '20m',
+  maxFiles: '30d',
+  zippedArchive: true,
+  format: fileFormat,
+};
+
 // Create logger
 const logger = winston.createLogger({
   format: winston.format.combine(
@@ -70,21 +87,15 @@ const logger = winston.createLogger({
     new winston.transports.Console({
       format: customFormat
     }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'error.log'),
+    new winston.transports.DailyRotateFile({
+      ...rotateDefaults,
+      filename: 'error-%DATE%.log',
       level: 'error',
-      format: winston.format.printf(({ level, message }) => {
-        const timestamp = getISTTimestamp();
-        return `${timestamp} [${level.toUpperCase()}] ${message}`;
-      })
     }),
-    new winston.transports.File({
-      filename: path.join(logDir, 'combined.log'),
-      format: winston.format.printf(({ level, message }) => {
-        const timestamp = getISTTimestamp();
-        return `${timestamp} [${level.toUpperCase()}] ${message}`;
-      })
-    })
+    new winston.transports.DailyRotateFile({
+      ...rotateDefaults,
+      filename: 'combined-%DATE%.log',
+    }),
   ]
 });
 
