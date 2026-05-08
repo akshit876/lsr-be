@@ -8,26 +8,58 @@ class MongoDBService {
     this.client = null;
     this.db = null;
     this.collection = null;
+    this._currentDbName = null;
   }
 
   async connect(dbName, collectionName) {
     try {
-      const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
-      this.client = new MongoClient(uri);
-      await this.client.connect();
-      this.db = this.client.db(dbName);
+      // Reuse the existing client connection instead of creating a new one every time.
+      // Previously, every call created a new MongoClient without closing the old one,
+      // leaking sockets until the OS hit ENOBUFS and ALL network (including scanners) failed.
+      if (!this.client) {
+        const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+        this.client = new MongoClient(uri);
+        await this.client.connect();
+        logger.info("MongoDBService: new client connection established");
+      }
+
+      if (!this.db || this._currentDbName !== dbName) {
+        this.db = this.client.db(dbName);
+        this._currentDbName = dbName;
+      }
+
       this.collection = this.db.collection(collectionName);
-      logger.info(`Connected successfully to MongoDB database: ${dbName}`);
     } catch (error) {
-      console.error({ error });
-      logger.error("MongoDB connection error:", error);
-      throw error;
+      // If the connection is stale/broken, clear it and retry once
+      if (this.client) {
+        try { await this.client.close(); } catch (_) { /* ignore */ }
+        this.client = null;
+        this.db = null;
+        this._currentDbName = null;
+      }
+      try {
+        const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+        this.client = new MongoClient(uri);
+        await this.client.connect();
+        this.db = this.client.db(dbName);
+        this._currentDbName = dbName;
+        this.collection = this.db.collection(collectionName);
+        logger.info("MongoDBService: reconnected after error");
+      } catch (retryError) {
+        console.error({ error: retryError });
+        logger.error("MongoDB connection error:", retryError);
+        throw retryError;
+      }
     }
   }
 
   async disconnect() {
     if (this.client) {
       await this.client.close();
+      this.client = null;
+      this.db = null;
+      this.collection = null;
+      this._currentDbName = null;
       logger.info("Disconnected from MongoDB");
     }
   }
