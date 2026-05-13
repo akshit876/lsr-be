@@ -2,13 +2,18 @@ import ModbusRTU from "modbus-serial";
 import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
 
-// Default values
-const DEFAULT_MODBUS_IP = "192.168.3.146";
+// PLC (Modbus) default: 192.168.3.147:502
+const DEFAULT_MODBUS_IP = "192.168.3.147";
 const DEFAULT_MODBUS_PORT = 502;
 
-const MODBUS_IP = process.env.NEXT_PUBLIC_MODBUS_IP || DEFAULT_MODBUS_IP;
+const MODBUS_IP =
+  process.env.MODBUS_IP ||
+  process.env.NEXT_PUBLIC_MODBUS_IP ||
+  DEFAULT_MODBUS_IP;
 const MODBUS_PORT =
-  parseInt(process.env.NEXT_PUBLIC_MODBUS_PORT, 10) || DEFAULT_MODBUS_PORT;
+  parseInt(process.env.MODBUS_PORT, 10) ||
+  parseInt(process.env.NEXT_PUBLIC_MODBUS_PORT, 10) ||
+  DEFAULT_MODBUS_PORT;
 
 class ModbusConnection {
   constructor() {
@@ -25,7 +30,7 @@ class ModbusConnection {
       await this.client.connectTCP(MODBUS_IP, { port: MODBUS_PORT });
       this.client.setID(1); // Set the Modbus slave ID (adjust as needed)
       this.isConnected = true;
-      logger.info(`Connected to Modbus device at ${MODBUS_IP}:${MODBUS_PORT}`);
+      logger.info(`Connected to PLC (Modbus) at ${MODBUS_IP}:${MODBUS_PORT}`);
     } catch (error) {
       console.log("connect", { error });
       emitErrorEvent(

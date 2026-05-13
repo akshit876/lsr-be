@@ -2,16 +2,26 @@ import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
 import mongoDbService from "./mongoDbService.js";
-import { readBit, readRegister, writeBit, writeRegister } from "./modbus.js";
+import {
+  readBit,
+  readRegister,
+  writeBit,
+  writeRegister,
+  writeRegisterFull,
+} from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
+import { buildDmcTextFileLines } from "./dmcTraceFormat.js";
 import { promisify } from "util";
 import fs from "fs";
 import { format } from "date-fns";
 import { Worker } from "worker_threads";
 import process from "process";
 import TcpScannerService from "./TcpScannerService.js";
-import { alarmMonitor } from "./alarmMonitor.js";
+import {
+  getTodayMidnightInTimezone,
+  RESET_TIMEZONE,
+} from "./serialNumber.js";
 
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -22,13 +32,24 @@ export const sleep = promisify(setTimeout);
 
 const TIMEOUT = 100 * 1000;
 
-// TCP Scanner configuration
+// TCP Scanner configuration (legacy / fallback)
 const TCP_SCANNER_CONFIG = {
-  host: process.env.SCANNER_HOST || "192.168.3.145", // Default TCP scanner IP
-  port: parseInt(process.env.SCANNER_PORT, 10) || 502, // Default TCP scanner port
+  host: process.env.SCANNER_HOST || "192.168.3.147",
+  port: parseInt(process.env.SCANNER_PORT, 10) || 502,
   timeout: 5000,
   reconnectInterval: 3000,
-  keepAlive: true, // Enable keep-alive to prevent idle timeouts
+  keepAlive: true,
+  keepAliveInitialDelay: 1000,
+  logDir: "scanner_logs",
+};
+
+// Scannew scanner (primary) - 192.168.3.146:502
+const SCANNEW_CONFIG = {
+  host: process.env.SCANNEW_HOST || "192.168.3.146",
+  port: parseInt(process.env.SCANNEW_PORT, 10) || 502,
+  timeout: 5000,
+  reconnectInterval: 3000,
+  keepAlive: true,
   keepAliveInitialDelay: 1000,
   logDir: "scanner_logs",
 };
@@ -78,11 +99,11 @@ class ScannerController {
       await mongoDbService.connect("main-data", "records");
       logger.success("MongoDB connected successfully");
 
-      // Initialize TCP scanner connection with better error handling
-      logger.info("🔌 Setting up TCP scanner connection...");
+      // Initialize TCP scanner connection (scannew: 192.168.3.146:502)
+      logger.info("🔌 Setting up TCP scanner connection (scannew)...");
       try {
-        logger.info("🔍 Creating TcpScannerService instance...");
-        this.tcpScannerService = new TcpScannerService(TCP_SCANNER_CONFIG);
+        logger.info("🔍 Creating TcpScannerService instance (scannew)...");
+        this.tcpScannerService = new TcpScannerService(SCANNEW_CONFIG);
         logger.info(
           `🔍 tcpScannerService created: ${this.tcpScannerService ? "exists" : "null"}`
         );
@@ -93,7 +114,7 @@ class ScannerController {
           `🔍 After initTcpConnection - tcpScannerService: ${this.tcpScannerService ? "exists" : "null"}`
         );
         logger.success(
-          `TCP scanner connected successfully at ${TCP_SCANNER_CONFIG.host}:${TCP_SCANNER_CONFIG.port}`
+          `TCP scanner (scannew) connected successfully at ${SCANNEW_CONFIG.host}:${SCANNEW_CONFIG.port}`
         );
       } catch (tcpError) {
         logger.error(
@@ -114,7 +135,7 @@ class ScannerController {
           logger.error("   4. Ensure no firewall is blocking the connection");
           logger.error("   5. Try pinging the scanner IP address");
           logger.error(
-            `   6. Verify scanner is listening on port ${TCP_SCANNER_CONFIG.port}`
+            `   6. Verify scanner is listening on port ${SCANNEW_CONFIG.port}`
           );
         } else if (tcpError.message.includes("EHOSTUNREACH")) {
           logger.error("❌ TCP Scanner Host Unreachable");
@@ -129,9 +150,9 @@ class ScannerController {
         }
 
         logger.info(`💡 Current TCP Scanner Configuration:`);
-        logger.info(`   - Host: ${TCP_SCANNER_CONFIG.host}`);
-        logger.info(`   - Port: ${TCP_SCANNER_CONFIG.port}`);
-        logger.info(`   - Timeout: ${TCP_SCANNER_CONFIG.timeout}ms`);
+        logger.info(`   - Host (scannew): ${SCANNEW_CONFIG.host}`);
+        logger.info(`   - Port: ${SCANNEW_CONFIG.port}`);
+        logger.info(`   - Timeout: ${SCANNEW_CONFIG.timeout}ms`);
 
         throw new Error(`TCP Scanner Error: ${tcpError.message}`);
       }
@@ -242,10 +263,6 @@ class ScannerController {
         await this.tcpScannerService.closeConnection();
       }
 
-      // Cleanup alarm monitor
-      logger.info("🚨 Cleaning up alarm monitor...");
-      alarmMonitor.cleanup();
-
       logger.info("📦 Disconnecting from MongoDB...");
       await mongoDbService.disconnect();
 
@@ -319,9 +336,6 @@ class ScannerController {
       let checkCount = 0;
       const CHECK_INTERVAL = 100;
 
-      // Start alarm monitoring during PLC wait
-      alarmMonitor.startMonitoring();
-
       const cleanup = () => {
         if (timeoutId) {
           clearTimeout(timeoutId);
@@ -332,10 +346,163 @@ class ScannerController {
         if (bitCheckInterval) {
           clearInterval(bitCheckInterval);
         }
-
-        // Stop alarm monitoring when PLC wait is complete
-        alarmMonitor.stopMonitoring();
+        if (safetyCheckInterval) {
+          clearInterval(safetyCheckInterval);
+        }
       };
+
+      // Safety check interval - runs every 500ms to monitor safety conditions
+      // Only emits alarms to UI - does NOT stop waiting for the start bit
+      // Track previous state so we can emit safety_cleared when PLC bits go off
+      const prevSafety = {
+        partPresent: false,
+        emergencyStop: false,
+        safetySensor: false,
+        emergencyPushButton: false,
+        safetyCurtain: false,
+        slideFwdReedMissing: false,
+        slideHomeReedMissing: false,
+        laserSourceNotReady: false,
+        putPartInRejectionBin: false,
+      };
+      const safetyCheckInterval = setInterval(async () => {
+        try {
+          // Read safety bits from register 1490
+          const partPresent = await readBit(1490, 0, false); // Part not present
+          const emergencyStop = await readBit(1490, 1, false); // Emergency stop
+          const safetySensor = await readBit(1490, 2, false); // Safety sensor
+          const emergencyPushButton = await readBit(1490, 3, false); // Emergency push button
+          const safetyCurtain = await readBit(1490, 4, false); // Safety curtain
+          const slideFwdReedMissing = await readBit(1490, 5, false); // SLIDE FWD REED-SWITCH MISSING
+          const slideHomeReedMissing = await readBit(1490, 6, false); // SLIDE HOME REED-SWITCH MISSING
+          const laserSourceNotReady = await readBit(1490, 7, false); // LASER SOURCE NOT READY
+          const putPartInRejectionBin = await readBit(1490, 8, false); // Put part in rejection bin
+
+          const emitCleared = (violation) => {
+            if (this.io) {
+              this.io.emit("safety_cleared", {
+                timestamp: new Date().toISOString(),
+                violation,
+                message: violation,
+                type: violation,
+                cycleNumber: this.cycleCount,
+              });
+            }
+          };
+
+          // Emit safety_cleared when a bit goes from 1 → 0 so UI can remove toasts
+          if (prevSafety.partPresent && !partPresent) {
+            emitCleared("Part not present");
+          }
+          if (prevSafety.emergencyStop && !emergencyStop) {
+            emitCleared("Emergency stop activated");
+          }
+          if (prevSafety.safetySensor && !safetySensor) {
+            emitCleared("Safety sensor triggered");
+          }
+          if (prevSafety.emergencyPushButton && !emergencyPushButton) {
+            emitCleared("Emergency push button pressed");
+          }
+          if (prevSafety.safetyCurtain && !safetyCurtain) {
+            emitCleared("Safety curtain interrupted");
+          }
+          if (prevSafety.slideFwdReedMissing && !slideFwdReedMissing) {
+            emitCleared("SLIDE FWD REED-SWITCH MISSING");
+          }
+          if (prevSafety.slideHomeReedMissing && !slideHomeReedMissing) {
+            emitCleared("SLIDE HOME REED-SWITCH MISSING");
+          }
+          if (prevSafety.laserSourceNotReady && !laserSourceNotReady) {
+            emitCleared("LASER SOURCE NOT READY");
+          }
+          if (prevSafety.putPartInRejectionBin && !putPartInRejectionBin) {
+            emitCleared("Put part in rejection bin");
+          }
+
+          prevSafety.partPresent = partPresent;
+          prevSafety.emergencyStop = emergencyStop;
+          prevSafety.safetySensor = safetySensor;
+          prevSafety.emergencyPushButton = emergencyPushButton;
+          prevSafety.safetyCurtain = safetyCurtain;
+          prevSafety.slideFwdReedMissing = slideFwdReedMissing;
+          prevSafety.slideHomeReedMissing = slideHomeReedMissing;
+          prevSafety.laserSourceNotReady = laserSourceNotReady;
+          prevSafety.putPartInRejectionBin = putPartInRejectionBin;
+
+          // Emit safety violations to UI (but continue waiting for start bit)
+          // Emit with violation, message, and type so UI's data.violation || data.message || data.type always gets text
+          const emitViolation = (violation) => {
+            if (this.io) {
+              this.io.emit("safety_violation", {
+                timestamp: new Date().toISOString(),
+                violation,
+                message: violation,
+                type: violation,
+                cycleNumber: this.cycleCount,
+              });
+            }
+          };
+
+          if (partPresent) {
+            logger.error("🚨 SAFETY VIOLATION: Part not present (1490.0 = 1)");
+            emitViolation("Part not present");
+          }
+
+          if (emergencyStop) {
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency stop activated (1490.1 = 1)"
+            );
+            emitViolation("Emergency stop activated");
+          }
+
+          if (safetySensor) {
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety sensor triggered (1490.2 = 1)"
+            );
+            emitViolation("Safety sensor triggered");
+          }
+
+          if (emergencyPushButton) {
+            logger.error(
+              "🚨 SAFETY VIOLATION: Emergency push button pressed (1490.3 = 1)"
+            );
+            emitViolation("Emergency push button pressed");
+          }
+
+          if (safetyCurtain) {
+            logger.error(
+              "🚨 SAFETY VIOLATION: Safety curtain interrupted (1490.4 = 1)"
+            );
+            emitViolation("Safety curtain interrupted");
+          }
+
+          if (slideFwdReedMissing) {
+            logger.error(
+              "🚨 ALARM: SLIDE FWD REED-SWITCH MISSING (1490.5 = 1)"
+            );
+            emitViolation("SLIDE FWD REED-SWITCH MISSING");
+          }
+
+          if (slideHomeReedMissing) {
+            logger.error(
+              "🚨 ALARM: SLIDE HOME REED-SWITCH MISSING (1490.6 = 1)"
+            );
+            emitViolation("SLIDE HOME REED-SWITCH MISSING");
+          }
+
+          if (laserSourceNotReady) {
+            logger.error("🚨 ALARM: LASER SOURCE NOT READY (1490.7 = 1)");
+            emitViolation("LASER SOURCE NOT READY");
+          }
+
+          if (putPartInRejectionBin) {
+            logger.error("🚨 ALARM: Put part in rejection bin (1490.8 = 1)");
+            emitViolation("Put part in rejection bin");
+          }
+        } catch (error) {
+          logger.error(`Error checking safety conditions: ${error.message}`);
+        }
+      }, 500);
 
       // Reset check interval
       const resetCheckInterval = setInterval(async () => {
@@ -353,9 +520,6 @@ class ScannerController {
               resolve("timeout");
             }
           }
-
-          // Check for alarms
-          await alarmMonitor.checkForAlarms();
         } catch (error) {
           logger.error(`Error checking reset signal: ${error.message}`);
         }
@@ -568,10 +732,6 @@ class ScannerController {
     this.io = io;
     this.currentPartNumber = partNumber;
     this.isRunning = true;
-
-    // Set Socket.IO instance for alarm monitor
-    alarmMonitor.setSocketIO(io);
-
     // Don't reset cycle count here - let it persist across runs
     // this.cycleCount = 0;
     logger.info(
@@ -788,12 +948,32 @@ class ScannerController {
     this.isScanning = true;
 
     try {
+      const register = this.getScanRegister(scanType);
+      const bit = this.getScanBit(scanType);
+
+      // CRITICAL: Trigger the PLC first (and await it) so the scanner is always
+      // turned on before we listen for data. Previously the trigger was inside a
+      // 200ms setTimeout after the listener; if "dataGot" fired before 200ms
+      // (e.g. stale data), the promise resolved and the trigger never ran.
+      logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
+      logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
+      await sleep(200);
+      logger.info(`⏳ 200ms delay completed, now triggering scanner...`);
+      await writeBit(register, bit, 1);
+      logger.success(`${scannerLabel} scanner triggered successfully`);
+      logger.info(
+        `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
+      );
+
       logger.info(
         `🎯 Setting up data listener for ${scannerLabel.toLowerCase()} scan...`
       );
 
-      const scannerData = await new Promise((resolve, reject) => {
+      const scannerData = await new Promise((resolve) => {
         const dataHandler = (data) => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
           logger.success(
             `📥 Data received from ${scannerLabel.toLowerCase()} scanner: ${data}`
           );
@@ -801,7 +981,7 @@ class ScannerController {
           this.tcpScannerService.off("dataGot", dataHandler);
         };
 
-        // Set up event listener
+        // Set up event listener only after trigger was sent
         logger.info("👂 Adding event listener for scanner data");
         this.tcpScannerService.on("dataGot", dataHandler);
 
@@ -829,39 +1009,23 @@ class ScannerController {
           );
           resolve("NG");
         }, timeout);
-
-        // Trigger scanner based on scan type
-        const register = this.getScanRegister(scanType);
-        const bit = this.getScanBit(scanType);
-
-        logger.info(`🔄 Triggering ${scannerLabel.toLowerCase()} scanner...`);
-        logger.info(`📡 PLC Trigger: Register ${register}, Bit ${bit}`);
-
-        // Add 200ms delay before triggering scanner ON
-        setTimeout(() => {
-          logger.info(`⏳ 200ms delay completed, now triggering scanner...`);
-
-          writeBit(register, bit, 1)
-            .then(() => {
-              logger.success(`${scannerLabel} scanner triggered successfully`);
-              logger.info(
-                `⏳ Waiting for scanner data via TCP... (timeout: ${timeout / 1000}s)`
-              );
-            })
-            .catch((err) => {
-              logger.error(
-                `❌ Error triggering ${scannerLabel.toLowerCase()} scanner:`,
-                err
-              );
-              clearTimeout(timeoutId);
-              reject(err);
-            });
-        }, 200);
       });
 
       logger.success(
         `📊 ${scannerLabel} scanner data received: ${scannerData}`
       );
+
+      // Process ALL scanner data received (including NG, empty, or any other data)
+      // This ensures every scan attempt gets processed and logged
+      try {
+        await this.handleSuccessfulScan(scannerData, scanType);
+        logger.success(
+          `✅ Scanner data processed successfully: ${scannerData}`
+        );
+      } catch (scanError) {
+        logger.error(`❌ Error processing scanner data: ${scanError.message}`);
+        // Continue with the workflow even if PLC write or file save fails
+      }
 
       // Emit scanner read event to UI
       if (this.io) {
@@ -944,19 +1108,46 @@ class ScannerController {
 
       // Generate barcode data using simplified method
       logger.info("🔄 Calling barcodeGenerator.generateBarcodeData...");
-      const { text: barcodeText, serialNo: serialString } =
-        await this.barcodeGenerator.generateBarcodeData({
-          mongoDbService,
-          partNumber,
-        });
-      logger.info(`✅ Barcode generated: ${barcodeText}`);
+      const {
+        text: barcodeText,
+        serialNo: serialString,
+        fields: barcodeFields,
+      } = await this.barcodeGenerator.generateBarcodeData({
+        mongoDbService,
+        partNumber,
+      });
+      logger.info(
+        `📋 Barcode built from ${barcodeFields.length} config field(s) (checked subset → code.txt)`
+      );
+
+      // DMC sidecar (text.txt) — separate from barcode / code.txt composition
+      const now = new Date();
+      const year = String(now.getFullYear()).slice(-2);
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = format(now, "dd");
+      const shift = this.shiftUtility.getCurrentShift(now);
+      const traceForTextFile = buildDmcTextFileLines({
+        year,
+        month,
+        day,
+        shift,
+        serialString,
+      });
+
+      logger.info(`✅ Barcode generated (code.txt): ${barcodeText}`);
+      logger.info(`📄 text.txt DMC trace:\n${traceForTextFile}`);
       logger.info(`🔢 Serial Number: ${serialString}`);
 
-      // Write both files using the reusable function
+      // code.txt = full laser string; text.txt = YYMMDD + newline + shift + 5-digit serial only
       logger.info("📁 Writing barcode data to files...");
       await Promise.all([
         this.writeToFile(CODE_FILE_PATH, barcodeText, "Barcode data"),
-        this.writeToFile(TEXT_FILE_PATH, barcodeText, "Barcode text"),
+        this.writeToFile(
+          TEXT_FILE_PATH,
+          traceForTextFile,
+          "DMC trace (text.txt)",
+          false
+        ),
       ]);
       logger.info("✅ Files written successfully");
 
@@ -991,7 +1182,9 @@ class ScannerController {
       logger.info(
         `🎯 Barcode generation process completed. Returning ${isVerified ? "barcodeData" : "null"}`
       );
-      return isVerified ? { text: barcodeText, serialNo: serialString } : null;
+      return isVerified
+        ? { text: barcodeText, serialNo: serialString, fields: barcodeFields }
+        : null;
     } catch (error) {
       logger.error("❌ Error in file writing process:", error);
       // Save error state to MongoDB
@@ -1009,14 +1202,41 @@ class ScannerController {
   }
 
   // Reusable file writing function
-  async writeToFile(filePath, data, description = "Data") {
+  async writeToFile(filePath, data, description = "Data", splitPoint = null) {
     try {
-      await fs.writeFileSync(filePath, data.toString(), "utf8");
+      // Format barcode as 2 lines for TXT files (skip when splitPoint === false, e.g. text.txt with fixed DMC layout)
+      let formattedData = data.toString();
+      const isTxtFile = filePath.endsWith(".txt");
+      const isTextFile = filePath === TEXT_FILE_PATH;
+
+      if (
+        isTxtFile &&
+        formattedData.length > 0 &&
+        splitPoint !== false
+      ) {
+        if (
+          isTextFile &&
+          typeof splitPoint === "number" &&
+          splitPoint >= 0
+        ) {
+          const line1 = formattedData.substring(0, splitPoint);
+          const line2 = formattedData.substring(splitPoint);
+          formattedData = `${line1}\n${line2}`;
+        } else if (!isTextFile) {
+          // code.txt: split in the middle for laser
+          const midPoint = Math.ceil(formattedData.length / 2);
+          const line1 = formattedData.substring(0, midPoint);
+          const line2 = formattedData.substring(midPoint);
+          formattedData = `${line1}\n${line2}`;
+        }
+      }
+
+      await fs.writeFileSync(filePath, formattedData, "utf8");
       logger.info(`✅ ${description} written to ${path.basename(filePath)}`);
 
       // Verify the write was successful
       const verificationData = await fs.readFileSync(filePath, "utf8");
-      if (verificationData !== data.toString()) {
+      if (verificationData !== formattedData) {
         throw new Error(
           `File verification failed for ${path.basename(filePath)}`
         );
@@ -1039,31 +1259,31 @@ class ScannerController {
 
   getLastResetTime() {
     const now = new Date();
-    const resetTime = new Date(now);
-
-    // Use the reset time from SerialNumberGeneratorService if available
-    const resetHour =
-      this.barcodeGenerator?.serialNumberService?.resetHour || 0;
-    const resetMinute =
-      this.barcodeGenerator?.serialNumberService?.resetMinute || 0;
-
-    resetTime.setHours(resetHour, resetMinute, 0, 0);
-
-    // If current time is before reset time, set reset time to previous day
-    if (now < resetTime) {
-      resetTime.setDate(resetTime.getDate() - 1);
+    // Reset only at 12am midnight on date change (never 12pm noon). Use reset timezone (e.g. Asia/Kolkata).
+    const tz =
+      this.barcodeGenerator?.serialNumberService?.resetTimezone ||
+      RESET_TIMEZONE;
+    const todayMidnight = getTodayMidnightInTimezone(now, tz);
+    // Start of current period: today 00:00 if we're past it, else yesterday 00:00
+    if (now >= todayMidnight) {
+      return todayMidnight;
     }
-
-    return resetTime;
+    return new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
   }
 
   async getCurrentDayId() {
     const now = new Date();
-    const nextResetTime = new Date(this.lastResetDate);
-    nextResetTime.setDate(nextResetTime.getDate() + 1);
+    // Next boundary is midnight (12am) in reset timezone, not noon. Date change only.
+    const tz =
+      this.barcodeGenerator?.serialNumberService?.resetTimezone ||
+      RESET_TIMEZONE;
+    const todayMidnight = getTodayMidnightInTimezone(now, tz);
+    const nextMidnight =
+      now >= todayMidnight
+        ? new Date(todayMidnight.getTime() + 24 * 60 * 60 * 1000)
+        : todayMidnight;
 
-    // Check if we need to reset the counter
-    if (now >= nextResetTime) {
+    if (now >= nextMidnight) {
       this.currentDayId = 1;
       this.lastResetDate = this.getLastResetTime();
     }
@@ -1284,6 +1504,171 @@ class ScannerController {
         await this.handleReset();
         throw error;
       }
+      throw error;
+    }
+  }
+
+  async handleSuccessfulScan(scannerData, scanType) {
+    try {
+      logger.info(`🎯 Processing ${scanType} scan data: ${scannerData}`);
+
+      // Always write scanner data to multiple PLC registers starting from 3000
+      // Even if data is "NG" or empty, we still want to record the scan attempt
+      logger.info(
+        "📡 Writing scanner data to multiple PLC registers starting from 3000..."
+      );
+
+      // Try to write to PLC registers, but don't let failures stop file writing
+      try {
+        await this.writeScannerDataToMultipleRegisters(scannerData);
+        logger.success(
+          `✅ Scanner data "${scannerData}" written to multiple PLC registers starting from 3000`
+        );
+      } catch (plcError) {
+        logger.error(
+          `❌ PLC write failed, but continuing with file save: ${plcError.message}`
+        );
+        // Continue with file writing even if PLC fails
+      }
+
+      // Always save scanner data to scan_data.txt file in D directory (override each time)
+      // This ensures we have a record of every scan attempt
+      const fileName = "scan_data.txt";
+      const filePath = `D:/${fileName}`;
+
+      try {
+        // Write the scanner data (override the file each time)
+        // Use "NG" if scannerData is null/undefined, or the actual data
+        const dataToWrite = scannerData || "NG";
+        await fs.writeFileSync(filePath, dataToWrite, "utf8");
+        logger.success(
+          `✅ Scanner data "${dataToWrite}" written to ${filePath}`
+        );
+
+        // Emit event to UI
+        if (this.io) {
+          this.io.emit("scan_data_saved", {
+            timestamp: new Date(),
+            scanType: scanType,
+            data: dataToWrite,
+            filePath: filePath,
+          });
+        }
+      } catch (fileError) {
+        logger.error(
+          `❌ Error saving scanned data to file: ${fileError.message}`
+        );
+        // Try alternative path if D: drive is not accessible
+        const altPath = `./${fileName}`;
+        try {
+          const dataToWrite = scannerData || "NG";
+          await fs.writeFileSync(altPath, dataToWrite, "utf8");
+          logger.success(
+            `✅ Scanner data "${dataToWrite}" written to alternative path: ${altPath}`
+          );
+        } catch (altError) {
+          logger.error(
+            `❌ Error saving to alternative path: ${altError.message}`
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(`❌ Error handling scan data: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async writeScannerDataToMultipleRegisters(scannerData) {
+    try {
+      const START_REGISTER = 3000;
+      const CHARS_PER_REGISTER = 2; // Each 16-bit register can hold 2 characters (8 bits per char)
+
+      // Configuration: Set to true if PLC reads bytes in reverse order (little-endian)
+      const REVERSE_BYTE_ORDER = true; // Change this to true if data appears in reverse order
+
+      // Convert scanner data to string and handle edge cases
+      const dataString = (scannerData || "NG").toString();
+      logger.info(`📊 Scanner data length: ${dataString.length} characters`);
+      logger.info(
+        `🔧 Byte order: ${REVERSE_BYTE_ORDER ? "REVERSE (little-endian)" : "NORMAL (big-endian)"}`
+      );
+
+      // Calculate how many registers we need
+      const numRegisters = Math.ceil(dataString.length / CHARS_PER_REGISTER);
+      logger.info(`🔢 Number of registers needed: ${numRegisters}`);
+
+      // Split data into chunks for each register
+      const registerValues = [];
+      for (let i = 0; i < numRegisters; i++) {
+        const startIndex = i * CHARS_PER_REGISTER;
+        const endIndex = startIndex + CHARS_PER_REGISTER;
+        const chunk = dataString.slice(startIndex, endIndex);
+
+        // Convert chunk to register value (16-bit integer)
+        let registerValue = 0;
+        if (chunk.length === 2) {
+          // Two characters: pack them into 16 bits
+          const char1 = chunk.charCodeAt(0);
+          const char2 = chunk.charCodeAt(1);
+
+          if (REVERSE_BYTE_ORDER) {
+            // Reverse byte order: char2 in high byte, char1 in low byte
+            registerValue = (char2 << 8) | char1;
+            logger.info(
+              `📝 Register ${START_REGISTER + i}: "${chunk}" → REVERSE: char2(${chunk[1]}=${char2}) << 8 | char1(${chunk[0]}=${char1}) = ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+            );
+          } else {
+            // Normal byte order: char1 in high byte, char2 in low byte
+            registerValue = (char1 << 8) | char2;
+            logger.info(
+              `📝 Register ${START_REGISTER + i}: "${chunk}" → NORMAL: char1(${chunk[0]}=${char1}) << 8 | char2(${chunk[1]}=${char2}) = ${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+            );
+          }
+        } else if (chunk.length === 1) {
+          // Single character: just use its ASCII value
+          registerValue = chunk.charCodeAt(0);
+          logger.info(
+            `📝 Register ${START_REGISTER + i}: "${chunk}" → single char ${chunk[0]}=${registerValue} (0x${registerValue.toString(16).toUpperCase()})`
+          );
+        }
+
+        registerValues.push(registerValue);
+      }
+
+      // Write all registers at once using writeRegisterFull
+      await writeRegisterFull(START_REGISTER, registerValues);
+      logger.success(
+        `✅ Successfully wrote ${numRegisters} registers starting from ${START_REGISTER}`
+      );
+
+      // Also write the total number of registers used to a status register (e.g., 2999)
+      await writeRegister(2999, numRegisters);
+      logger.info(
+        `📊 Status register 2999 updated with number of registers used: ${numRegisters}`
+      );
+
+      // Log the expected reading order for debugging
+      logger.info("\n📖 Expected PLC Reading Order:");
+      logger.info("=".repeat(50));
+      for (let i = 0; i < numRegisters; i++) {
+        const startIndex = i * CHARS_PER_REGISTER;
+        const endIndex = startIndex + CHARS_PER_REGISTER;
+        const chunk = dataString.slice(startIndex, endIndex);
+
+        if (REVERSE_BYTE_ORDER) {
+          logger.info(
+            `Register ${START_REGISTER + i}: Should read as "${chunk.split("").reverse().join("")}" (REVERSE order)`
+          );
+        } else {
+          logger.info(
+            `Register ${START_REGISTER + i}: Should read as "${chunk}" (NORMAL order)`
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(
+        `❌ Error writing scanner data to multiple registers: ${error.message}`
+      );
       throw error;
     }
   }
