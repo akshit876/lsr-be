@@ -2,7 +2,13 @@ import { fileURLToPath } from "url";
 import path, { dirname } from "path";
 import logger from "../logger.js";
 import mongoDbService from "./mongoDbService.js";
-import { readBit, readRegister, writeBit, writeRegister } from "./modbus.js";
+import {
+  readBit,
+  readRegister,
+  writeAsciiToRegisters,
+  writeBit,
+  writeRegister,
+} from "./modbus.js";
 import ShiftUtility from "./ShiftUtility.js";
 import BarcodeGenerator from "./barcodeGenrator.js";
 import { promisify } from "util";
@@ -1986,18 +1992,22 @@ class ScannerController {
       // Extract grade and main data for verification
       const { mainData, grade } = this.parseScannerPayload(scannerData);
 
-      // Validate grade: only allow A or B
-      const allowedGrades = ["A", "B"];
-      const isGradeAllowed = allowedGrades.includes(
-        (grade || "").toUpperCase()
-      );
-
       logger.info(
         `📊 Verification data breakdown: Main data: "${mainData}", Grade: "${grade}"`
       );
 
       // Handle timeout/null/undefined cases as NG
       const effectiveScannerData = mainData || "NG"; // Use main data for comparison
+
+      // Write latest scanner data to PLC register 3000 (always, even if NG)
+      // NOTE: PLC expects ASCII packed into holding registers (2 chars per register)
+      try {
+        await writeAsciiToRegisters(3000, effectiveScannerData, 30);
+      } catch (e) {
+        logger.warn(
+          `Unable to write scanner data to PLC register 3000: ${e.message}`
+        );
+      }
 
       if (effectiveScannerData !== "NG") {
         logger.success("Verification scan OK");
@@ -2009,27 +2019,16 @@ class ScannerController {
       const isDataMatching =
         await this.compareScannerDataWithCode(effectiveScannerData);
 
-      // Signal grade status to PLC (1414.8 for OK grade, 1414.9 for NG grade)
-      try {
-        await writeBit(1414, isGradeAllowed ? 8 : 9, 1);
-      } catch (e) {
-        logger.warn(`Unable to write grade status bit: ${e.message}`);
-      }
-
-      // Final result: must match AND have allowed grade
-      const isFinalOk = isDataMatching && isGradeAllowed;
+      // Final result: grade must NOT block OK. Only data match (and Keyence) decides.
+      const isFinalOk = isDataMatching;
 
       logger.info(
-        `✍️ Writing bit 1414.${isFinalOk ? 3 : 4} to signal data match result (grade ${
-          isGradeAllowed ? "OK" : "NG"
-        })`
+        `✍️ Writing bit 1414.${isFinalOk ? 3 : 4} to signal data match result`
       );
       await writeBit(1414, isFinalOk ? 3 : 4, 1);
 
       if (isFinalOk) {
-        logger.success("Verification OK: data matches and grade accepted ✅");
-      } else if (!isGradeAllowed) {
-        logger.warn(`⚠️ Verification NG: disallowed grade '${grade}'`);
+        logger.success("Verification OK: data matches ✅");
       } else {
         logger.warn("⚠️ Verification NG: data does not match");
       }

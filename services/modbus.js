@@ -1,6 +1,7 @@
 import ModbusRTU from "modbus-serial";
 import logger from "../logger.js";
 import { emitErrorEvent } from "./utils.js";
+import process from "process";
 
 // Default values
 const DEFAULT_MODBUS_IP = "192.168.119.98";
@@ -88,6 +89,23 @@ class ModbusConnection {
         String.fromCharCode(lowByte) + String.fromCharCode(highByte);
     });
     return asciiString;
+  }
+
+  // Packs a string into 16-bit register values (low byte first, then high byte)
+  // to match `convertToASCII` decoding.
+  encodeAsciiToRegisters(input, registerCount) {
+    const text = (input ?? "").toString();
+    const totalChars = Math.max(0, Number(registerCount || 0)) * 2;
+    const normalized =
+      totalChars > 0 ? text.slice(0, totalChars).padEnd(totalChars, " ") : text;
+
+    const values = [];
+    for (let i = 0; i < normalized.length; i += 2) {
+      const low = normalized.charCodeAt(i) & 0xff;
+      const high = (normalized.charCodeAt(i + 1) || 32) & 0xff; // pad with space
+      values.push(low | (high << 8));
+    }
+    return values;
   }
 
   // async writeBitWithReset(
@@ -302,6 +320,11 @@ class ModbusConnection {
     }
   }
 
+  async writeAsciiToRegisters(address, text, registerCount) {
+    const values = this.encodeAsciiToRegisters(text, registerCount);
+    return this.writeRegistersFull(address, values);
+  }
+
   async writeBits(address, bitValues) {
     await this.ensureConnection();
     try {
@@ -444,6 +467,8 @@ export const readDataAndConfirm = (
   );
 export const writeRegisterFull = (add, val) =>
   modbusConnection.writeRegistersFull(add, val);
+export const writeAsciiToRegisters = (address, text, registerCount) =>
+  modbusConnection.writeAsciiToRegisters(address, text, registerCount);
 // writeBitsWithRest(1415, 9, 1, 2000);
 
 async function trackBits2() {
